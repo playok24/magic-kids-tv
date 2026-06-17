@@ -183,7 +183,7 @@ body.fs #exit-fs{display:flex;align-items:center;justify-content:center}
 
 #version-banner{
   position:fixed;top:0;left:0;right:0;z-index:100;
-  padding:10px 16px;
+  padding:10px 16px;padding-top:calc(10px + var(--safe-t));
   background:linear-gradient(135deg,#7c3aed,#5b21b6);
   color:#fff;text-align:center;font-size:13px;font-weight:600;
   display:none;cursor:pointer;
@@ -222,8 +222,8 @@ body.fs #exit-fs{display:flex;align-items:center;justify-content:center}
 </head>
 <body>
 
-<div id="version-banner" onclick="window.open('https://github.com/playok24/magic-kids-tv/releases/latest','_blank')">
-  Nueva version disponible! Toca para actualizar
+<div id="version-banner" onclick="window.open('https://github.com/playok24/magic-kids-tv/releases/download/v1.2.0/Magic-Kids-Android.apk','_blank')">
+  Nueva version disponible! Toca para descargar APK
 </div>
 
 <div id="top-bar">
@@ -382,18 +382,22 @@ db.ref("sessions").on("value",function(snap){
 });
 
 function cleanStaleSessions(){
-  var cutoff=Date.now()-30000;
-  db.ref("sessions").once("value",function(snap){
-    snap.forEach(function(child){
-      var val=child.val();
-      if(val===true||(!val.timestamp)||val.timestamp<cutoff){
-        child.ref.remove();
-      }
+  var nowRef=db.ref(".info/serverTimeOffset");
+  nowRef.once("value",function(snap){
+    var offset=snap.val()||0;
+    var cutoff=Date.now()+offset-60000;
+    db.ref("sessions").once("value",function(snap){
+      snap.forEach(function(child){
+        var val=child.val();
+        if(val===true||(!val.timestamp)||val.timestamp<cutoff){
+          child.ref.remove();
+        }
+      });
     });
   });
 }
 cleanStaleSessions();
-setInterval(cleanStaleSessions,20000);
+setInterval(cleanStaleSessions,30000);
 
 window.addEventListener("beforeunload",function(){sessionRef.remove();});
 window.addEventListener("pagehide",function(){sessionRef.remove();});
