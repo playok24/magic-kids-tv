@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<title>Magic Kids TV v1.2</title>
+<title>Magic Kids TV v1.3</title>
 <link rel="icon" href="Magic Kids Logo.png">
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
@@ -16,7 +16,7 @@
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
   --bg:#0a0a12;--card:#13131f;--accent:#00ccff;
-  --violet:#c4a0ff;--bar-h:110px;
+  --violet:#c4a0ff;
   --safe-b:env(safe-area-inset-bottom,0px);
   --safe-t:env(safe-area-inset-top,0px);
 }
@@ -26,12 +26,14 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:#fff;
   touch-action:manipulation;
 }
 
+#app{display:flex;flex-direction:column;height:100dvh;overflow:hidden}
+
 #top-bar{
-  position:fixed;top:0;left:0;right:0;z-index:20;
-  padding-top:calc(8px + var(--safe-t));
-  padding-bottom:6px;padding-left:12px;padding-right:12px;
-  background:linear-gradient(180deg,rgba(10,10,18,0.98) 70%,transparent);
+  position:sticky;top:0;z-index:20;
+  padding:calc(8px + var(--safe-t)) 12px 6px 12px;
+  background:rgba(10,10,18,0.98);
   display:flex;flex-direction:column;gap:2px;
+  flex-shrink:0;
 }
 #top-row{display:flex;align-items:center;gap:8px}
 #top-bar .logo{width:32px;height:32px;border-radius:8px;object-fit:contain}
@@ -40,30 +42,22 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:#fff;
 #top-bar .greeting{font-size:14px;color:var(--violet);font-weight:700;margin-top:2px;display:flex;align-items:center;gap:6px}
 #top-bar .greeting #greeting-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px}
 #top-bar .greeting .edit-name{font-size:12px;color:var(--violet);background:rgba(196,160,255,0.15);border:none;border-radius:50%;width:22px;height:22px;min-width:22px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
-#prog-btn{
-  align-self:flex-start;margin-top:2px;
-  padding:4px 14px;border-radius:12px;border:none;
-  background:#2a2a3a;color:var(--violet);
-  font-size:11px;font-weight:700;letter-spacing:1px;
-  cursor:pointer;text-transform:uppercase;
-}
-#prog-btn:active{transform:scale(0.95)}
 
-body.fs #top-bar,body.fs #bottom-bar,body.fs #name-modal{display:none!important}
-body.fs #video-wrap{top:0;bottom:0;left:0;right:0;padding-top:0}
+body.fs #top-bar,body.fs #controls-bar,body.fs #bottom-bar,body.fs #prog-section-mobile,body.fs #name-modal{display:none!important}
+body.fs #video-wrap{position:fixed;top:0;bottom:0;left:0;right:0;padding-top:0;height:100%}
 #exit-fs{
-  display:none;position:fixed;top:calc(16px + var(--safe-t));right:16px;z-index:100;
+  display:none;position:fixed;top:calc(24px + var(--safe-t));right:28px;z-index:100;
   width:48px;height:48px;border-radius:50%;border:none;
-  background:rgba(0,0,0,0.6);color:#fff;font-size:24px;
-  cursor:pointer;backdrop-filter:blur(4px);
-  -webkit-backdrop-filter:blur(4px);
+  background:rgba(0,0,0,0.7);color:#fff;font-size:26px;
+  cursor:pointer;backdrop-filter:blur(6px);
+  -webkit-backdrop-filter:blur(6px);
+  align-items:center;justify-content:center;
 }
-body.fs #exit-fs{display:flex;align-items:center;justify-content:center}
 
 #video-wrap{
-  position:fixed;top:0;left:0;right:0;
-  bottom:var(--bar-h);
-  background:#000;overflow:hidden;
+  position:relative;width:100%;background:#000;overflow:hidden;
+  height:32vh;
+  flex-shrink:0;
 }
 #video{width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity 0.5s}
 #video.visible{opacity:1}
@@ -100,7 +94,7 @@ body.fs #exit-fs{display:flex;align-items:center;justify-content:center}
 #vol-indicator{
   position:absolute;bottom:20px;left:50%;transform:translateX(-50%);
   padding:6px 16px;border-radius:20px;
-  background:rgba(0,0,0,0.8);color:#fff;
+  background:rgba(0,0,0,0.8);color:#00ff66;
   font-size:14px;font-weight:600;
   opacity:0;transition:opacity 0.3s;pointer-events:none;z-index:10;
 }
@@ -111,27 +105,24 @@ body.fs #exit-fs{display:flex;align-items:center;justify-content:center}
   background:rgba(0,0,0,0.6);cursor:pointer;
 }
 
-#bottom-bar{
-  position:fixed;bottom:0;left:0;right:0;z-index:20;
-  height:var(--bar-h);
-  padding:0 8px var(--safe-b);
-  background:linear-gradient(0deg,rgba(10,10,18,0.98) 70%,transparent);
-  display:flex;flex-direction:column;justify-content:flex-end;
+#controls-bar{
+  background:rgba(13,13,26,0.98);border-bottom:1px solid #222;
+  padding:4px 12px;
+  flex-shrink:0;
 }
-
-.bar-row{display:flex;align-items:center;justify-content:center;gap:6px;padding:4px 0}
+.bar-row{display:flex;align-items:center;justify-content:center;gap:6px;padding:2px 0}
 .bar-row.controls{gap:8px}
 
-#bottom-bar button{
+#controls-bar button{
   background:none;border:none;color:#fff;
   font-size:20px;padding:8px 12px;border-radius:8px;
   cursor:pointer;min-width:40px;min-height:40px;
   display:flex;align-items:center;justify-content:center;
   transition:background 0.15s;
 }
-#bottom-bar button:active{background:rgba(255,255,255,0.1)}
-#bottom-bar button.active{color:var(--accent)}
-#bottom-bar button.violet{color:var(--violet)}
+#controls-bar button:active{background:rgba(255,255,255,0.1)}
+#controls-bar button.active{color:var(--accent)}
+#controls-bar button.violet{color:var(--violet)}
 
 #vol-slider{
   -webkit-appearance:none;appearance:none;
@@ -144,6 +135,13 @@ body.fs #exit-fs{display:flex;align-items:center;justify-content:center}
   background:var(--violet);cursor:pointer;
 }
 
+#bottom-bar{
+  background:rgba(13,13,26,0.98);
+  display:flex;align-items:center;justify-content:center;
+  padding:6px 12px calc(6px + var(--safe-b));
+  flex-shrink:0;
+}
+
 .instagram-link{
   display:flex;align-items:center;justify-content:center;
   color:var(--violet);text-decoration:none;
@@ -151,35 +149,19 @@ body.fs #exit-fs{display:flex;align-items:center;justify-content:center}
 }
 .instagram-link svg{width:20px;height:20px;fill:var(--violet)}
 
-#programacion-overlay{
-  position:fixed;inset:0;z-index:50;
-  background:rgba(0,0,0,0.95);
-  display:none;flex-direction:column;
-  overflow-y:auto;padding:16px;
+#prog-section-mobile{
+  background:var(--card);
+  padding:10px 12px;
+  flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;
 }
-#programacion-overlay.show{display:flex}
-#programacion-overlay .header{
-  display:flex;align-items:center;justify-content:space-between;
-  margin-bottom:16px;
-}
-#programacion-overlay .header h2{color:var(--violet);font-size:18px}
-#tz-select{
-  padding:6px 10px;border-radius:8px;border:1px solid #333;
-  background:#1a1a2e;color:#00ccff;font-size:12px;font-weight:700;
-  cursor:pointer;outline:none;
-}
-#programacion-overlay .close-btn{
-  background:none;border:none;color:#fff;font-size:24px;
-  cursor:pointer;padding:8px;
-}
-.prog-item{
-  display:flex;align-items:center;gap:12px;
-  padding:10px 12px;border-radius:10px;
-  margin-bottom:4px;transition:background 0.2s;
-}
-.prog-item.now{background:rgba(255,200,0,0.15);border-left:3px solid #ffd700}
-.prog-item .hora{color:var(--accent);font-weight:700;font-size:13px;min-width:45px}
-.prog-item .nombre{color:#ddd;font-size:13px}
+#prog-section-mobile h3{color:var(--violet);font-size:13px;margin-bottom:6px;font-weight:700;flex-shrink:0}
+#prog-section-mobile #prog-list-mobile{display:flex;flex-direction:column;gap:2px;overflow-y:auto;flex:1;min-height:0}
+#prog-section-mobile .prog-item{display:flex;gap:8px;padding:5px 8px;border-radius:6px;font-size:12px}
+#prog-section-mobile .prog-item.now{background:rgba(196,160,255,0.15);border-left:3px solid #c4a0ff}
+#prog-section-mobile .prog-item .hora{color:var(--accent);font-weight:700;min-width:40px}
+#prog-section-mobile .prog-item .nombre{color:#ccc}
+#prog-section-mobile .tz-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-shrink:0}
+#prog-section-mobile .tz-row span{font-size:11px;color:#888}
 
 #version-banner{
   position:fixed;top:0;left:0;right:0;z-index:100;
@@ -222,65 +204,62 @@ body.fs #exit-fs{display:flex;align-items:center;justify-content:center}
 </head>
 <body>
 
-<div id="version-banner" onclick="window.open('https://github.com/playok24/magic-kids-tv/releases/download/v1.2.0/Magic-Kids-Android.apk','_blank')">
-  Nueva version disponible! Toca para descargar APK
-</div>
+<div id="version-banner">Nueva version disponible! Toca para descargar APK</div>
 
-<div id="top-bar">
-  <div id="top-row">
-    <img class="logo" src="Magic Kids Logo.png" alt="Logo">
-    <span class="name">Magic Kids TV v1.2</span>
-    <span class="ver" id="view-counter">&#x1F441; <span id="view-count">0</span></span>
+<div id="app">
+  <div id="top-bar">
+    <div id="top-row">
+      <img class="logo" src="Magic Kids Logo.png" alt="Logo">
+      <span class="name">Magic Kids TV v1.3</span>
+      <span class="ver" id="view-counter">&#x1F441; <span id="view-count">0</span></span>
+    </div>
+    <div class="greeting" id="greeting"><span id="greeting-text">HOLA!</span><button class="edit-name" onclick="showNameModal(true)">&#9998;</button></div>
   </div>
-  <div class="greeting" id="greeting"><span id="greeting-text">HOLA!</span><button class="edit-name" onclick="showNameModal(true)">&#9998;</button></div>  <button id="prog-btn">Programacion</button>
-</div>
 
-<div id="video-wrap">
-  <div id="loading">
-    <img class="logo-load" src="Magic Kids Logo.png" alt="Magic Kids TV">
-    <div class="text">Sintonizando...</div>
-  </div>
-  <div id="static"></div>
-  <div id="vol-indicator"></div>
-  <video id="video" autoplay muted playsinline preload="auto" crossorigin="anonymous"></video>
-  <div id="tap-play" style="position:absolute;inset:0;display:none;z-index:6;justify-content:center;align-items:center;background:rgba(0,0,0,0.6);cursor:pointer;">
-    <div style="text-align:center;color:#fff;">
-      <div style="font-size:48px;margin-bottom:8px;">&#9654;</div>
-      <div style="font-size:14px;font-weight:600;color:var(--accent);">Toca para reproducir</div>
+  <div id="video-wrap">
+    <div id="loading">
+      <img class="logo-load" src="Magic Kids Logo.png" alt="Magic Kids TV">
+      <div class="text">Sintonizando...</div>
+    </div>
+    <div id="static"></div>
+    <div id="vol-indicator"></div>
+    <video id="video" autoplay muted playsinline preload="auto" crossorigin="anonymous"></video>
+    <div id="tap-play" style="position:absolute;inset:0;display:none;z-index:6;justify-content:center;align-items:center;background:rgba(0,0,0,0.6);cursor:pointer;">
+      <div style="text-align:center;color:#fff;">
+        <div style="font-size:48px;margin-bottom:8px;">&#9654;</div>
+        <div style="font-size:14px;font-weight:600;color:var(--accent);">Toca para reproducir</div>
+      </div>
     </div>
   </div>
-</div>
 
-<div id="bottom-bar">
-  <div class="bar-row controls">
-    <button id="play" title="Play">&#9654;</button>
-    <button id="pause" title="Pause">&#9646;&#9646;</button>
-    <button id="mute" class="violet" title="Mute">&#128266;</button>
-    <input type="range" id="vol-slider" min="0" max="100" value="50">
-    <button id="fullscreen" class="violet" title="Fullscreen">&#9974;</button>
+  <div id="controls-bar">
+    <div class="bar-row controls">
+      <button id="play" title="Play">&#9654;</button>
+      <button id="pause" title="Pause">&#9646;&#9646;</button>
+      <button id="mute" class="violet" title="Mute">&#128266;</button>
+      <input type="range" id="vol-slider" min="0" max="100" value="50">
+      <button id="fullscreen" class="violet" title="Fullscreen">&#9974;</button>
+    </div>
   </div>
-  <div class="bar-row">
-    <button id="ch-down" title="Canal abajo">&#9660; CH</button>
-    <a class="instagram-link" href="https://www.instagram.com/elmagictv" target="_blank" rel="noopener">
-      <svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
-    </a>
-    <button id="ch-up" title="Canal arriba">CH &#9650;</button>
-  </div>
-</div>
 
-<div id="programacion-overlay">
-  <div class="header">
-    <h2>&#128240; Programacion</h2>
-    <div style="display:flex;align-items:center;gap:8px">
+  <div id="prog-section-mobile">
+    <h3>&#128240; PROGRAMACION</h3>
+    <div class="tz-row">
+      <span>Zona horaria:</span>
       <select id="tz-select">
         <option value="-3">ARG (UTC-3)</option>
         <option value="-5">COL (UTC-5)</option>
         <option value="-6">MEX (UTC-6)</option>
       </select>
-      <button class="close-btn" id="close-prog">&times;</button>
     </div>
+    <div id="prog-list-mobile"></div>
   </div>
-  <div id="prog-list"></div>
+
+  <div id="bottom-bar">
+    <a class="instagram-link" href="https://www.instagram.com/elmagictv" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+    </a>
+  </div>
 </div>
 
 <div id="name-modal">
@@ -295,7 +274,7 @@ body.fs #exit-fs{display:flex;align-items:center;justify-content:center}
 
 <button id="exit-fs" title="Salir pantalla completa">&#10005;</button>
 
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<!-- Android usa reproduccion nativa HLS (ExoPlayer) -->
 <script>
 var STREAM="https://183.bozztv.com/giatv/giatv-magicplus/magicplus/chunks.m3u8";
 var PROG_JSON_URL="https://playok24.github.io/magic-kids-tv/programacion.json?t="+Date.now();
@@ -309,7 +288,6 @@ var viewCountEl=document.getElementById("view-count");
 var greetingEl=document.getElementById("greeting");
 var tapPlay=document.getElementById("tap-play");
 
-var hlsInstance=null;
 var hlsRetries=0;
 var volTimeout=null;
 
@@ -372,27 +350,23 @@ var db=firebase.database();
 var sessionId="mk_"+Math.random().toString(36).substr(2,9);
 var sessionRef=db.ref("sessions/"+sessionId);
 
-sessionRef.set(firebase.database.ServerValue.TIMESTAMP);
+sessionRef.set({timestamp: firebase.database.ServerValue.TIMESTAMP, localTs: Date.now()});
 sessionRef.onDisconnect().remove();
 
-setInterval(function(){sessionRef.set(firebase.database.ServerValue.TIMESTAMP);},15000);
+setInterval(function(){sessionRef.update({localTs: Date.now()});},15000);
 
 db.ref("sessions").on("value",function(snap){
   viewCountEl.textContent=snap.numChildren();
 });
 
 function cleanStaleSessions(){
-  var nowRef=db.ref(".info/serverTimeOffset");
-  nowRef.once("value",function(snap){
-    var offset=snap.val()||0;
-    var cutoff=Date.now()+offset-60000;
-    db.ref("sessions").once("value",function(snap){
-      snap.forEach(function(child){
-        var val=child.val();
-        if(val===true||(!val.timestamp)||val.timestamp<cutoff){
-          child.ref.remove();
-        }
-      });
+  var cutoff=Date.now()-120000;
+  db.ref("sessions").once("value",function(snap){
+    snap.forEach(function(child){
+      var val=child.val();
+      if(val===true||!val.localTs||val.localTs<cutoff){
+        child.ref.remove();
+      }
     });
   });
 }
@@ -437,8 +411,7 @@ function getNow(){
 }
 
 function renderProgramacion(){
-  var overlay=document.getElementById("programacion-overlay");
-  var list=document.getElementById("prog-list");
+  var list=document.getElementById("prog-list-mobile");
   var now=getNow();
   list.innerHTML='';
   var nowItem=null;
@@ -449,26 +422,11 @@ function renderProgramacion(){
     list.appendChild(item);
     if(i===now.i)nowItem=item;
   });
-  if(nowItem&&overlay.classList.contains("show")){
+  if(nowItem){
     nowItem.scrollIntoView({behavior:"smooth",block:"center"});
   }
 }
 setInterval(renderProgramacion,60000);
-
-function showProgramacion(){
-  var overlay=document.getElementById("programacion-overlay");
-  renderProgramacion();
-  overlay.classList.add("show");
-  setTimeout(function(){
-    var nowItem=overlay.querySelector(".prog-item.now");
-    if(nowItem)nowItem.scrollIntoView({behavior:"smooth",block:"center"});
-  },100);
-}
-
-document.getElementById("prog-btn").onclick=showProgramacion;
-document.getElementById("close-prog").onclick=function(){
-  document.getElementById("programacion-overlay").classList.remove("show");
-};
 
 function showVideo(){
   loading.style.display="none";
@@ -512,128 +470,73 @@ function initHLS(){
   loading.style.display="flex";
   staticScreen.style.display="none";
 
-  if(!Hls.isSupported()){
-    if(video.canPlayType('application/vnd.apple.mpegurl')){
-      video.src=STREAM;
-      video.addEventListener("loadedmetadata",function(){startPlayback()});
-    } else {
-      showError("Tu navegador no soporta HLS.<br>Intenta con otro dispositivo.");
-    }
-    return;
-  }
-
-  if(hlsInstance){
-    hlsInstance.destroy();
-    hlsInstance=null;
-  }
-
-  hlsInstance=new Hls({
-    enableWorker:true,
-    liveSyncDuration:3,
-    maxBufferLength:30,
-    backBufferLength:60,
-    manifestLoadingTimeOut:10000,
-    manifestLoadingMaxRetry:10,
-    manifestLoadingRetryDelay:1000,
-    levelLoadingTimeOut:10000,
-    levelLoadingMaxRetry:10,
-    fragLoadingTimeOut:15000,
-    fragLoadingMaxRetry:10,
-    fragLoadingRetryDelay:1000,
-    maxMaxBufferLength:60,
-    startFragPrefetch:true
-  });
-
-  hlsInstance.loadSource(STREAM);
-  hlsInstance.attachMedia(video);
-
-  hlsInstance.on(Hls.Events.MANIFEST_PARSED,function(){
-    console.log("HLS manifest parsed");
-    startPlayback();
-  });
-
-  video.addEventListener("playing",showVideo);
-
-  hlsInstance.on(Hls.Events.ERROR,function(event,data){
-    console.error("HLS error:",data.type,data.details,data.fatal);
-    if(!data.fatal)return;
-
-    if(data.type===Hls.ErrorTypes.NETWORK_ERROR){
-      console.log("Network error, attempting reload...");
-      showError("Sin conexion. Reintentando...");
-      if(hlsInstance){
-        hlsInstance.startLoad();
-      }
-    } else if(data.type===Hls.ErrorTypes.MEDIA_ERROR){
-      console.log("Media error, attempting recovery...");
-      showError("Error de media. Recuperando...");
-      if(hlsInstance){
-        hlsInstance.recoverMediaError();
-      }
-    } else {
-      console.log("Fatal error, full restart...");
+  video.removeAttribute("src");
+  video.load();
+  video.src=STREAM;
+  video.addEventListener("loadedmetadata",function(){startPlayback()},{once:true});
+  video.addEventListener("error",function onNativeErr(){
+    video.removeEventListener("error",onNativeErr);
+    var err=video.error;
+    if(err&&err.code===4&&hlsRetries<5){
       hlsRetries++;
-      if(hlsRetries<10){
-        showError("Reiniciando... ("+hlsRetries+"/10)");
-        setTimeout(function(){initHLS();},3000);
-      } else {
-        showError("No se pudo conectar.<br>Toca para reintentar.");
-        loading.onclick=function(){
-          loading.onclick=null;
-          hlsRetries=0;
-          initHLS();
-        };
-      }
+      showError("Reconectando... ("+hlsRetries+"/5)");
+      setTimeout(function(){initHLS();},3000*hlsRetries);
+    } else if(err&&err.code===4){
+      showError("No se pudo conectar.<br>Toca para reintentar.");
+      loading.onclick=function(){
+        loading.onclick=null;
+        hlsRetries=0;
+        initHLS();
+      };
     }
-  });
-
-  hlsInstance.on(Hls.Events.FRAG_LOADED,function(){
-    hlsRetries=0;
-  });
-
-  hlsInstance.on(Hls.Events.LEVEL_LOADED,function(){
-    hlsRetries=0;
-  });
-
-  hlsInstance.startLoad();
+  },{once:true});
+  video.addEventListener("playing",showVideo);
+  video.load();
 }
 
 var stallTimer=null;
+var waitTimer=null;
+var lastTime=0;
 function watchStream(){
   video.addEventListener("stalled",function(){
-    console.log("Video stalled, will reload in 8s...");
     clearTimeout(stallTimer);
     stallTimer=setTimeout(function(){
-      if(video.paused||video.readyState<2){
-        console.log("Stream stalled too long, reloading...");
-        loading.innerHTML='<img class="logo-load" src="Magic Kids Logo.png" alt="Magic Kids TV"><div class="text">Reconectando...</div>';
-        loading.style.display="flex";
-        video.classList.remove("visible");
-        video.style.opacity="0";
+      var hasBuffer=false;
+      try{for(var i=0;i<video.buffered.length;i++){if(video.buffered.end(i)-video.currentTime>1){hasBuffer=true;break;}}}catch(e){}
+      if(!hasBuffer||video.readyState<2){
         hlsRetries=0;
         initHLS();
       }
-    },8000);
+    },30000);
+  });
+
+  video.addEventListener("waiting",function(){
+    clearTimeout(waitTimer);
+    waitTimer=setTimeout(function(){
+      if(video.paused||video.ended)return;
+      if(video.readyState<3){
+        hlsRetries=0;
+        initHLS();
+      }
+    },15000);
   });
 
   video.addEventListener("playing",function(){
     clearTimeout(stallTimer);
-  });
-
-  video.addEventListener("emptied",function(){
-    console.log("Video emptied, stream may have dropped");
-    clearTimeout(stallTimer);
-    stallTimer=setTimeout(function(){
-      console.log("Stream dropped, reloading...");
-      loading.innerHTML='<img class="logo-load" src="Magic Kids Logo.png" alt="Magic Kids TV"><div class="text">Reconectando...</div>';
-      loading.style.display="flex";
-      video.classList.remove("visible");
-      video.style.opacity="0";
-      hlsRetries=0;
-      initHLS();
-    },5000);
+    clearTimeout(waitTimer);
   });
 }
+
+setInterval(function(){
+  if(!video.paused&&!video.ended&&video.readyState>=3&&video.currentTime>1){
+    var hasBuffer=false;
+    try{for(var i=0;i<video.buffered.length;i++){if(video.buffered.end(i)-video.currentTime>2){hasBuffer=true;break;}}}catch(e){}
+    if(!hasBuffer&&video.readyState<4){
+      hlsRetries=0;
+      initHLS();
+    }
+  }
+},15000);
 
 initHLS();
 watchStream();
@@ -656,39 +559,43 @@ volSlider.oninput=function(){
   showVolIndicator("Vol: "+this.value+"%");
 };
 var isFs=false;
+var fsTimer=null;
+function showFsExit(show){
+  var btn=document.getElementById("exit-fs");
+  btn.style.display=show?"flex":"none";
+  clearTimeout(fsTimer);
+  if(show)fsTimer=setTimeout(function(){btn.style.display="none";},3000);
+}
 function toggleFullscreen(){
   isFs=!isFs;
   if(isFs){
     document.body.classList.add("fs");
+    showFsExit(false);
     if(window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.StatusBar){
       window.Capacitor.Plugins.StatusBar.hide();
     }
     try{document.documentElement.requestFullscreen();}catch(e){}
+    if(window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.ScreenOrientation){
+      window.Capacitor.Plugins.ScreenOrientation.lock({orientation:"landscape"});
+    }
   } else {
     document.body.classList.remove("fs");
+    showFsExit(false);
     if(window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.StatusBar){
       window.Capacitor.Plugins.StatusBar.show();
       window.Capacitor.Plugins.StatusBar.setOverlaysWebView({overlay:true});
       window.Capacitor.Plugins.StatusBar.setStyle({style:'DARK'});
     }
     try{document.exitFullscreen();}catch(e){}
+    if(window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.ScreenOrientation){
+      window.Capacitor.Plugins.ScreenOrientation.unlock();
+    }
   }
 }
 document.getElementById("fullscreen").onclick=toggleFullscreen;
 document.getElementById("exit-fs").onclick=toggleFullscreen;
-document.getElementById("ch-down").onclick=function(){
-  showVolIndicator("Canal abajo...");
-  video.classList.remove("visible");
-  loading.innerHTML='<img class="logo-load" src="Magic Kids Logo.png" alt="Magic Kids TV"><div class="text">Cambiando canal...</div>';
-  loading.style.display="flex";
-  initHLS();
-};
-document.getElementById("ch-up").onclick=function(){
-  showVolIndicator("Canal arriba...");
-  video.classList.remove("visible");
-  loading.innerHTML='<img class="logo-load" src="Magic Kids Logo.png" alt="Magic Kids TV"><div class="text">Cambiando canal...</div>';
-  loading.style.display="flex";
-  initHLS();
+document.getElementById("video-wrap").onclick=function(){
+  if(isFs)showFsExit(true);
 };
 
 function showVolIndicator(txt){
@@ -707,13 +614,18 @@ document.addEventListener("keydown",function(e){
 });
 
 var VERSION_JSON_URL="https://playok24.github.io/magic-kids-tv/version.json";
+var UPDATE_URL="";
 function checkVersion(){
   fetch(VERSION_JSON_URL+"?t="+Date.now()).then(function(r){return r.json()}).then(function(d){
-    if(d.version&&d.version!=="1.2"){
+    if(d.version&&d.version!=="1.3"){
+      UPDATE_URL=d.url||"";
       document.getElementById("version-banner").style.display="block";
     }
   }).catch(function(){});
 }
+document.getElementById("version-banner").onclick=function(){
+  if(UPDATE_URL)window.location.href=UPDATE_URL;
+};
 checkVersion();
 setInterval(checkVersion,60000);
 

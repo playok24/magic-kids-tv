@@ -8,6 +8,10 @@ let win;
 autoUpdater.autoDownload = true;
 autoUpdater.autoInstallOnAppQuit = true;
 
+app.commandLine.appendSwitch("ignore-gpu-blocklist");
+app.commandLine.appendSwitch("enable-features", "VaapiVideoDecoder");
+app.commandLine.appendSwitch("disable-background-timer-throttling");
+
 function createWindow(){
     win = new BrowserWindow({
         width: 1380,
@@ -19,25 +23,23 @@ function createWindow(){
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
+            webSecurity: false,
+            backgroundThrottling: false,
             preload: path.join(__dirname, "electron-preload.js")
         }
-    });
-
-    win.webContents.session.webRequest.onBeforeSendHeaders((details, callback) => {
-        const url = details.url;
-        const isStream = url.includes('bozztv.com') || url.includes('.m3u8') || url.includes('.ts');
-        if (!isStream) {
-            details.requestHeaders['Cache-Control'] = 'no-cache, no-store, must-revalidate';
-            details.requestHeaders['Pragma'] = 'no-cache';
-            details.requestHeaders['Expires'] = '0';
-        }
-        callback({ requestHeaders: details.requestHeaders });
     });
 
     win.loadFile(path.join(__dirname, "prueba.html"));
 
     win.on("closed", ()=>{
         win = null;
+    });
+
+    win.on("enter-full-screen", ()=>{
+        win.webContents.send("fullscreen-changed", true);
+    });
+    win.on("leave-full-screen", ()=>{
+        win.webContents.send("fullscreen-changed", false);
     });
 
     win.webContents.on("before-input-event", (e, input)=>{

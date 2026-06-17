@@ -77,7 +77,7 @@ body{
   opacity:0;transition:opacity .3s;pointer-events:none;z-index:10;
 }
 #remote{
-  width:260px;background:rgba(13,13,26,0.98);
+  width:300px;background:rgba(13,13,26,0.98);
   border-left:1px solid #222;padding:12px;
   display:flex;flex-direction:column;gap:8px;
   overflow-y:auto;scrollbar-width:none;
@@ -105,7 +105,7 @@ body{
 }
 #prog-list{display:flex;flex-direction:column;gap:2px;max-height:300px;overflow-y:auto}
 .prog-item{display:flex;gap:8px;padding:5px 8px;border-radius:6px;font-size:12px}
-.prog-item.now{background:rgba(0,255,102,0.15);border-left:3px solid #00ff66}
+.prog-item.now{background:rgba(196,160,255,0.15);border-left:3px solid #c4a0ff}
 .prog-item .h{color:#00ccff;font-weight:700;min-width:40px}
 .prog-item .n{color:#ccc}
 .vol-row{display:flex;align-items:center;gap:6px}
@@ -174,6 +174,12 @@ body.video-only #screen{width:100vw}
 }
 #chat-btn:hover{background:rgba(0,204,255,0.1);border-color:#00ccff}
 #chat-btn .badge{background:#ff4444;color:#fff;border-radius:8px;padding:1px 6px;font-size:10px;margin-left:4px;display:none}
+
+#links-bar{display:flex;gap:8px;justify-content:center;padding:4px 0}
+#links-bar a{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;border:1px solid #333;transition:all .15s}
+#links-bar a:hover{background:rgba(0,204,255,0.1);border-color:#00ccff}
+#links-bar a svg{width:20px;height:20px;fill:#999}
+#links-bar a:hover svg{fill:#00ccff}
 
 #chat-overlay{
   position:fixed;top:80px;left:400px;z-index:150;
@@ -325,7 +331,7 @@ body.video-only:hover #exit-video{opacity:1}
 <div id="header-bar">
   <img class="logo" src="www/Magic Kids Logo.png" alt="Logo">
   <span class="title">Magic Kids Television</span>
-  <span class="version" id="version-label">v1.2</span>
+  <span class="version" id="version-label">v1.3</span>
   <span class="greeting" id="greeting"><span id="greeting-text"></span><button class="edit-name" onclick="showNameModal(true)">&#9998;</button></span>
 </div>
 
@@ -371,6 +377,11 @@ body.video-only:hover #exit-video{opacity:1}
       <div id="prog-list"></div>
     </div>
     <button id="chat-btn">&#128172; CHAT EN VIVO<span class="badge" id="chat-badge">0</span></button>
+    <div id="links-bar">
+      <a class="instagram-link" href="https://www.instagram.com/elmagictv" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+      </a>
+    </div>
   </div>
 </div>
 
@@ -415,7 +426,7 @@ body.video-only:hover #exit-video{opacity:1}
 </div>
 <button id="exit-video">&#10005;</button>
 
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.20"></script>
 <script>
 const STREAM="https://183.bozztv.com/giatv/giatv-magicplus/magicplus/chunks.m3u8";
 const PROG_JSON_URL="https://playok24.github.io/magic-kids-tv/programacion.json?t="+Date.now();
@@ -480,27 +491,23 @@ var db=firebase.database();
 var sessionId="mk_"+Math.random().toString(36).substr(2,9);
 var sessionRef=db.ref("sessions/"+sessionId);
 
-sessionRef.set(firebase.database.ServerValue.TIMESTAMP);
+sessionRef.set({timestamp: firebase.database.ServerValue.TIMESTAMP, localTs: Date.now()});
 sessionRef.onDisconnect().remove();
 
-setInterval(function(){sessionRef.set(firebase.database.ServerValue.TIMESTAMP);},15000);
+setInterval(function(){sessionRef.update({localTs: Date.now()});},15000);
 
 db.ref("sessions").on("value",function(snap){
   viewCountEl.textContent=snap.numChildren();
 });
 
 function cleanStaleSessions(){
-  var nowRef=db.ref(".info/serverTimeOffset");
-  nowRef.once("value",function(snap){
-    var offset=snap.val()||0;
-    var cutoff=Date.now()+offset-60000;
-    db.ref("sessions").once("value",function(snap){
-      snap.forEach(function(child){
-        var val=child.val();
-        if(val===true||(!val.timestamp)||val.timestamp<cutoff){
-          child.ref.remove();
-        }
-      });
+  var cutoff=Date.now()-120000;
+  db.ref("sessions").once("value",function(snap){
+    snap.forEach(function(child){
+      var val=child.val();
+      if(val===true||!val.localTs||val.localTs<cutoff){
+        child.ref.remove();
+      }
     });
   });
 }
@@ -609,19 +616,30 @@ function initHLS(){
 
   hlsInstance=new Hls({
     enableWorker:true,
-    liveSyncDuration:3,
-    maxBufferLength:30,
-    backBufferLength:60,
-    manifestLoadingTimeOut:10000,
-    manifestLoadingMaxRetry:10,
-    manifestLoadingRetryDelay:1000,
-    levelLoadingTimeOut:10000,
-    levelLoadingMaxRetry:10,
-    fragLoadingTimeOut:15000,
-    fragLoadingMaxRetry:10,
-    fragLoadingRetryDelay:1000,
-    maxMaxBufferLength:60,
-    startFragPrefetch:true
+    liveSyncDuration:30,
+    liveMaxLatencyDuration:60,
+    maxBufferLength:60,
+    maxMaxBufferLength:120,
+    backBufferLength:30,
+    liveDurationInfinity:true,
+    maxBufferHole:1.0,
+    manifestLoadingTimeOut:20000,
+    manifestLoadingMaxRetry:20,
+    manifestLoadingRetryDelay:2000,
+    levelLoadingTimeOut:20000,
+    levelLoadingMaxRetry:20,
+    fragLoadingTimeOut:30000,
+    fragLoadingMaxRetry:20,
+    fragLoadingRetryDelay:2000,
+    startFragPrefetch:true,
+    stretchShortVideoSegment:true,
+    lowLatencyMode:false,
+    nudgeOffset:0.5,
+    nudgeMaxRetry:5,
+    enableSoftwareAES:true,
+    abrEwmaDefaultEstimate:1000000,
+    abrEwmaFastVoD:3,
+    abrEwmaSlowVoD:10
   });
 
   hlsInstance.loadSource(STREAM);
@@ -635,12 +653,19 @@ function initHLS(){
   video.addEventListener("playing",showVideo);
 
   hlsInstance.on(Hls.Events.ERROR,(event,data)=>{
-    console.error("HLS error:",data.type,data.details,data.fatal);
     if(!data.fatal)return;
 
     if(data.type===Hls.ErrorTypes.NETWORK_ERROR){
       showError("Sin conexion. Reintentando...");
-      if(hlsInstance)hlsInstance.startLoad();
+      hlsRetries++;
+      if(hlsRetries<15){
+        setTimeout(()=>{
+          if(hlsInstance){hlsInstance.startLoad();}
+        },2000*Math.min(hlsRetries,5));
+      } else {
+        showError("No se pudo conectar.<br>Haz clic para reintentar.");
+        loading.onclick=()=>{loading.onclick=null;hlsRetries=0;initHLS();};
+      }
     } else if(data.type===Hls.ErrorTypes.MEDIA_ERROR){
       showError("Error de media. Recuperando...");
       if(hlsInstance)hlsInstance.recoverMediaError();
@@ -648,7 +673,7 @@ function initHLS(){
       hlsRetries++;
       if(hlsRetries<10){
         showError(`Reiniciando... (${hlsRetries}/10)`);
-        setTimeout(()=>initHLS(),3000);
+        setTimeout(()=>initHLS(),3000*Math.min(hlsRetries,4));
       } else {
         showError("No se pudo conectar.<br>Haz clic en RECONECTAR.");
         loading.onclick=()=>{loading.onclick=null;hlsRetries=0;initHLS();};
@@ -663,35 +688,47 @@ function initHLS(){
 }
 
 let stallTimer=null;
+let waitTimer=null;
 function watchStream(){
   video.addEventListener("stalled",()=>{
     clearTimeout(stallTimer);
     stallTimer=setTimeout(()=>{
-      if(video.paused||video.readyState<2){
-        loading.innerHTML='<img class="logo-load" src="www/Magic Kids Logo.png" alt="Magic Kids TV"><div class="load-text">Reconectando...</div>';
-        loading.style.display="flex";
-        video.classList.remove("visible");
-        video.style.opacity="0";
+      let hasBuffer=false;
+      try{for(let i=0;i<video.buffered.length;i++){if(video.buffered.end(i)-video.currentTime>1){hasBuffer=true;break;}}}catch(e){}
+      if(!hasBuffer||video.readyState<2){
+        hlsRetries=0;
+        initHLS();
+      }
+    },30000);
+  });
+
+  video.addEventListener("waiting",()=>{
+    clearTimeout(waitTimer);
+    waitTimer=setTimeout(()=>{
+      if(video.paused||video.ended)return;
+      if(video.readyState<3){
         hlsRetries=0;
         initHLS();
       }
     },15000);
   });
 
-  video.addEventListener("playing",()=>clearTimeout(stallTimer));
-
-  video.addEventListener("emptied",()=>{
+  video.addEventListener("playing",()=>{
     clearTimeout(stallTimer);
-    stallTimer=setTimeout(()=>{
-      loading.innerHTML='<img class="logo-load" src="www/Magic Kids Logo.png" alt="Magic Kids TV"><div class="load-text">Reconectando...</div>';
-      loading.style.display="flex";
-      video.classList.remove("visible");
-      video.style.opacity="0";
-      hlsRetries=0;
-      initHLS();
-    },10000);
+    clearTimeout(waitTimer);
   });
 }
+
+setInterval(()=>{
+  if(!video.paused&&!video.ended&&video.readyState>=3&&video.currentTime>1){
+    let hasBuffer=false;
+    try{for(let i=0;i<video.buffered.length;i++){if(video.buffered.end(i)-video.currentTime>2){hasBuffer=true;break;}}}catch(e){}
+    if(!hasBuffer&&video.readyState<4){
+      hlsRetries=0;
+      initHLS();
+    }
+  }
+},15000);
 
 initHLS();
 watchStream();
@@ -704,11 +741,32 @@ document.getElementById("volup").onclick=()=>{volSlider.value=Math.min(100,parse
 document.getElementById("voldown").onclick=()=>{volSlider.value=Math.max(0,parseInt(volSlider.value)-10);volSlider.oninput();};
 volSlider.oninput=function(){video.volume=this.value/100;video.muted=false;showVolIndicator("Vol: "+this.value+"%");};
 document.getElementById("fullscreen").onclick=()=>{
-  document.body.classList.toggle("video-only");
+  if(window.electronAPI){
+    window.electronAPI.fullscreenToggle();
+  } else {
+    var el=document.getElementById("screen")||document.documentElement;
+    if(!document.fullscreenElement){el.requestFullscreen();document.body.classList.add("video-only");}
+    else{document.exitFullscreen();document.body.classList.remove("video-only");}
+  }
 };
 document.getElementById("exit-video").onclick=()=>{
-  document.body.classList.remove("video-only");
+  if(window.electronAPI){
+    window.electronAPI.fullscreenExit();
+  } else {
+    if(document.fullscreenElement)document.exitFullscreen();
+    document.body.classList.remove("video-only");
+  }
 };
+
+if(window.electronAPI){
+  window.electronAPI.onFullscreenChange(function(isFs){
+    document.body.classList.toggle("video-only",isFs);
+  });
+} else {
+  document.addEventListener("fullscreenchange",function(){
+    document.body.classList.toggle("video-only",!!document.fullscreenElement);
+  });
+}
 document.getElementById("ch-down").onclick=()=>{showVolIndicator("Canal abajo...");initHLS();};
 document.getElementById("ch-up").onclick=()=>{showVolIndicator("Canal arriba...");initHLS();};
 
@@ -725,7 +783,11 @@ document.addEventListener("keydown",e=>{
   if(e.key===" "||e.key==="k"){e.preventDefault();video.paused?video.play():video.pause();}
   if(e.key==="f"){document.getElementById("fullscreen").onclick();}
   if(e.key==="m"){document.getElementById("mute").onclick();}
-  if(e.key==="Escape"&&document.body.classList.contains("video-only")){document.body.classList.remove("video-only");}
+  if(e.key==="Escape"&&document.body.classList.contains("video-only")){
+    if(window.electronAPI){window.electronAPI.fullscreenExit();}
+    else{if(document.fullscreenElement)document.exitFullscreen();}
+    document.body.classList.remove("video-only");
+  }
 });
 
 if(window.electronAPI){
