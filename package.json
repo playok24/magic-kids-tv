@@ -1,0 +1,49 @@
+{
+  "name": "magic-kids-desktop",
+  "version": "1.2.0",
+  "description": "Magic Kids Television - App de Escritorio",
+  "main": "electron-main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win --config"
+  },
+  "build": {
+    "appId": "com.magickids.desktop",
+    "productName": "Magic Kids Desktop",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron-main.js",
+      "electron-preload.js",
+      "prueba.html",
+      "www/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "playok24",
+      "repo": "magic-kids-tv"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.4.0",
+    "@capacitor/cli": "^8.4.0",
+    "@capacitor/status-bar": "^8.0.2",
+    "electron-updater": "^6.0.0"
+  }
+}

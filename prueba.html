@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magic Kids Television</title>
+<link rel="icon" href="www/Magic Kids Logo.png">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  background:linear-gradient(135deg,#0a0a1a 0%,#1a0a2e 50%,#0a0a1a 100%);
+  color:#fff;font-family:'Segoe UI',system-ui,sans-serif;
+  height:100vh;overflow:hidden;display:flex;flex-direction:column;
+}
+#header-bar{
+  background:rgba(10,10,26,0.95);border-bottom:1px solid #222;
+  padding:8px 16px;display:flex;align-items:center;gap:12px;
+  min-height:44px;position:relative;z-index:10;
+}
+#header-bar .logo{width:32px;height:32px;border-radius:6px}
+#header-bar .title{color:#c4a0ff;font-size:16px;font-weight:700}
+#header-bar .greeting{color:#888;font-size:12px;margin-left:auto;display:flex;align-items:center;gap:6px}
+#header-bar .greeting .edit-name{font-size:11px;color:#888;background:rgba(255,255,255,0.1);border:none;border-radius:4px;padding:2px 6px;cursor:pointer}
+#header-bar .greeting .edit-name:hover{color:var(--violet);background:rgba(196,160,255,0.15)}
+#header-bar .version{color:#555;font-size:11px}
+#update-btn{
+  display:none;padding:4px 12px;
+  background:linear-gradient(135deg,#7c3aed,#5b21b6);
+  color:#fff;border:none;border-radius:4px;cursor:pointer;
+  font-size:11px;font-weight:bold;
+}
+#container{display:flex;flex:1;overflow:hidden}
+#screen{
+  flex:1;position:relative;background:#000;
+  display:flex;align-items:center;justify-content:center;
+  min-width:0;
+}
+#loading{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;
+  justify-content:center;align-items:center;
+  gap:20px;
+  background:#000;z-index:3;
+}
+#loading .logo-load{
+  width:140px;height:140px;
+  border-radius:20px;
+  object-fit:contain;
+  animation:pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.7;transform:scale(0.95)}}
+#loading .load-text{
+  color:#00ff66;font-size:18px;font-weight:bold;
+  text-shadow:0 0 10px #00ff66;
+  text-transform:uppercase;letter-spacing:1px;
+}
+#static{
+  position:absolute;inset:0;display:none;z-index:2;
+  background:repeating-radial-gradient(circle,#fff 0px,#999 1px,#111 2px,#000 3px);
+  animation:noise .08s infinite;
+}
+@keyframes noise{0%{transform:translate(0,0)}25%{transform:translate(-2px,1px)}50%{transform:translate(2px,-1px)}75%{transform:translate(-1px,2px)}}
+#video{width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity .5s}
+#video.visible{opacity:1}
+#view-counter{
+  position:absolute;top:10px;right:10px;
+  background:rgba(0,0,0,0.7);padding:4px 10px;border-radius:12px;
+  font-size:12px;color:#fff;z-index:5;
+}
+#vol-indicator{
+  position:absolute;bottom:60px;left:50%;transform:translateX(-50%);
+  padding:6px 16px;border-radius:20px;
+  background:rgba(0,0,0,0.8);color:#00ff66;
+  font-size:14px;font-weight:600;
+  opacity:0;transition:opacity .3s;pointer-events:none;z-index:10;
+}
+#remote{
+  width:260px;background:rgba(13,13,26,0.98);
+  border-left:1px solid #222;padding:12px;
+  display:flex;flex-direction:column;gap:8px;
+  overflow-y:auto;scrollbar-width:none;
+}
+#remote::-webkit-scrollbar{display:none}
+.row{display:flex;gap:6px}
+#remote button{
+  flex:1;padding:10px 6px;border:1px solid #333;border-radius:8px;
+  background:rgba(255,255,255,0.04);color:#ccc;
+  font-size:12px;font-weight:600;cursor:pointer;
+  transition:all .15s;
+}
+#remote button:hover{background:rgba(0,204,255,0.1);border-color:#00ccff;color:#fff}
+#remote button:active{transform:scale(0.95)}
+#remote button.play-btn{background:rgba(0,204,255,0.15);border-color:#00ccff;color:#00ccff}
+#remote button.danger{border-color:#ff4444;color:#ff6666}
+#prog-section{margin-top:8px}
+#prog-section h3{color:#c4a0ff;font-size:13px;margin-bottom:6px;font-weight:700}
+#prog-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+#prog-header h3{margin:0}
+#tz-select{
+  width:100%;padding:8px;border-radius:8px;border:1px solid #333;
+  background:#1a1a2e;color:#00ccff;font-size:12px;font-weight:700;
+  cursor:pointer;outline:none;text-align:center;
+}
+#prog-list{display:flex;flex-direction:column;gap:2px;max-height:300px;overflow-y:auto}
+.prog-item{display:flex;gap:8px;padding:5px 8px;border-radius:6px;font-size:12px}
+.prog-item.now{background:rgba(0,255,102,0.15);border-left:3px solid #00ff66}
+.prog-item .h{color:#00ccff;font-weight:700;min-width:40px}
+.prog-item .n{color:#ccc}
+.vol-row{display:flex;align-items:center;gap:6px}
+.vol-row input[type=range]{
+  flex:1;-webkit-appearance:none;appearance:none;
+  height:4px;border-radius:2px;background:#333;outline:none;
+}
+.vol-row input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:12px;height:12px;
+  border-radius:50%;background:#00ccff;cursor:pointer;
+}
+#version-banner{
+  position:fixed;top:44px;left:0;right:0;z-index:100;
+  padding:10px 16px;
+  background:linear-gradient(135deg,#7c3aed,#5b21b6);
+  color:#fff;text-align:center;font-size:13px;font-weight:600;
+  display:none;flex-direction:column;align-items:center;gap:6px;
+}
+#version-banner .update-row{display:flex;align-items:center;gap:10px}
+#version-banner .progress-bar{
+  width:200px;height:6px;border-radius:3px;background:rgba(255,255,255,0.2);overflow:hidden;
+}
+#version-banner .progress-fill{
+  height:100%;width:0%;background:#00ff66;border-radius:3px;transition:width 0.3s;
+}
+#version-banner button{
+  padding:4px 14px;border:none;border-radius:6px;cursor:pointer;
+  font-size:12px;font-weight:700;
+}
+#version-banner .install-btn{background:#00ff66;color:#000;display:none}
+#version-banner .dismiss-btn{background:rgba(255,255,255,0.15);color:#fff}
+#name-modal{
+  position:fixed;inset:0;z-index:200;
+  background:rgba(0,0,0,0.85);
+  display:none;justify-content:center;align-items:center;
+}
+#name-modal.show{display:flex}
+#name-modal .box{
+  background:#13131f;border:1px solid #333;border-radius:16px;
+  padding:28px 24px;width:85%;max-width:340px;text-align:center;
+}
+#name-modal .box h3{color:#c4a0ff;font-size:17px;margin-bottom:6px}
+#name-modal .box p{color:#888;font-size:12px;margin-bottom:16px}
+#name-modal .box input{
+  width:100%;padding:12px 14px;border-radius:10px;
+  border:1px solid #444;background:#1a1a2e;color:#fff;
+  font-size:15px;text-align:center;outline:none;margin-bottom:16px;
+}
+#name-modal .box input:focus{border-color:#c4a0ff}
+#name-modal .box button{
+  width:100%;padding:12px;border:none;border-radius:10px;
+  background:linear-gradient(135deg,#7c3aed,#5b21b6);
+  color:#fff;font-size:14px;font-weight:700;cursor:pointer;
+}
+#name-modal .box button:active{opacity:0.8;transform:scale(0.98)}
+
+body.video-only #header-bar,body.video-only #remote,body.video-only #chat-overlay{display:none}
+body.video-only #container{flex:1}
+body.video-only #screen{width:100vw}
+
+#chat-btn{
+  width:100%;padding:10px;border:1px solid #333;border-radius:8px;
+  background:rgba(255,255,255,0.04);color:#00ccff;
+  font-size:12px;font-weight:700;cursor:pointer;
+  transition:all .15s;text-align:center;
+}
+#chat-btn:hover{background:rgba(0,204,255,0.1);border-color:#00ccff}
+#chat-btn .badge{background:#ff4444;color:#fff;border-radius:8px;padding:1px 6px;font-size:10px;margin-left:4px;display:none}
+
+#chat-overlay{
+  position:fixed;top:80px;left:400px;z-index:150;
+  width:380px;height:500px;
+  background:rgba(13,13,26,0.98);border:1px solid #333;border-radius:12px;
+  display:none;flex-direction:column;
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  box-shadow:0 8px 32px rgba(0,0,0,0.5);
+}
+#chat-overlay.open{display:flex}
+#chat-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 14px;border-bottom:1px solid #222;
+  cursor:grab;user-select:none;
+}
+#chat-header:active{cursor:grabbing}
+#chat-header h3{color:#00ccff;font-size:14px;font-weight:700;margin:0}
+#chat-header .online{color:#888;font-size:11px;margin-left:8px}
+#chat-close{
+  background:none;border:none;color:#888;font-size:18px;cursor:pointer;
+  padding:2px 6px;border-radius:4px;
+}
+#chat-close:hover{color:#ff6666;background:rgba(255,68,68,0.1)}
+#chat-admin-btn{
+  background:none;border:1px solid #333;border-radius:4px;
+  color:#888;font-size:14px;cursor:pointer;padding:2px 6px;
+}
+#chat-admin-btn:hover{color:#00ccff;border-color:#00ccff}
+#chat-admin-btn.active{color:#00ff66;border-color:#00ff66}
+
+#chat-admin-popup{
+  position:absolute;top:40px;right:10px;z-index:10;
+  background:#1a1a2e;border:1px solid #333;border-radius:10px;
+  padding:14px;display:none;flex-direction:column;gap:8px;
+  width:220px;box-shadow:0 4px 20px rgba(0,0,0,0.5);
+}
+#chat-admin-popup.show{display:flex}
+#chat-admin-popup p{color:#888;font-size:11px;margin:0}
+#chat-admin-popup input{
+  padding:8px 10px;border-radius:6px;border:1px solid #333;
+  background:#0a0a1a;color:#ff6666;font-size:12px;outline:none;width:100%;
+}
+#chat-admin-popup input:focus{border-color:#ff6666}
+#chat-admin-popup .admin-btns{display:flex;gap:6px}
+#chat-admin-popup .admin-btns button{
+  flex:1;padding:6px;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;
+}
+.admin-activate{background:#7c3aed;color:#fff}
+.admin-activate:hover{background:#6d28d9}
+.admin-deactivate{background:rgba(255,68,68,0.2);color:#ff6666}
+.admin-deactivate:hover{background:rgba(255,68,68,0.4)}
+.admin-close{background:rgba(255,255,255,0.1);color:#888}
+.admin-close:hover{background:rgba(255,255,255,0.2)}
+
+#chat-messages{
+  flex:1;overflow-y:auto;padding:10px 14px;display:flex;flex-direction:column;gap:6px;
+}
+#chat-messages::-webkit-scrollbar{width:4px}
+#chat-messages::-webkit-scrollbar-thumb{background:#333;border-radius:2px}
+
+.chat-msg{
+  position:relative;padding:6px 10px;border-radius:8px;
+  background:rgba(255,255,255,0.04);font-size:12px;
+  display:flex;flex-direction:column;gap:2px;
+}
+.chat-msg .msg-user{color:#c4a0ff;font-weight:700;font-size:11px}
+.chat-msg .msg-text{color:#ddd;line-height:1.4}
+.chat-msg .msg-time{color:#555;font-size:10px}
+.chat-msg .msg-actions{
+  position:absolute;top:4px;right:4px;display:none;gap:4px;
+}
+#chat-messages.chat-admin .chat-msg:hover .msg-actions{display:flex}
+.chat-msg .msg-actions button{
+  width:22px;height:22px;border:none;border-radius:4px;
+  font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+}
+.msg-delete{background:rgba(255,68,68,0.2);color:#ff6666}
+.msg-delete:hover{background:rgba(255,68,68,0.4)}
+.msg-ban{background:rgba(255,150,0,0.2);color:#ffaa00}
+.msg-ban:hover{background:rgba(255,150,0,0.4)}
+
+.chat-msg.system{background:rgba(0,204,255,0.08);border-left:2px solid #00ccff}
+.chat-msg.system .msg-text{color:#00ccff;font-style:italic}
+
+#chat-input-area{
+  padding:10px 14px;border-top:1px solid #222;
+  display:flex;gap:6px;
+}
+#chat-input{
+  flex:1;padding:8px 12px;border-radius:8px;
+  border:1px solid #333;background:#1a1a2e;color:#fff;
+  font-size:12px;outline:none;
+}
+#chat-input:focus{border-color:#00ccff}
+#chat-input::placeholder{color:#555}
+#chat-send{
+  padding:8px 14px;border:none;border-radius:8px;
+  background:linear-gradient(135deg,#7c3aed,#5b21b6);
+  color:#fff;font-size:12px;font-weight:700;cursor:pointer;
+}
+#chat-send:hover{opacity:0.85}
+#chat-send:disabled{opacity:0.4;cursor:not-allowed}
+
+#chat-login{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  justify-content:center;align-items:center;gap:12px;
+  background:rgba(13,13,26,0.98);border-radius:12px;padding:20px;z-index:5;
+}
+#chat-login.hidden{display:none}
+#chat-login h3{color:#00ccff;font-size:15px;margin:0}
+#chat-login p{color:#888;font-size:12px;margin:0;text-align:center}
+#chat-login input{
+  width:100%;max-width:260px;padding:10px 12px;border-radius:8px;
+  border:1px solid #333;background:#1a1a2e;color:#fff;
+  font-size:13px;text-align:center;outline:none;
+}
+#chat-login input:focus{border-color:#00ccff}
+#chat-login button{
+  padding:10px 30px;border:none;border-radius:8px;
+  background:linear-gradient(135deg,#7c3aed,#5b21b6);
+  color:#fff;font-size:13px;font-weight:700;cursor:pointer;
+}
+#chat-login button:hover{opacity:0.85}
+
+.chat-msg .msg-text .banned-tag{color:#ff6666;font-size:10px;font-weight:700}
+
+#exit-video{
+  display:none;position:fixed;top:16px;right:16px;z-index:50;
+  width:40px;height:40px;border-radius:50%;border:none;
+  background:rgba(0,0,0,0.6);color:#fff;font-size:20px;
+  cursor:pointer;opacity:0;transition:opacity 0.3s;
+  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+}
+body.video-only #exit-video{display:block}
+body.video-only:hover #exit-video{opacity:1}
+</style>
+</head>
+<body>
+
+<div id="version-banner">
+  <div class="update-row">
+    <span id="update-text">Nueva version disponible!</span>
+    <button class="install-btn" id="update-btn" onclick="window.electronAPI&&window.electronAPI.installUpdate()">INSTALAR Y REINICIAR</button>
+    <button class="dismiss-btn" id="dismiss-btn" onclick="document.getElementById('version-banner').style.display='none'">X</button>
+  </div>
+  <div class="progress-bar" id="progress-bar" style="display:none"><div class="progress-fill" id="progress-fill"></div></div>
+</div>
+
+<div id="header-bar">
+  <img class="logo" src="www/Magic Kids Logo.png" alt="Logo">
+  <span class="title">Magic Kids Television</span>
+  <span class="version" id="version-label">v1.2</span>
+  <span class="greeting" id="greeting"><span id="greeting-text"></span><button class="edit-name" onclick="showNameModal(true)">&#9998;</button></span>
+</div>
+
+<div id="container">
+  <div id="screen">
+    <div id="loading"><img class="logo-load" src="www/Magic Kids Logo.png" alt="Magic Kids TV"><div class="load-text">Sintonizando...</div></div>
+    <div id="static"></div>
+    <div id="vol-indicator"></div>
+    <div id="view-counter">&#x1F441; <span id="view-count">0</span></div>
+    <video id="video" autoplay muted playsinline></video>
+  </div>
+
+  <div id="remote">
+    <div class="row">
+      <button class="play-btn" id="play">▶ PLAY</button>
+      <button id="pause">⏸ PAUSE</button>
+    </div>
+    <div class="row">
+      <button id="mute">🔇 MUTE</button>
+      <button id="volup">🔊 +</button>
+      <button id="voldown">🔉 -</button>
+    </div>
+    <div class="row">
+      <button id="fullscreen">⛶ PANTALLA COMPLETA</button>
+    </div>
+    <div class="row">
+      <button id="ch-down">▼ CANAL -</button>
+      <button id="ch-up">▲ CANAL +</button>
+    </div>
+    <div class="vol-row">
+      <span style="font-size:11px;color:#888">VOL</span>
+      <input type="range" id="vol-slider" min="0" max="100" value="50">
+    </div>
+    <div class="row">
+      <select id="tz-select">
+        <option value="-3">ARG (UTC-3)</option>
+        <option value="-5">COL (UTC-5)</option>
+        <option value="-6">MEX (UTC-6)</option>
+      </select>
+    </div>
+    <div id="prog-section">
+      <h3>&#128240; PROGRAMACION</h3>
+      <div id="prog-list"></div>
+    </div>
+    <button id="chat-btn">&#128172; CHAT EN VIVO<span class="badge" id="chat-badge">0</span></button>
+  </div>
+</div>
+
+<div id="chat-overlay">
+  <div id="chat-login">
+    <h3>&#128172; Chat en Vivo</h3>
+    <p>Ingresa tu nombre para chatear</p>
+    <input type="text" id="chat-name-input" placeholder="Tu nombre" maxlength="20" autocomplete="off">
+    <button id="chat-name-ok">ENTRAR AL CHAT</button>
+  </div>
+  <div id="chat-header">
+    <div><h3>&#128172; Chat en Vivo</h3><span class="online" id="chat-online"></span></div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <button id="chat-admin-btn" title="Entrar como admin">&#9881;</button>
+      <button id="chat-close">&times;</button>
+    </div>
+  </div>
+  <div id="chat-messages"></div>
+  <div id="chat-input-area">
+    <input type="text" id="chat-input" placeholder="Escribe un mensaje..." maxlength="200" autocomplete="off">
+    <button id="chat-send">ENVIAR</button>
+  </div>
+  <div id="chat-admin-popup">
+    <p>Modo Admin</p>
+    <input type="password" id="chat-admin-pass" placeholder="Password" autocomplete="off">
+    <div class="admin-btns">
+      <button class="admin-activate" id="admin-activate-btn">ACTIVAR</button>
+      <button class="admin-deactivate" id="admin-deactivate-btn" style="display:none">DESACTIVAR</button>
+      <button class="admin-close" id="admin-popup-close">X</button>
+    </div>
+  </div>
+</div>
+
+<div id="name-modal">
+  <div class="box">
+    <h3 id="name-modal-title">Bienvenido a Magic Kids TV!</h3>
+    <p>Ingresa tu nombre para personalizar</p>
+    <input type="text" id="name-input" placeholder="Tu nombre" maxlength="20" autocomplete="off">
+    <button id="name-ok">ENTRAR</button>
+    <button id="name-cancel" style="display:none;margin-top:8px;width:100%;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,0.06);color:#888;font-size:13px;font-weight:700;cursor:pointer">Cancelar</button>
+  </div>
+</div>
+<button id="exit-video">&#10005;</button>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<script>
+const STREAM="https://183.bozztv.com/giatv/giatv-magicplus/magicplus/chunks.m3u8";
+const PROG_JSON_URL="https://playok24.github.io/magic-kids-tv/programacion.json?t="+Date.now();
+
+const video=document.getElementById("video");
+const loading=document.getElementById("loading");
+const staticScreen=document.getElementById("static");
+const volSlider=document.getElementById("vol-slider");
+const volIndicator=document.getElementById("vol-indicator");
+const viewCountEl=document.getElementById("view-count");
+const greetingEl=document.getElementById("greeting-text");
+
+let hlsInstance=null;
+let hlsRetries=0;
+let volTimeout=null;
+
+let userName=localStorage.getItem("mk_user")||"";
+function updateGreeting(){
+  const h=new Date().getHours();
+  let g="Buenas noches";
+  if(h>=6&&h<12)g="Buenos dias";
+  else if(h>=12&&h<19)g="Buenas tardes";
+  greetingEl.textContent=userName?g+", "+userName+" \uD83D\uDC4B":g+" \uD83D\uDC4B";
+}
+function showNameModal(editing){
+  document.getElementById("name-modal").classList.add("show");
+  var title=document.getElementById("name-modal-title");
+  var cancel=document.getElementById("name-cancel");
+  if(editing){
+    title.textContent="Editar nombre";
+    cancel.style.display="block";
+    document.getElementById("name-input").value=userName;
+  }else{
+    title.textContent="Bienvenido a Magic Kids TV!";
+    cancel.style.display="none";
+    document.getElementById("name-input").value="";
+  }
+  document.getElementById("name-input").focus();
+}
+document.getElementById("name-cancel").onclick=function(){
+  document.getElementById("name-modal").classList.remove("show");
+};
+document.getElementById("name-ok").onclick=function(){
+  var v=document.getElementById("name-input").value.trim();
+  if(v){
+    userName=v;
+    localStorage.setItem("mk_user",userName);
+    document.getElementById("name-modal").classList.remove("show");
+    updateGreeting();
+  }
+};
+document.getElementById("name-input").onkeydown=function(e){
+  if(e.key==="Enter")document.getElementById("name-ok").onclick();
+};
+if(!userName){showNameModal();}
+updateGreeting();
+setInterval(updateGreeting,60000);
+
+var firebaseConfig={apiKey:"AIzaSyDM7YiLoP5Q-jTB1BBbMluvWL1LIPqCtxI",authDomain:"contadores-magic.firebaseapp.com",databaseURL:"https://contadores-magic-default-rtdb.firebaseio.com",projectId:"contadores-magic",storageBucket:"contadores-magic.firebasestorage.app",messagingSenderId:"58723817117",appId:"1:58723817117:web:f479abaeacf191364ae674"};
+firebase.initializeApp(firebaseConfig);
+var db=firebase.database();
+var sessionId="mk_"+Math.random().toString(36).substr(2,9);
+var sessionRef=db.ref("sessions/"+sessionId);
+
+sessionRef.set(firebase.database.ServerValue.TIMESTAMP);
+sessionRef.onDisconnect().remove();
+
+setInterval(function(){sessionRef.set(firebase.database.ServerValue.TIMESTAMP);},15000);
+
+db.ref("sessions").on("value",function(snap){
+  viewCountEl.textContent=snap.numChildren();
+});
+
+function cleanStaleSessions(){
+  var cutoff=Date.now()-30000;
+  db.ref("sessions").once("value",function(snap){
+    snap.forEach(function(child){
+      var val=child.val();
+      if(val===true||(!val.timestamp)||val.timestamp<cutoff){
+        child.ref.remove();
+      }
+    });
+  });
+}
+cleanStaleSessions();
+setInterval(cleanStaleSessions,20000);
+
+window.addEventListener("beforeunload",function(){sessionRef.remove();});
+window.addEventListener("pagehide",function(){sessionRef.remove();});
+
+let programacion=[];
+const tzSelect=document.getElementById("tz-select");
+let tzOffset=-3;
+tzSelect.value=localStorage.getItem("mk_tz")||"-3";
+tzOffset=parseInt(tzSelect.value);
+tzSelect.onchange=function(){
+  tzOffset=parseInt(this.value);
+  localStorage.setItem("mk_tz",this.value);
+  renderProgramacion();
+};
+fetch(PROG_JSON_URL).then(r=>r.json()).then(d=>{programacion=d;renderProgramacion()}).catch(()=>{});
+
+function toMin(h){
+  const p=h.split(':');
+  return parseInt(p[0])*60+parseInt(p[1]);
+}
+
+function getNow(){
+  const now=new Date();
+  const utcMs=now.getTime();
+  const localMs=utcMs+tzOffset*3600000;
+  const h=Math.floor(((localMs%86400000)+86400000)%86400000/3600000);
+  const m=Math.floor(((localMs%86400000)+86400000)%86400000%3600000/60000);
+  const minActual=h*60+m;
+  for(let i=0;i<programacion.length;i++){
+    const actual=toMin(programacion[i].hora);
+    const sig=i+1<programacion.length?toMin(programacion[i+1].hora):1440;
+    if(minActual>=actual&&minActual<sig)return{i:i,programa:programacion[i].programa};
+  }
+  return{i:-1,programa:'---'};
+}
+
+function renderProgramacion(){
+  const list=document.getElementById("prog-list");
+  const now=getNow();
+  list.innerHTML='';
+  let nowItem=null;
+  programacion.forEach((p,i)=>{
+    const item=document.createElement("div");
+    item.className="prog-item"+(i===now.i?" now":"");
+    item.innerHTML=`<span class="h">${p.hora}</span><span class="n">${p.programa}</span>`;
+    list.appendChild(item);
+    if(i===now.i)nowItem=item;
+  });
+  if(nowItem){
+    nowItem.scrollIntoView({behavior:"smooth",block:"center"});
+  }
+}
+setInterval(renderProgramacion,60000);
+
+function showVideo(){
+  loading.style.display="none";
+  staticScreen.style.display="none";
+  video.classList.add("visible");
+}
+
+function showStatic(){
+  loading.style.display="none";
+  video.classList.remove("visible");
+  video.style.opacity="0";
+  staticScreen.style.display="block";
+}
+
+function showError(msg){
+  loading.innerHTML=`<img class="logo-load" src="www/Magic Kids Logo.png" alt="Magic Kids TV"><div style="color:#ff6b6b;font-size:14px;text-align:center;">${msg}</div>`;
+  loading.style.display="flex";
+}
+
+function startPlayback(){
+  video.muted=false;
+  video.volume=volSlider.value/100;
+  video.play().catch(e=>{
+    console.log("Play blocked:",e);
+  });
+}
+
+function initHLS(){
+  hlsRetries=0;
+  loading.innerHTML='<img class="logo-load" src="www/Magic Kids Logo.png" alt="Magic Kids TV"><div class="load-text">Sintonizando...</div>';
+  loading.style.display="flex";
+  staticScreen.style.display="none";
+
+  if(!Hls.isSupported()){
+    if(video.canPlayType('application/vnd.apple.mpegurl')){
+      video.src=STREAM;
+      video.addEventListener("loadedmetadata",()=>startPlayback());
+    } else {
+      showError("Tu navegador no soporta HLS.");
+    }
+    return;
+  }
+
+  if(hlsInstance){
+    hlsInstance.destroy();
+    hlsInstance=null;
+  }
+
+  hlsInstance=new Hls({
+    enableWorker:true,
+    liveSyncDuration:3,
+    maxBufferLength:30,
+    backBufferLength:60,
+    manifestLoadingTimeOut:10000,
+    manifestLoadingMaxRetry:10,
+    manifestLoadingRetryDelay:1000,
+    levelLoadingTimeOut:10000,
+    levelLoadingMaxRetry:10,
+    fragLoadingTimeOut:15000,
+    fragLoadingMaxRetry:10,
+    fragLoadingRetryDelay:1000,
+    maxMaxBufferLength:60,
+    startFragPrefetch:true
+  });
+
+  hlsInstance.loadSource(STREAM);
+  hlsInstance.attachMedia(video);
+
+  hlsInstance.on(Hls.Events.MANIFEST_PARSED,()=>{
+    console.log("HLS manifest parsed");
+    startPlayback();
+  });
+
+  video.addEventListener("playing",showVideo);
+
+  hlsInstance.on(Hls.Events.ERROR,(event,data)=>{
+    console.error("HLS error:",data.type,data.details,data.fatal);
+    if(!data.fatal)return;
+
+    if(data.type===Hls.ErrorTypes.NETWORK_ERROR){
+      showError("Sin conexion. Reintentando...");
+      if(hlsInstance)hlsInstance.startLoad();
+    } else if(data.type===Hls.ErrorTypes.MEDIA_ERROR){
+      showError("Error de media. Recuperando...");
+      if(hlsInstance)hlsInstance.recoverMediaError();
+    } else {
+      hlsRetries++;
+      if(hlsRetries<10){
+        showError(`Reiniciando... (${hlsRetries}/10)`);
+        setTimeout(()=>initHLS(),3000);
+      } else {
+        showError("No se pudo conectar.<br>Haz clic en RECONECTAR.");
+        loading.onclick=()=>{loading.onclick=null;hlsRetries=0;initHLS();};
+      }
+    }
+  });
+
+  hlsInstance.on(Hls.Events.FRAG_LOADED,()=>{hlsRetries=0;});
+  hlsInstance.on(Hls.Events.LEVEL_LOADED,()=>{hlsRetries=0;});
+
+  hlsInstance.startLoad();
+}
+
+let stallTimer=null;
+function watchStream(){
+  video.addEventListener("stalled",()=>{
+    clearTimeout(stallTimer);
+    stallTimer=setTimeout(()=>{
+      if(video.paused||video.readyState<2){
+        loading.innerHTML='<img class="logo-load" src="www/Magic Kids Logo.png" alt="Magic Kids TV"><div class="load-text">Reconectando...</div>';
+        loading.style.display="flex";
+        video.classList.remove("visible");
+        video.style.opacity="0";
+        hlsRetries=0;
+        initHLS();
+      }
+    },15000);
+  });
+
+  video.addEventListener("playing",()=>clearTimeout(stallTimer));
+
+  video.addEventListener("emptied",()=>{
+    clearTimeout(stallTimer);
+    stallTimer=setTimeout(()=>{
+      loading.innerHTML='<img class="logo-load" src="www/Magic Kids Logo.png" alt="Magic Kids TV"><div class="load-text">Reconectando...</div>';
+      loading.style.display="flex";
+      video.classList.remove("visible");
+      video.style.opacity="0";
+      hlsRetries=0;
+      initHLS();
+    },10000);
+  });
+}
+
+initHLS();
+watchStream();
+renderProgramacion();
+
+document.getElementById("play").onclick=()=>{video.muted=false;video.play();};
+document.getElementById("pause").onclick=()=>video.pause();
+document.getElementById("mute").onclick=function(){video.muted=!video.muted;this.textContent=video.muted?"🔊 UNMUTE":"🔇 MUTE";};
+document.getElementById("volup").onclick=()=>{volSlider.value=Math.min(100,parseInt(volSlider.value)+10);volSlider.oninput();};
+document.getElementById("voldown").onclick=()=>{volSlider.value=Math.max(0,parseInt(volSlider.value)-10);volSlider.oninput();};
+volSlider.oninput=function(){video.volume=this.value/100;video.muted=false;showVolIndicator("Vol: "+this.value+"%");};
+document.getElementById("fullscreen").onclick=()=>{
+  document.body.classList.toggle("video-only");
+};
+document.getElementById("exit-video").onclick=()=>{
+  document.body.classList.remove("video-only");
+};
+document.getElementById("ch-down").onclick=()=>{showVolIndicator("Canal abajo...");initHLS();};
+document.getElementById("ch-up").onclick=()=>{showVolIndicator("Canal arriba...");initHLS();};
+
+function showVolIndicator(txt){
+  volIndicator.textContent=txt;
+  volIndicator.style.opacity="1";
+  clearTimeout(volTimeout);
+  volTimeout=setTimeout(()=>{volIndicator.style.opacity="0";},1500);
+}
+
+document.addEventListener("keydown",e=>{
+  if(e.key==="ArrowUp"){volSlider.value=Math.min(100,parseInt(volSlider.value)+5);volSlider.oninput();}
+  if(e.key==="ArrowDown"){volSlider.value=Math.max(0,parseInt(volSlider.value)-5);volSlider.oninput();}
+  if(e.key===" "||e.key==="k"){e.preventDefault();video.paused?video.play():video.pause();}
+  if(e.key==="f"){document.getElementById("fullscreen").onclick();}
+  if(e.key==="m"){document.getElementById("mute").onclick();}
+  if(e.key==="Escape"&&document.body.classList.contains("video-only")){document.body.classList.remove("video-only");}
+});
+
+if(window.electronAPI){
+  window.electronAPI.onUpdateAvailable(function(v){
+    var b=document.getElementById("version-banner");
+    document.getElementById("update-text").textContent="Nueva version v"+v+" disponible!";
+    document.getElementById("progress-bar").style.display="none";
+    document.getElementById("update-btn").style.display="none";
+    b.style.display="flex";
+  });
+  window.electronAPI.onUpdateProgress(function(pct){
+    var b=document.getElementById("version-banner");
+    b.style.display="flex";
+    document.getElementById("progress-bar").style.display="block";
+    document.getElementById("progress-fill").style.width=pct+"%";
+    document.getElementById("update-text").textContent="Descargando actualizacion... "+pct+"%";
+  });
+  window.electronAPI.onUpdateDownloaded(function(){
+    document.getElementById("update-text").textContent="Actualizacion lista! Reiniciá para aplicar.";
+    document.getElementById("progress-bar").style.display="none";
+    document.getElementById("update-btn").style.display="inline-block";
+  });
+}
+
+var chatAdmin=false;
+var chatSessionId="chat_"+Math.random().toString(36).substr(2,9);
+var chatBannedRef=db.ref("chat/banned");
+var chatMessagesRef=db.ref("chat/messages");
+var chatBtn=document.getElementById("chat-btn");
+var chatOverlay=document.getElementById("chat-overlay");
+var chatMessages=document.getElementById("chat-messages");
+var chatInput=document.getElementById("chat-input");
+var chatSend=document.getElementById("chat-send");
+var chatBadge=document.getElementById("chat-badge");
+var chatOnlineEl=document.getElementById("chat-online");
+var chatLogin=document.getElementById("chat-login");
+var chatOpen=false;
+var unreadCount=0;
+var chatReady=localStorage.getItem("mk_chat_ready")||"";
+
+function showChatLogin(){
+  chatLogin.classList.remove("hidden");
+}
+function hideChatLogin(){
+  chatLogin.classList.add("hidden");
+}
+if(chatReady){hideChatLogin();}
+
+chatBtn.onclick=function(){
+  if(!userName){showNameModal(true);return;}
+  chatOpen=!chatOpen;
+  chatOverlay.classList.toggle("open",chatOpen);
+  if(chatOpen){
+    unreadCount=0;chatBadge.style.display="none";
+    if(!chatReady){showChatLogin();chatOverlay.querySelector("#chat-name-input").focus();}
+    else{chatInput.focus();}
+    scrollChat();
+  }
+};
+
+document.getElementById("chat-close").onclick=function(){
+  chatOpen=false;
+  chatOverlay.classList.remove("open");
+};
+
+document.getElementById("chat-name-ok").onclick=function(){
+  var v=document.getElementById("chat-name-input").value.trim();
+  if(v){
+    userName=v;
+    localStorage.setItem("mk_user",userName);
+    chatReady=true;
+    localStorage.setItem("mk_chat_ready","1");
+    updateGreeting();
+    hideChatLogin();
+    chatInput.focus();
+  }
+};
+document.getElementById("chat-name-input").onkeydown=function(e){
+  if(e.key==="Enter")document.getElementById("chat-name-ok").onclick();
+};
+
+var chatHeaderEl=document.getElementById("chat-header");
+var dragOffsetX=0,dragOffsetY=0,dragging=false;
+chatHeaderEl.addEventListener("mousedown",function(e){
+  if(e.target.id==="chat-close")return;
+  dragging=true;
+  var rect=chatOverlay.getBoundingClientRect();
+  dragOffsetX=e.clientX-rect.left;
+  dragOffsetY=e.clientY-rect.top;
+  chatOverlay.style.transition="none";
+  e.preventDefault();
+});
+document.addEventListener("mousemove",function(e){
+  if(!dragging)return;
+  var x=e.clientX-dragOffsetX;
+  var y=e.clientY-dragOffsetY;
+  x=Math.max(0,Math.min(window.innerWidth-chatOverlay.offsetWidth,x));
+  y=Math.max(0,Math.min(window.innerHeight-chatOverlay.offsetHeight,y));
+  chatOverlay.style.left=x+"px";
+  chatOverlay.style.top=y+"px";
+  chatOverlay.style.right="auto";
+  chatOverlay.style.bottom="auto";
+});
+document.addEventListener("mouseup",function(){dragging=false;});
+
+chatBannedRef.child(chatSessionId).on("value",function(snap){
+  if(snap.exists()){
+    chatInput.disabled=true;
+    chatSend.disabled=true;
+    chatInput.placeholder="Has sido bloqueado del chat";
+  }
+});
+
+function scrollChat(){
+  chatMessages.scrollTop=chatMessages.scrollHeight;
+}
+
+function formatChatTime(ts){
+  var d=new Date(ts);
+  var h=d.getHours().toString().padStart(2,"0");
+  var m=d.getMinutes().toString().padStart(2,"0");
+  return h+":"+m;
+}
+
+function renderChatMsg(msg){
+  var div=document.createElement("div");
+  div.className="chat-msg"+(msg.system?" system":"");
+  div.dataset.id=msg.id;
+  div.dataset.uid=msg.uid||"";
+  if(msg.system){
+    div.innerHTML='<span class="msg-text">'+msg.text+'</span>';
+  }else{
+    div.innerHTML='<span class="msg-user">'+msg.user+'</span>'
+      +'<span class="msg-text">'+msg.text+'</span>'
+      +'<span class="msg-time">'+formatChatTime(msg.timestamp)+'</span>'
+      +'<div class="msg-actions">'
+      +'<button class="msg-delete" title="Borrar">&#128465;</button>'
+      +'<button class="msg-ban" title="Banear">&#128683;</button>'
+      +'</div>';
+    div.querySelector(".msg-delete").onclick=function(){
+      chatMessagesRef.child(msg.id).remove();
+    };
+    div.querySelector(".msg-ban").onclick=function(){
+      if(confirm("Banear a "+msg.user+" del chat?")){
+        chatBannedRef.child(msg.uid).set(true);
+        chatMessagesRef.child(msg.id).remove();
+        chatMessagesRef.push({system:true,text:"🚫 "+msg.user+" ha sido bloqueado del chat",timestamp:firebase.database.ServerValue.TIMESTAMP});
+      }
+    };
+  }
+  chatMessages.appendChild(div);
+}
+
+chatMessagesRef.orderByChild("timestamp").limitToLast(50).on("child_added",function(snap){
+  var msg=snap.val();
+  msg.id=snap.key;
+  renderChatMsg(msg);
+  scrollChat();
+  if(!chatOpen&&!msg.system){
+    unreadCount++;
+    chatBadge.textContent=unreadCount;
+    chatBadge.style.display="inline";
+  }
+});
+
+chatMessagesRef.orderByChild("timestamp").limitToLast(50).on("child_removed",function(snap){
+  var el=chatMessages.querySelector('[data-id="'+snap.key+'"]');
+  if(el)el.remove();
+});
+
+db.ref("chat/online").on("value",function(snap){
+  chatOnlineEl.textContent=snap.numChildren()+" en linea";
+});
+
+var chatOnlineRef=db.ref("chat/online/"+chatSessionId);
+chatOnlineRef.set(firebase.database.ServerValue.TIMESTAMP);
+chatOnlineRef.onDisconnect().remove();
+setInterval(function(){chatOnlineRef.set(firebase.database.ServerValue.TIMESTAMP);},15000);
+
+function cleanStaleOnline(){
+  var cutoff=Date.now()-30000;
+  db.ref("chat/online").orderByChild("timestamp").endAt(cutoff).once("value",function(snap){
+    snap.forEach(function(child){child.ref.remove();});
+  });
+}
+cleanStaleOnline();
+setInterval(cleanStaleOnline,20000);
+
+function cleanOldMessages(){
+  var cutoff=Date.now()-6*3600*1000;
+  chatMessagesRef.orderByChild("timestamp").endAt(cutoff).limitToLast(200).once("value",function(snap){
+    snap.forEach(function(child){child.ref.remove();});
+  });
+}
+cleanOldMessages();
+setInterval(cleanOldMessages,300000);
+
+function sendChatMessage(){
+  var text=chatInput.value.trim();
+  if(!text)return;
+  if(!userName){showNameModal(true);return;}
+  chatBannedRef.child(chatSessionId).once("value",function(snap){
+    if(snap.exists()){
+      chatInput.disabled=true;
+      chatSend.disabled=true;
+      chatInput.placeholder="Has sido bloqueado del chat";
+      return;
+    }
+    chatMessagesRef.push({
+      user:userName,
+      text:text,
+      uid:chatSessionId,
+      timestamp:firebase.database.ServerValue.TIMESTAMP
+    });
+    chatInput.value="";
+  });
+}
+
+chatSend.onclick=sendChatMessage;
+chatInput.onkeydown=function(e){if(e.key==="Enter")sendChatMessage();};
+
+function addAdminStyles(){
+  chatMessages.classList.add("chat-admin");
+  document.getElementById("chat-admin-btn").classList.add("active");
+}
+function removeAdminStyles(){
+  chatMessages.classList.remove("chat-admin");
+  document.getElementById("chat-admin-btn").classList.remove("active");
+}
+
+var chatAdminPopup=document.getElementById("chat-admin-popup");
+document.getElementById("chat-admin-btn").onclick=function(){
+  chatAdminPopup.classList.toggle("show");
+  if(chatAdmin){
+    document.getElementById("admin-activate-btn").style.display="none";
+    document.getElementById("admin-deactivate-btn").style.display="block";
+  }else{
+    document.getElementById("admin-activate-btn").style.display="block";
+    document.getElementById("admin-deactivate-btn").style.display="none";
+    document.getElementById("chat-admin-pass").value="";
+  }
+};
+document.getElementById("admin-popup-close").onclick=function(){
+  chatAdminPopup.classList.remove("show");
+};
+document.getElementById("admin-activate-btn").onclick=function(){
+  var pass=document.getElementById("chat-admin-pass").value.trim();
+  if(pass==="tiosam2026"){
+    chatAdmin=true;
+    localStorage.setItem("mk_chat_admin","1");
+    addAdminStyles();
+    chatMessagesRef.push({system:true,text:"⚙️ Modo admin activado",timestamp:firebase.database.ServerValue.TIMESTAMP});
+    chatAdminPopup.classList.remove("show");
+  }else{
+    document.getElementById("chat-admin-pass").style.borderColor="#ff0000";
+    document.getElementById("chat-admin-pass").value="";
+    document.getElementById("chat-admin-pass").placeholder="Password incorrecta";
+  }
+};
+document.getElementById("admin-deactivate-btn").onclick=function(){
+  chatAdmin=false;
+  localStorage.removeItem("mk_chat_admin");
+  removeAdminStyles();
+  chatMessagesRef.push({system:true,text:"⚙️ Modo admin desactivado",timestamp:firebase.database.ServerValue.TIMESTAMP});
+  chatAdminPopup.classList.remove("show");
+};
+if(localStorage.getItem("mk_chat_admin")==="1"){chatAdmin=true;addAdminStyles();}
+</script>
+</body>
+</html>

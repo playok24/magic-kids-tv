@@ -1,0 +1,19 @@
+{
+  "appId": "com.magickids.tv",
+  "appName": "Magic Kids Television",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true
+  },
+  "plugins": {
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#0a0a12",
+      "overlaysWebView": true
+    }
+  }
+}
