@@ -613,9 +613,11 @@ document.addEventListener("keydown",function(e){
   if(e.key==="m"){document.getElementById("mute").onclick();}
 });
 
+var isAndroid=window.Capacitor&&window.Capacitor.isNativePlatform();
 var VERSION_JSON_URL="https://playok24.github.io/magic-kids-tv/version.json";
 var UPDATE_URL="";
 function checkVersion(){
+  if(!isAndroid)return;
   fetch(VERSION_JSON_URL+"?t="+Date.now()).then(function(r){return r.json()}).then(function(d){
     if(d.version&&d.version!=="1.3"){
       UPDATE_URL=d.url||"";
