@@ -331,7 +331,7 @@ body.video-only:hover #exit-video{opacity:1}
 <div id="header-bar">
   <img class="logo" src="www/Magic Kids Logo.png" alt="Logo">
   <span class="title">Magic Kids Television</span>
-  <span class="version" id="version-label">v1.3.2</span>
+  <span class="version" id="version-label">v1.3.3</span>
   <span class="greeting" id="greeting"><span id="greeting-text"></span><button class="edit-name" onclick="showNameModal(true)">&#9998;</button></span>
 </div>
 
@@ -624,13 +624,12 @@ function initHLS(){
   hlsInstance=new Hls({
     enableWorker:true,
     liveSyncDuration:30,
-    liveSyncDurationCount:7,
+    liveMaxLatencyDuration:60,
     maxBufferLength:60,
     maxMaxBufferLength:120,
     backBufferLength:30,
     liveDurationInfinity:true,
-    maxBufferHole:3,
-    maxStarvationDelay:10,
+    maxBufferHole:1.0,
     manifestLoadingTimeOut:20000,
     manifestLoadingMaxRetry:20,
     manifestLoadingRetryDelay:2000,
@@ -642,11 +641,10 @@ function initHLS(){
     startFragPrefetch:true,
     stretchShortVideoSegment:true,
     lowLatencyMode:false,
-    nudgeOffset:1.5,
-    nudgeMaxRetry:10,
+    nudgeOffset:0.5,
+    nudgeMaxRetry:5,
     enableSoftwareAES:true,
-    capLevelToPlayerSize:true,
-    abrEwmaDefaultEstimate:5000000,
+    abrEwmaDefaultEstimate:1000000,
     abrEwmaFastVoD:3,
     abrEwmaSlowVoD:10
   });
