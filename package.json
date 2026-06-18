@@ -32,6 +32,7 @@
     "nsis": {
       "oneClick": false,
       "perMachine": false,
+      "runAfterFinish": true,
       "artifactName": "Magic-Kids-Desktop-Setup-${version}.${ext}"
     }
   },
