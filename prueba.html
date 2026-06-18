@@ -92,7 +92,6 @@ body{
 }
 #remote button:hover{background:rgba(0,204,255,0.1);border-color:#00ccff;color:#fff}
 #remote button:active{transform:scale(0.95)}
-#remote button.play-btn{background:rgba(0,204,255,0.15);border-color:#00ccff;color:#00ccff}
 #remote button.danger{border-color:#ff4444;color:#ff6666}
 #prog-section{margin-top:8px}
 #prog-section h3{color:#c4a0ff;font-size:13px;margin-bottom:6px;font-weight:700}
@@ -345,10 +344,6 @@ body.video-only:hover #exit-video{opacity:1}
   </div>
 
   <div id="remote">
-    <div class="row">
-      <button class="play-btn" id="play">▶ PLAY</button>
-      <button id="pause">⏸ PAUSE</button>
-    </div>
     <div class="row">
       <button id="mute">🔇 MUTE</button>
       <button id="volup">🔊 +</button>
@@ -737,8 +732,6 @@ video.addEventListener("playing",function(){startFreezeWatchdog();});
 video.addEventListener("pause",function(){stopFreezeWatchdog();});
 renderProgramacion();
 
-document.getElementById("play").onclick=()=>{video.muted=false;video.play();};
-document.getElementById("pause").onclick=()=>video.pause();
 document.getElementById("mute").onclick=function(){video.muted=!video.muted;this.textContent=video.muted?"🔊 UNMUTE":"🔇 MUTE";};
 document.getElementById("volup").onclick=()=>{volSlider.value=Math.min(100,parseInt(volSlider.value)+10);volSlider.oninput();};
 document.getElementById("voldown").onclick=()=>{volSlider.value=Math.max(0,parseInt(volSlider.value)-10);volSlider.oninput();};
