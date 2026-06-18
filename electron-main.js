@@ -80,13 +80,14 @@ ipcMain.handle("counter-fetch", async (event, url)=>{
 
 app.whenReady().then(()=>{
     createWindow();
-    setTimeout(()=>{ autoUpdater.checkForUpdates(); }, 5000);
+    setTimeout(()=>{ autoUpdater.checkForUpdates(); }, 10000);
 });
 
 setInterval(()=>{ autoUpdater.checkForUpdates(); }, 30 * 60 * 1000);
 
 autoUpdater.on("update-available", (info)=>{
     if(win) win.webContents.send("update-available", info.version);
+    autoUpdater.checkForUpdatesAndNotify();
 });
 
 autoUpdater.on("download-progress", (d)=>{
@@ -100,6 +101,7 @@ autoUpdater.on("update-downloaded", ()=>{
 
 autoUpdater.on("error", (err)=>{
     console.log("Auto-updater error:", err.message);
+    if(win) win.webContents.send("update-error", err.message || "Error de conexion");
 });
 
 ipcMain.on("install-update", ()=>{

@@ -331,7 +331,7 @@ body.video-only:hover #exit-video{opacity:1}
 <div id="header-bar">
   <img class="logo" src="www/Magic Kids Logo.png" alt="Logo">
   <span class="title">Magic Kids Television</span>
-  <span class="version" id="version-label">v1.3.1</span>
+  <span class="version" id="version-label">v1.3.2</span>
   <span class="greeting" id="greeting"><span id="greeting-text"></span><button class="edit-name" onclick="showNameModal(true)">&#9998;</button></span>
 </div>
 
@@ -356,6 +356,9 @@ body.video-only:hover #exit-video{opacity:1}
     </div>
     <div class="row">
       <button id="fullscreen">⛶ PANTALLA COMPLETA</button>
+    </div>
+    <div class="row">
+      <button id="check-update">🔄 BUSCAR ACTUALIZACION</button>
     </div>
     <div class="row">
       <button id="ch-down">▼ CANAL -</button>
@@ -807,7 +810,24 @@ if(window.electronAPI){
     document.getElementById("progress-bar").style.display="none";
     document.getElementById("update-btn").style.display="inline-block";
   });
+  window.electronAPI.onUpdateError(function(msg){
+    var b=document.getElementById("version-banner");
+    document.getElementById("update-text").textContent="⚠ "+msg;
+    document.getElementById("progress-bar").style.display="none";
+    document.getElementById("update-btn").style.display="none";
+    b.style.display="flex";
+  });
 }
+document.getElementById("check-update").onclick=function(){
+  if(window.electronAPI){
+    var b=document.getElementById("version-banner");
+    document.getElementById("update-text").textContent="Buscando actualizaciones...";
+    document.getElementById("progress-bar").style.display="none";
+    document.getElementById("update-btn").style.display="none";
+    b.style.display="flex";
+    window.electronAPI.checkForUpdates();
+  }
+};
 
 var chatAdmin=false;
 var chatSessionId="chat_"+Math.random().toString(36).substr(2,9);
