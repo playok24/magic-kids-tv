@@ -623,30 +623,31 @@ function initHLS(){
 
   hlsInstance=new Hls({
     enableWorker:true,
-    liveSyncDuration:30,
-    liveMaxLatencyDuration:60,
-    maxBufferLength:60,
-    maxMaxBufferLength:120,
-    backBufferLength:30,
+    liveSyncDuration:45,
+    liveMaxLatencyDuration:90,
+    maxBufferLength:30,
+    maxMaxBufferLength:60,
+    backBufferLength:10,
     liveDurationInfinity:true,
-    maxBufferHole:1.0,
+    maxBufferHole:2,
+    maxStarvationDelay:5,
     manifestLoadingTimeOut:20000,
     manifestLoadingMaxRetry:20,
-    manifestLoadingRetryDelay:2000,
+    manifestLoadingRetryDelay:1000,
     levelLoadingTimeOut:20000,
     levelLoadingMaxRetry:20,
-    fragLoadingTimeOut:30000,
+    fragLoadingTimeOut:20000,
     fragLoadingMaxRetry:20,
-    fragLoadingRetryDelay:2000,
+    fragLoadingRetryDelay:1000,
     startFragPrefetch:true,
     stretchShortVideoSegment:true,
     lowLatencyMode:false,
-    nudgeOffset:0.5,
-    nudgeMaxRetry:5,
+    nudgeOffset:1,
+    nudgeMaxRetry:10,
     enableSoftwareAES:true,
-    abrEwmaDefaultEstimate:1000000,
-    abrEwmaFastVoD:3,
-    abrEwmaSlowVoD:10
+    abrEwmaDefaultEstimate:3000000,
+    abrEwmaFastLive:3,
+    abrEwmaSlowLive:10
   });
 
   hlsInstance.loadSource(STREAM);
@@ -697,23 +698,27 @@ function initHLS(){
 let freezeWatchdog=null;
 let lastTime=0;
 let freezeCount=0;
+let gentleRecovery=0;
 function startFreezeWatchdog(){
   stopFreezeWatchdog();
   lastTime=video.currentTime||0;
   freezeCount=0;
+  gentleRecovery=0;
   freezeWatchdog=setInterval(()=>{
     if(video.paused||video.ended)return;
     var ct=video.currentTime||0;
     if(Math.abs(ct-lastTime)<0.3){
       freezeCount++;
-      if(freezeCount>=5){
+      if(freezeCount>=8){
         freezeCount=0;
+        gentleRecovery++;
         video.play().catch(function(){});
-        if(video.readyState<2){
+        if(gentleRecovery<3&&hlsInstance){
+          hlsInstance.recoverMediaError();
+        }else if(gentleRecovery>=3){
+          gentleRecovery=0;
           hlsRetries=0;
           initHLS();
-        }else if(hlsInstance){
-          hlsInstance.recoverMediaError();
         }
       }
     }else{
