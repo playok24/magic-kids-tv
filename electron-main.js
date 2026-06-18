@@ -9,8 +9,8 @@ autoUpdater.autoDownload = true;
 autoUpdater.autoInstallOnAppQuit = true;
 
 app.commandLine.appendSwitch("ignore-gpu-blocklist");
-app.commandLine.appendSwitch("enable-features", "VaapiVideoDecoder");
 app.commandLine.appendSwitch("disable-background-timer-throttling");
+app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
 
 function createWindow(){
     win = new BrowserWindow({

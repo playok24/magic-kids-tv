@@ -331,7 +331,7 @@ body.video-only:hover #exit-video{opacity:1}
 <div id="header-bar">
   <img class="logo" src="www/Magic Kids Logo.png" alt="Logo">
   <span class="title">Magic Kids Television</span>
-  <span class="version" id="version-label">v1.3</span>
+  <span class="version" id="version-label">v1.3.1</span>
   <span class="greeting" id="greeting"><span id="greeting-text"></span><button class="edit-name" onclick="showNameModal(true)">&#9998;</button></span>
 </div>
 
@@ -571,6 +571,7 @@ function showVideo(){
   loading.style.display="none";
   staticScreen.style.display="none";
   video.classList.add("visible");
+  startFreezeWatchdog();
 }
 
 function showStatic(){
@@ -578,11 +579,13 @@ function showStatic(){
   video.classList.remove("visible");
   video.style.opacity="0";
   staticScreen.style.display="block";
+  stopFreezeWatchdog();
 }
 
 function showError(msg){
   loading.innerHTML=`<img class="logo-load" src="www/Magic Kids Logo.png" alt="Magic Kids TV"><div style="color:#ff6b6b;font-size:14px;text-align:center;">${msg}</div>`;
   loading.style.display="flex";
+  stopFreezeWatchdog();
 }
 
 function startPlayback(){
@@ -594,6 +597,7 @@ function startPlayback(){
 }
 
 function initHLS(){
+  stopFreezeWatchdog();
   hlsRetries=0;
   loading.innerHTML='<img class="logo-load" src="www/Magic Kids Logo.png" alt="Magic Kids TV"><div class="load-text">Sintonizando...</div>';
   loading.style.display="flex";
@@ -617,12 +621,13 @@ function initHLS(){
   hlsInstance=new Hls({
     enableWorker:true,
     liveSyncDuration:30,
-    liveMaxLatencyDuration:60,
+    liveSyncDurationCount:7,
     maxBufferLength:60,
     maxMaxBufferLength:120,
     backBufferLength:30,
     liveDurationInfinity:true,
-    maxBufferHole:1.0,
+    maxBufferHole:3,
+    maxStarvationDelay:10,
     manifestLoadingTimeOut:20000,
     manifestLoadingMaxRetry:20,
     manifestLoadingRetryDelay:2000,
@@ -634,10 +639,11 @@ function initHLS(){
     startFragPrefetch:true,
     stretchShortVideoSegment:true,
     lowLatencyMode:false,
-    nudgeOffset:0.5,
-    nudgeMaxRetry:5,
+    nudgeOffset:1.5,
+    nudgeMaxRetry:10,
     enableSoftwareAES:true,
-    abrEwmaDefaultEstimate:1000000,
+    capLevelToPlayerSize:true,
+    abrEwmaDefaultEstimate:5000000,
     abrEwmaFastVoD:3,
     abrEwmaSlowVoD:10
   });
@@ -687,51 +693,42 @@ function initHLS(){
   hlsInstance.startLoad();
 }
 
-let stallTimer=null;
-let waitTimer=null;
-function watchStream(){
-  video.addEventListener("stalled",()=>{
-    clearTimeout(stallTimer);
-    stallTimer=setTimeout(()=>{
-      let hasBuffer=false;
-      try{for(let i=0;i<video.buffered.length;i++){if(video.buffered.end(i)-video.currentTime>1){hasBuffer=true;break;}}}catch(e){}
-      if(!hasBuffer||video.readyState<2){
-        hlsRetries=0;
-        initHLS();
+let freezeWatchdog=null;
+let lastTime=0;
+let freezeCount=0;
+function startFreezeWatchdog(){
+  stopFreezeWatchdog();
+  lastTime=video.currentTime||0;
+  freezeCount=0;
+  freezeWatchdog=setInterval(()=>{
+    if(video.paused||video.ended)return;
+    var ct=video.currentTime||0;
+    if(Math.abs(ct-lastTime)<0.3){
+      freezeCount++;
+      if(freezeCount>=5){
+        freezeCount=0;
+        video.play().catch(function(){});
+        if(video.readyState<2){
+          hlsRetries=0;
+          initHLS();
+        }else if(hlsInstance){
+          hlsInstance.recoverMediaError();
+        }
       }
-    },30000);
-  });
-
-  video.addEventListener("waiting",()=>{
-    clearTimeout(waitTimer);
-    waitTimer=setTimeout(()=>{
-      if(video.paused||video.ended)return;
-      if(video.readyState<3){
-        hlsRetries=0;
-        initHLS();
-      }
-    },15000);
-  });
-
-  video.addEventListener("playing",()=>{
-    clearTimeout(stallTimer);
-    clearTimeout(waitTimer);
-  });
+    }else{
+      freezeCount=0;
+    }
+    lastTime=ct;
+  },2000);
+}
+function stopFreezeWatchdog(){
+  clearInterval(freezeWatchdog);
+  freezeWatchdog=null;
 }
 
-setInterval(()=>{
-  if(!video.paused&&!video.ended&&video.readyState>=3&&video.currentTime>1){
-    let hasBuffer=false;
-    try{for(let i=0;i<video.buffered.length;i++){if(video.buffered.end(i)-video.currentTime>2){hasBuffer=true;break;}}}catch(e){}
-    if(!hasBuffer&&video.readyState<4){
-      hlsRetries=0;
-      initHLS();
-    }
-  }
-},15000);
-
 initHLS();
-watchStream();
+video.addEventListener("playing",function(){startFreezeWatchdog();});
+video.addEventListener("pause",function(){stopFreezeWatchdog();});
 renderProgramacion();
 
 document.getElementById("play").onclick=()=>{video.muted=false;video.play();};
