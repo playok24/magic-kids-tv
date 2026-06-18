@@ -30,9 +30,10 @@
       "repo": "magic-kids-tv"
     },
     "nsis": {
-      "oneClick": true,
+      "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": false,
+      "uninstallDisplayName": "Magic Kids Desktop",
       "artifactName": "Magic-Kids-Desktop-Setup-${version}.${ext}"
     }
   },
