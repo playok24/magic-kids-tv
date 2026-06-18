@@ -3,8 +3,6 @@ const fs = require("fs");
 const path = require("path");
 
 const files = [
-  "prueba.html",
-  "www/index.html",
   "electron-main.js",
   "electron-preload.js"
 ];
@@ -39,14 +37,7 @@ files.forEach(f => {
   let content = fs.readFileSync(fp, "utf8");
   const ext = path.extname(f);
 
-  if (ext === ".html") {
-    content = content.replace(/<script>([\s\S]*?)<\/script>/g, (match, js) => {
-      if (!js.trim()) return match;
-      console.log("Obfuscating inline script in", f);
-      const obf = JavaScriptObfuscator.obfuscate(js, opts).getObfuscatedCode();
-      return "<script>" + obf + "</script>";
-    });
-  } else if (ext === ".js") {
+  if (ext === ".js") {
     console.log("Obfuscating", f);
     const obf = JavaScriptObfuscator.obfuscate(content, opts).getObfuscatedCode();
     content = obf;
