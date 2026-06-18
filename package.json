@@ -32,23 +32,21 @@
     "nsis": {
       "oneClick": false,
       "perMachine": false,
-      "allowToChangeInstallationDirectory": false,
-      "uninstallDisplayName": "Magic Kids Desktop",
       "artifactName": "Magic-Kids-Desktop-Setup-${version}.${ext}"
     }
   },
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "@capacitor/android": "^8.4.0",
+    "@capacitor/cli": "^8.4.0",
+    "@capacitor/screen-orientation": "^8.0.1",
+    "@capacitor/status-bar": "^8.0.2",
     "electron": "^33.0.0",
     "electron-builder": "^25.0.0",
     "javascript-obfuscator": "^5.4.3"
   },
   "dependencies": {
-    "@capacitor/android": "^8.4.0",
-    "@capacitor/cli": "^8.4.0",
-    "@capacitor/screen-orientation": "^8.0.1",
-    "@capacitor/status-bar": "^8.0.2",
     "electron-updater": "^6.0.0"
   }
 }
