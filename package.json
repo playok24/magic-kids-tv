@@ -1,6 +1,6 @@
 {
   "name": "magic-kids-desktop",
-  "version": "1.3.6",
+  "version": "1.3.7",
   "description": "Magic Kids Television - App de Escritorio",
   "main": "electron-main.js",
   "scripts": {
