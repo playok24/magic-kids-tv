@@ -22,7 +22,8 @@
       "package.json"
     ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "sign": false
     },
     "publish": {
       "provider": "github",
