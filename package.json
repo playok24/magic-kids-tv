@@ -25,11 +25,6 @@
       "target": "nsis",
       "sign": false
     },
-    "publish": {
-      "provider": "github",
-      "owner": "playok24",
-      "repo": "magic-kids-tv"
-    },
     "nsis": {
       "oneClick": true,
       "perMachine": false,
@@ -47,8 +42,5 @@
     "electron": "^33.0.0",
     "electron-builder": "^25.0.0",
     "javascript-obfuscator": "^5.4.3"
-  },
-  "dependencies": {
-    "electron-updater": "^6.0.0"
   }
 }

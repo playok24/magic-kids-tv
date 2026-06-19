@@ -618,14 +618,14 @@ function initHLS(){
 
   hlsInstance=new Hls({
     enableWorker:true,
-    liveSyncDuration:45,
-    liveMaxLatencyDuration:90,
-    maxBufferLength:30,
-    maxMaxBufferLength:60,
-    backBufferLength:10,
+    liveSyncDuration:25,
+    liveMaxLatencyDuration:50,
+    maxBufferLength:20,
+    maxMaxBufferLength:40,
+    backBufferLength:5,
     liveDurationInfinity:true,
-    maxBufferHole:2,
-    maxStarvationDelay:5,
+    maxBufferHole:1,
+    maxStarvationDelay:3,
     manifestLoadingTimeOut:20000,
     manifestLoadingMaxRetry:20,
     manifestLoadingRetryDelay:1000,
@@ -638,11 +638,11 @@ function initHLS(){
     stretchShortVideoSegment:true,
     lowLatencyMode:false,
     nudgeOffset:1,
-    nudgeMaxRetry:10,
+    nudgeMaxRetry:8,
     enableSoftwareAES:true,
     abrEwmaDefaultEstimate:3000000,
-    abrEwmaFastLive:3,
-    abrEwmaSlowLive:10
+    abrEwmaFastLive:6,
+    abrEwmaSlowLive:15
   });
 
   hlsInstance.loadSource(STREAM);
@@ -702,25 +702,23 @@ function startFreezeWatchdog(){
   freezeWatchdog=setInterval(()=>{
     if(video.paused||video.ended)return;
     var ct=video.currentTime||0;
-    if(Math.abs(ct-lastTime)<0.3){
+    if(Math.abs(ct-lastTime)<0.5){
       freezeCount++;
-      if(freezeCount>=8){
+      if(freezeCount>=15){
         freezeCount=0;
         gentleRecovery++;
         video.play().catch(function(){});
-        if(gentleRecovery<3&&hlsInstance){
-          hlsInstance.recoverMediaError();
-        }else if(gentleRecovery>=3){
+        if(gentleRecovery>=3){
           gentleRecovery=0;
           hlsRetries=0;
           initHLS();
         }
       }
     }else{
-      freezeCount=0;
+      freezeCount=Math.max(0,freezeCount-2);
     }
     lastTime=ct;
-  },2000);
+  },3000);
 }
 function stopFreezeWatchdog(){
   clearInterval(freezeWatchdog);
@@ -787,31 +785,13 @@ document.addEventListener("keydown",e=>{
 });
 
 if(window.electronAPI){
-  window.electronAPI.onUpdateAvailable(function(v){
+  window.electronAPI.onUpdateNotAvailable(function(){
     var b=document.getElementById("version-banner");
-    document.getElementById("update-text").textContent="Nueva version v"+v+" disponible!";
+    document.getElementById("update-text").textContent="No hay actualizaciones disponibles";
     document.getElementById("progress-bar").style.display="none";
     document.getElementById("update-btn").style.display="none";
     b.style.display="flex";
-  });
-  window.electronAPI.onUpdateProgress(function(pct){
-    var b=document.getElementById("version-banner");
-    b.style.display="flex";
-    document.getElementById("progress-bar").style.display="block";
-    document.getElementById("progress-fill").style.width=pct+"%";
-    document.getElementById("update-text").textContent="Descargando actualizacion... "+pct+"%";
-  });
-  window.electronAPI.onUpdateDownloaded(function(){
-    document.getElementById("update-text").textContent="Actualizacion lista! Reiniciá para aplicar.";
-    document.getElementById("progress-bar").style.display="none";
-    document.getElementById("update-btn").style.display="inline-block";
-  });
-  window.electronAPI.onUpdateError(function(msg){
-    var b=document.getElementById("version-banner");
-    document.getElementById("update-text").textContent="⚠ "+msg;
-    document.getElementById("progress-bar").style.display="none";
-    document.getElementById("update-btn").style.display="none";
-    b.style.display="flex";
+    setTimeout(()=>{b.style.display="none";},3000);
   });
 }
 document.getElementById("check-update").onclick=function(){
