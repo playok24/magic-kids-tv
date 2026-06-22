@@ -314,6 +314,31 @@ body.video-only #screen{width:100vw}
 }
 body.video-only #exit-video{display:block}
 body.video-only:hover #exit-video{opacity:1}
+#theme-toggle{font-size:11px;color:#888;background:rgba(255,255,255,0.1);border:none;border-radius:4px;padding:2px 6px;cursor:pointer}
+#theme-toggle:hover{background:rgba(196,160,255,0.15)}
+body.light{background:linear-gradient(135deg,#f5f5fa 0%,#e8e0f0 50%,#f5f5fa 100%);color:#222}
+body.light #header-bar{background:rgba(255,255,255,0.95);border-bottom-color:#ddd}
+body.light #header-bar .title{color:#6b3fa0}
+body.light #header-bar .greeting{color:#555}
+body.light #header-bar .greeting .edit-name{color:#555;background:rgba(0,0,0,0.06)}
+body.light #header-bar .greeting .edit-name:hover{color:#6b3fa0;background:rgba(107,63,160,0.1)}
+body.light #header-bar .version{color:#999}
+body.light #theme-toggle{color:#555;background:rgba(0,0,0,0.06)}
+body.light #theme-toggle:hover{background:rgba(107,63,160,0.1)}
+body.light #remote{background:rgba(255,255,255,0.98);border-left-color:#ddd}
+body.light #remote button{background:rgba(0,0,0,0.04);border-color:#ddd;color:#333}
+body.light #remote button:hover{background:rgba(107,63,160,0.1);border-color:#6b3fa0;color:#222}
+body.light .prog-item .n{color:#333}
+body.light .prog-item .h{color:#6b3fa0}
+body.light #prog-section h3{color:#6b3fa0}
+body.light #tz-select{background:#f0f0f5;border-color:#ddd;color:#6b3fa0}
+body.light #chat-btn{background:rgba(0,0,0,0.04);border-color:#ddd;color:#6b3fa0}
+body.light #chat-btn:hover{background:rgba(107,63,160,0.1);border-color:#6b3fa0}
+body.light #name-modal .box{background:#fff;border-color:#ddd}
+body.light #name-modal .box h3{color:#6b3fa0}
+body.light #name-modal .box p{color:#555}
+body.light #name-modal .box input{background:#f0f0f5;border-color:#ddd;color:#222}
+body.light #name-modal .box input:focus{border-color:#6b3fa0}
 </style>
 </head>
 <body>
@@ -331,7 +356,7 @@ body.video-only:hover #exit-video{opacity:1}
   <img class="logo" src="www/Magic Kids Logo.png" alt="Logo">
   <span class="title">Magic Kids Television</span>
   <span class="version" id="version-label">v1.3.7</span>
-  <span class="greeting" id="greeting"><span id="greeting-text"></span><button class="edit-name" onclick="showNameModal(true)">&#9998;</button></span>
+  <span class="greeting" id="greeting"><span id="greeting-text"></span><button class="edit-name" onclick="showNameModal(true)">&#9998;</button><button id="theme-toggle" onclick="toggleTheme()">&#127769;</button></span>
 </div>
 
 <div id="container">
@@ -482,6 +507,18 @@ document.getElementById("name-input").onkeydown=function(e){
 if(!userName){showNameModal();}
 updateGreeting();
 setInterval(updateGreeting,60000);
+
+var themeBtn=document.getElementById("theme-toggle");
+function applyTheme(t){
+  document.body.classList.toggle("light",t==="light");
+  themeBtn.innerHTML=t==="light"?"&#9728;&#65039;":"&#127769;";
+}
+applyTheme(localStorage.getItem("mk_theme")||"dark");
+function toggleTheme(){
+  var t=document.body.classList.contains("light")?"dark":"light";
+  localStorage.setItem("mk_theme",t);
+  applyTheme(t);
+}
 
 var firebaseConfig={apiKey:"AIzaSyDM7YiLoP5Q-jTB1BBbMluvWL1LIPqCtxI",authDomain:"contadores-magic.firebaseapp.com",databaseURL:"https://contadores-magic-default-rtdb.firebaseio.com",projectId:"contadores-magic",storageBucket:"contadores-magic.firebasestorage.app",messagingSenderId:"58723817117",appId:"1:58723817117:web:f479abaeacf191364ae674"};
 firebase.initializeApp(firebaseConfig);
