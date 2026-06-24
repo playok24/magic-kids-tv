@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magic Kids TV - La nostalgia de los 90 en vivo 24/7</title>
+<meta name="description" content="Magic Kids TV: Canales de television retro en vivo 24/7. Dragon Ball Z, Sailor Moon, Caballeros del Zodiaco y mas. Descarga la app desktop o movil.">
+<link rel="icon" href="www/Magic Kids Logo.png">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0a0a1a;--bg2:#1a0a2e;--card:#13131f;--card2:#1a1a2e;
+  --accent:#00ccff;--violet:#c4a0ff;--purple:#7c3aed;
+  --green:#00ff66;--pink:#ff6b9d;--red:#ff4444;--yellow:#ffd93d;
+  --text:#fff;--text2:#ccc;--text3:#888;--border:#222;
+}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'Inter','Segoe UI',system-ui,sans-serif;
+  line-height:1.6;overflow-x:hidden;
+}
+a{text-decoration:none;color:inherit}
+img{max-width:100%;display:block}
+
+/* ==================== NAVBAR ==================== */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  padding:0 24px;height:64px;
+  display:flex;align-items:center;justify-content:space-between;
+  background:rgba(10,10,26,0.85);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-bottom:1px solid rgba(255,255,255,0.06);
+  transition:all 0.3s;
+}
+nav.scrolled{
+  background:rgba(10,10,26,0.95);
+  box-shadow:0 4px 30px rgba(0,0,0,0.5);
+}
+.nav-logo{display:flex;align-items:center;gap:10px}
+.nav-logo img{width:36px;height:36px;border-radius:8px}
+.nav-logo span{font-size:18px;font-weight:800;color:var(--violet);letter-spacing:0.5px}
+.nav-links{display:flex;align-items:center;gap:32px}
+.nav-links a{font-size:14px;font-weight:500;color:var(--text3);transition:color 0.2s}
+.nav-links a:hover{color:var(--accent)}
+.nav-cta{
+  padding:10px 24px;border-radius:10px;
+  background:linear-gradient(135deg,var(--purple),#5b21b6);
+  color:#fff;font-size:14px;font-weight:700;
+  transition:all 0.2s;cursor:pointer;border:none;
+}
+.nav-cta:hover{transform:translateY(-1px);box-shadow:0 8px 25px rgba(124,58,237,0.4)}
+.nav-hamburger{display:none;background:none;border:none;color:#fff;font-size:24px;cursor:pointer}
+
+/* ==================== HERO ==================== */
+.hero{
+  min-height:100vh;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;
+  padding:120px 24px 80px;position:relative;overflow:hidden;
+}
+.hero::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 30%,rgba(124,58,237,0.15) 0%,transparent 60%),
+             radial-gradient(ellipse at 20% 80%,rgba(0,204,255,0.08) 0%,transparent 50%),
+             radial-gradient(ellipse at 80% 80%,rgba(196,160,255,0.08) 0%,transparent 50%);
+  z-index:0;
+}
+.hero-content{position:relative;z-index:1;max-width:800px}
+.hero-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:8px 20px;border-radius:50px;
+  background:rgba(0,204,255,0.1);border:1px solid rgba(0,204,255,0.2);
+  font-size:13px;font-weight:600;color:var(--accent);
+  margin-bottom:24px;
+}
+.hero-badge .live-dot{
+  width:8px;height:8px;border-radius:50%;background:var(--green);
+  animation:blink 1.5s infinite;
+}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+.hero h1{
+  font-size:clamp(40px,7vw,80px);font-weight:900;
+  line-height:1.05;margin-bottom:20px;
+  background:linear-gradient(135deg,#fff 0%,var(--violet) 50%,var(--accent) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+.hero p{
+  font-size:clamp(16px,2.5vw,20px);color:var(--text2);
+  max-width:600px;margin:0 auto 36px;line-height:1.7;
+}
+.hero-buttons{display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
+.btn-primary{
+  display:inline-flex;align-items:center;gap:10px;
+  padding:16px 36px;border-radius:14px;
+  background:linear-gradient(135deg,var(--purple),#5b21b6);
+  color:#fff;font-size:16px;font-weight:700;
+  transition:all 0.25s;cursor:pointer;border:none;
+}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 35px rgba(124,58,237,0.5)}
+.btn-secondary{
+  display:inline-flex;align-items:center;gap:10px;
+  padding:16px 36px;border-radius:14px;
+  background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);
+  color:#fff;font-size:16px;font-weight:600;
+  transition:all 0.25s;cursor:pointer;
+}
+.btn-secondary:hover{background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.2)}
+.hero-stats{
+  display:flex;gap:48px;justify-content:center;margin-top:60px;
+  flex-wrap:wrap;
+}
+.hero-stat{text-align:center}
+.hero-stat .num{font-size:36px;font-weight:900;color:var(--accent)}
+.hero-stat .label{font-size:13px;color:var(--text3);margin-top:4px;font-weight:500}
+
+/* Static/noise animation */
+.hero-static{
+  position:absolute;bottom:0;left:0;right:0;height:120px;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(255,255,255,0.015) 2px,rgba(255,255,255,0.015) 4px);
+  animation:static-move 0.1s infinite;z-index:0;
+  opacity:0.5;
+}
+@keyframes static-move{0%{transform:translateY(0)}100%{transform:translateY(-4px)}}
+
+/* ==================== SECTIONS COMMON ==================== */
+section{padding:100px 24px}
+.section-header{text-align:center;max-width:700px;margin:0 auto 60px}
+.section-tag{
+  display:inline-block;padding:6px 16px;border-radius:50px;
+  background:rgba(196,160,255,0.1);border:1px solid rgba(196,160,255,0.2);
+  font-size:12px;font-weight:700;color:var(--violet);
+  text-transform:uppercase;letter-spacing:1.5px;margin-bottom:16px;
+}
+.section-header h2{
+  font-size:clamp(30px,5vw,48px);font-weight:900;
+  line-height:1.1;margin-bottom:16px;
+}
+.section-header h2 span{
+  background:linear-gradient(135deg,var(--violet),var(--accent));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+.section-header p{font-size:17px;color:var(--text3);line-height:1.7}
+
+/* ==================== CHANNEL SECTION ==================== */
+#canal{background:linear-gradient(180deg,var(--bg) 0%,#0d0d24 100%)}
+.shows-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+  gap:16px;max-width:1100px;margin:0 auto;
+}
+.show-card{
+  background:var(--card);border:1px solid var(--border);border-radius:16px;
+  padding:24px 20px;text-align:center;
+  transition:all 0.3s;position:relative;overflow:hidden;
+}
+.show-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--purple),var(--accent));
+  opacity:0;transition:opacity 0.3s;
+}
+.show-card:hover{
+  transform:translateY(-4px);
+  border-color:rgba(196,160,255,0.3);
+  box-shadow:0 12px 40px rgba(0,0,0,0.4);
+}
+.show-card:hover::before{opacity:1}
+.show-icon{font-size:40px;margin-bottom:12px;display:block}
+.show-card h3{font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px}
+.show-card .time{font-size:12px;color:var(--accent);font-weight:600}
+
+.programacion-cta{
+  text-align:center;margin-top:48px;
+  padding:32px;border-radius:20px;
+  background:linear-gradient(135deg,rgba(124,58,237,0.1),rgba(0,204,255,0.05));
+  border:1px solid rgba(124,58,237,0.15);
+  max-width:600px;margin-left:auto;margin-right:auto;
+}
+.programacion-cta h3{font-size:20px;font-weight:700;margin-bottom:8px}
+.programacion-cta p{color:var(--text3);font-size:14px;margin-bottom:20px}
+.programacion-cta .schedule-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:12px;
+  max-width:500px;margin:0 auto;
+}
+.programacion-cta .sch-item{
+  padding:12px;border-radius:12px;
+  background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);
+}
+.programacion-cta .sch-item .sch-tz{font-size:12px;color:var(--violet);font-weight:700}
+.programacion-cta .sch-item .sch-label{font-size:11px;color:var(--text3)}
+
+/* ==================== APP SECTION ==================== */
+#apps{background:linear-gradient(180deg,#0d0d24 0%,var(--bg) 100%)}
+
+.app-showcase{
+  display:flex;align-items:center;gap:60px;
+  max-width:1100px;margin:0 auto 80px;
+  padding:40px;border-radius:24px;
+  background:var(--card);border:1px solid var(--border);
+  position:relative;overflow:hidden;
+}
+.app-showcase::before{
+  content:'';position:absolute;top:-50%;right:-20%;width:500px;height:500px;
+  background:radial-gradient(circle,rgba(124,58,237,0.08) 0%,transparent 70%);
+  pointer-events:none;
+}
+.app-showcase.reverse{flex-direction:row-reverse}
+.app-showcase.reverse::before{right:auto;left:-20%}
+.app-visual{flex:1;position:relative;display:flex;justify-content:center}
+.app-info{flex:1;position:relative;z-index:1}
+
+/* Desktop mockup */
+.desktop-mockup{
+  width:400px;height:280px;
+  background:linear-gradient(135deg,#1a1a2e,#0a0a1a);
+  border-radius:12px;border:2px solid #333;
+  position:relative;overflow:hidden;
+  box-shadow:0 20px 60px rgba(0,0,0,0.5);
+}
+.desktop-mockup .screen{
+  position:absolute;top:0;left:0;right:0;bottom:0;
+  background:linear-gradient(135deg,#0a0a1a 0%,#1a0a2e 50%,#0a0a1a 100%);
+  display:flex;align-items:center;justify-content:center;
+  flex-direction:column;gap:12px;
+}
+.desktop-mockup .screen img{width:80px;height:80px;border-radius:16px;object-fit:contain}
+.desktop-mockup .screen .txt{color:var(--accent);font-size:14px;font-weight:700;letter-spacing:1px}
+.desktop-mockup .screen .bar{
+  position:absolute;bottom:0;left:0;right:0;height:32px;
+  background:rgba(0,0,0,0.6);display:flex;align-items:center;
+  padding:0 12px;gap:8px;
+}
+.desktop-mockup .screen .bar .dot{width:8px;height:8px;border-radius:50%}
+.desktop-mockup .screen .bar .dot.r{background:#ff5f57}
+.desktop-mockup .screen .bar .dot.y{background:#ffbd2e}
+.desktop-mockup .screen .bar .dot.g{background:#28c840}
+.desktop-mockup .screen .controls-side{
+  position:absolute;top:32px;right:0;bottom:32px;width:140px;
+  background:rgba(13,13,26,0.9);border-left:1px solid #222;
+  display:flex;flex-direction:column;padding:12px;gap:6px;
+}
+.desktop-mockup .screen .ctrl-btn{
+  padding:6px;border-radius:6px;background:rgba(255,255,255,0.04);
+  border:1px solid #333;color:#ccc;font-size:9px;font-weight:600;
+  text-align:center;
+}
+.desktop-mockup .screen .ctrl-btn.active{border-color:var(--accent);color:var(--accent)}
+
+/* Phone mockup */
+.phone-mockup{
+  width:220px;height:440px;
+  background:#000;border-radius:28px;
+  border:3px solid #333;
+  position:relative;overflow:hidden;
+  box-shadow:0 20px 60px rgba(0,0,0,0.5);
+}
+.phone-mockup .notch{
+  position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:100px;height:24px;background:#000;border-radius:0 0 14px 14px;z-index:2;
+}
+.phone-mockup .screen{
+  position:absolute;top:24px;left:0;right:0;bottom:0;
+  background:linear-gradient(180deg,#0a0a1a 0%,#1a0a2e 100%);
+  display:flex;flex-direction:column;
+}
+.phone-mockup .screen .top-bar-m{
+  padding:8px 12px;display:flex;align-items:center;gap:6px;
+  background:rgba(10,10,18,0.95);
+}
+.phone-mockup .screen .top-bar-m img{width:20px;height:20px;border-radius:4px}
+.phone-mockup .screen .top-bar-m span{font-size:10px;font-weight:700;color:#fff}
+.phone-mockup .screen .video-area{
+  height:160px;background:#000;display:flex;
+  align-items:center;justify-content:center;flex-direction:column;gap:6px;
+  position:relative;
+}
+.phone-mockup .screen .video-area .play-btn{
+  width:40px;height:40px;border-radius:50%;
+  background:rgba(255,255,255,0.15);border:2px solid #fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;color:#fff;
+}
+.phone-mockup .screen .video-area .live-badge{
+  position:absolute;top:8px;left:8px;
+  padding:2px 8px;border-radius:4px;
+  background:var(--red);color:#fff;font-size:8px;font-weight:700;
+}
+.phone-mockup .screen .ctrls-m{
+  padding:8px 12px;display:flex;justify-content:center;gap:12px;
+  background:rgba(13,13,26,0.95);border-bottom:1px solid #222;
+}
+.phone-mockup .screen .ctrls-m .ico{font-size:16px;color:var(--accent)}
+.phone-mockup .screen .prog-m{
+  flex:1;padding:8px 10px;overflow:hidden;
+}
+.phone-mockup .screen .prog-m .prog-title{font-size:9px;color:var(--violet);font-weight:700;margin-bottom:4px}
+.phone-mockup .screen .prog-m .prog-line{
+  display:flex;gap:6px;padding:3px 0;font-size:8px;
+}
+.phone-mockup .screen .prog-m .prog-line .t{color:var(--accent);font-weight:700}
+.phone-mockup .screen .prog-m .prog-line .n{color:#999}
+
+.app-info .platform-tag{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:6px 14px;border-radius:8px;
+  background:rgba(0,204,255,0.1);border:1px solid rgba(0,204,255,0.2);
+  font-size:12px;font-weight:700;color:var(--accent);
+  margin-bottom:16px;
+}
+.app-info h3{
+  font-size:32px;font-weight:900;line-height:1.15;margin-bottom:12px;
+}
+.app-info .app-desc{font-size:15px;color:var(--text3);margin-bottom:24px;line-height:1.7}
+.features-list{display:flex;flex-direction:column;gap:12px;margin-bottom:32px}
+.feature-item{display:flex;align-items:flex-start;gap:12px}
+.feature-icon{
+  width:36px;height:36px;border-radius:10px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;
+}
+.feature-icon.blue{background:rgba(0,204,255,0.1)}
+.feature-icon.purple{background:rgba(196,160,255,0.1)}
+.feature-icon.green{background:rgba(0,255,102,0.1)}
+.feature-icon.pink{background:rgba(255,107,157,0.1)}
+.feature-icon.yellow{background:rgba(255,217,61,0.1)}
+.feature-text h4{font-size:14px;font-weight:700;margin-bottom:2px}
+.feature-text p{font-size:13px;color:var(--text3);line-height:1.5}
+.app-buttons{display:flex;gap:12px;flex-wrap:wrap}
+.btn-download{
+  display:inline-flex;align-items:center;gap:10px;
+  padding:14px 28px;border-radius:12px;
+  font-size:15px;font-weight:700;transition:all 0.25s;cursor:pointer;border:none;
+}
+.btn-download.windows{
+  background:linear-gradient(135deg,var(--purple),#5b21b6);color:#fff;
+}
+.btn-download.android{
+  background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;
+}
+.btn-download:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(0,0,0,0.3)}
+.btn-download svg{width:20px;height:20px;fill:currentColor}
+
+/* ==================== FEATURES GRID ==================== */
+.features-detail{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
+  gap:20px;max-width:1100px;margin:0 auto;
+}
+.detail-card{
+  padding:28px 24px;border-radius:18px;
+  background:var(--card);border:1px solid var(--border);
+  transition:all 0.3s;
+}
+.detail-card:hover{
+  transform:translateY(-3px);
+  border-color:rgba(196,160,255,0.2);
+  box-shadow:0 12px 40px rgba(0,0,0,0.3);
+}
+.detail-card .dc-icon{
+  width:48px;height:48px;border-radius:14px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:24px;margin-bottom:16px;
+}
+.detail-card h4{font-size:17px;font-weight:700;margin-bottom:8px}
+.detail-card p{font-size:14px;color:var(--text3);line-height:1.6}
+
+/* ==================== TESTIMONIALS ==================== */
+#testimonios{
+  background:linear-gradient(180deg,var(--bg) 0%,#0d0d24 100%);
+}
+.testimonials-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
+  gap:20px;max-width:1100px;margin:0 auto;
+}
+.testimonial-card{
+  padding:28px;border-radius:18px;
+  background:var(--card);border:1px solid var(--border);
+  position:relative;
+}
+.testimonial-card::before{
+  content:'"';position:absolute;top:16px;right:24px;
+  font-size:60px;color:rgba(196,160,255,0.1);font-family:serif;
+  line-height:1;
+}
+.testimonial-card .stars{color:var(--yellow);font-size:14px;margin-bottom:12px;letter-spacing:2px}
+.testimonial-card .quote{font-size:14px;color:var(--text2);line-height:1.7;margin-bottom:16px;font-style:italic}
+.testimonial-card .author{display:flex;align-items:center;gap:10px}
+.testimonial-card .author .avatar{
+  width:36px;height:36px;border-radius:50%;
+  background:linear-gradient(135deg,var(--purple),var(--accent));
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:700;color:#fff;
+}
+.testimonial-card .author .name{font-size:13px;font-weight:700}
+.testimonial-card .author .role{font-size:11px;color:var(--text3)}
+
+/* ==================== CTA FINAL ==================== */
+#cta-final{
+  text-align:center;padding:100px 24px;
+  background:radial-gradient(ellipse at 50% 50%,rgba(124,58,237,0.12) 0%,transparent 70%);
+}
+.cta-box{
+  max-width:700px;margin:0 auto;
+  padding:60px 40px;border-radius:28px;
+  background:linear-gradient(135deg,var(--card),var(--card2));
+  border:1px solid var(--border);position:relative;overflow:hidden;
+}
+.cta-box::before{
+  content:'';position:absolute;inset:-1px;border-radius:28px;
+  background:linear-gradient(135deg,var(--purple),var(--accent),var(--violet));
+  opacity:0.15;z-index:0;
+}
+.cta-box>*{position:relative;z-index:1}
+.cta-box h2{font-size:36px;font-weight:900;margin-bottom:12px}
+.cta-box p{font-size:17px;color:var(--text3);margin-bottom:32px}
+.cta-buttons{display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
+
+/* ==================== FOOTER ==================== */
+footer{
+  padding:40px 24px;text-align:center;
+  border-top:1px solid var(--border);
+  background:rgba(0,0,0,0.2);
+}
+.footer-logo{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:16px}
+.footer-logo img{width:32px;height:32px;border-radius:8px}
+.footer-logo span{font-size:16px;font-weight:800;color:var(--violet)}
+footer p{font-size:13px;color:var(--text3);line-height:1.7}
+footer .footer-links{display:flex;gap:24px;justify-content:center;margin-top:16px;flex-wrap:wrap}
+footer .footer-links a{font-size:13px;color:var(--text3);transition:color 0.2s}
+footer .footer-links a:hover{color:var(--accent)}
+
+/* ==================== MOBILE NAV ==================== */
+.mobile-menu{
+  display:none;position:fixed;inset:0;z-index:200;
+  background:rgba(10,10,26,0.98);
+  flex-direction:column;align-items:center;justify-content:center;gap:32px;
+}
+.mobile-menu.open{display:flex}
+.mobile-menu a{font-size:20px;font-weight:700;color:var(--text2);transition:color 0.2s}
+.mobile-menu a:hover{color:var(--accent)}
+.mobile-menu .close-menu{
+  position:absolute;top:20px;right:24px;
+  background:none;border:none;color:#fff;font-size:28px;cursor:pointer;
+}
+
+/* ==================== RESPONSIVE ==================== */
+@media(max-width:900px){
+  .app-showcase,.app-showcase.reverse{flex-direction:column;text-align:center;padding:32px 20px}
+  .app-visual{margin-bottom:20px}
+  .app-info .features-list{text-align:left}
+  .desktop-mockup{width:300px;height:210px}
+  .phone-mockup{width:180px;height:360px}
+  .nav-links{display:none}
+  .nav-hamburger{display:block}
+}
+@media(max-width:600px){
+  section{padding:60px 16px}
+  .hero{padding:100px 16px 60px}
+  .hero h1{font-size:36px}
+  .hero-buttons{flex-direction:column;align-items:center}
+  .hero-stats{gap:24px}
+  .hero-stat .num{font-size:28px}
+  .shows-grid{grid-template-columns:repeat(2,1fr);gap:10px}
+  .show-card{padding:16px 12px}
+  .features-detail{grid-template-columns:1fr}
+  .testimonials-grid{grid-template-columns:1fr}
+  .programacion-cta .schedule-grid{grid-template-columns:1fr}
+  .desktop-mockup{width:260px;height:180px}
+  .desktop-mockup .screen .controls-side{display:none}
+  .phone-mockup{width:160px;height:320px}
+  .cta-box{padding:40px 24px}
+  .cta-box h2{font-size:28px}
+  .app-buttons{justify-content:center}
+}
+</style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav id="navbar">
+  <a href="#" class="nav-logo">
+    <img src="www/Magic Kids Logo.png" alt="Magic Kids TV">
+    <span>MAGIC KIDS TV</span>
+  </a>
+  <div class="nav-links">
+    <a href="#canal">El Canal</a>
+    <a href="#apps">Apps</a>
+    <a href="#testimonios">Comunidad</a>
+    <a href="#cta-final" class="nav-cta">Descargar</a>
+  </div>
+  <button class="nav-hamburger" onclick="toggleMobileMenu()">&#9776;</button>
+</nav>
+
+<!-- Mobile Menu -->
+<div class="mobile-menu" id="mobileMenu">
+  <button class="close-menu" onclick="toggleMobileMenu()">&times;</button>
+  <a href="#canal" onclick="toggleMobileMenu()">El Canal</a>
+  <a href="#apps" onclick="toggleMobileMenu()">Apps</a>
+  <a href="#testimonios" onclick="toggleMobileMenu()">Comunidad</a>
+  <a href="#cta-final" onclick="toggleMobileMenu()">Descargar</a>
+</div>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-content">
+    <div class="hero-badge">
+      <span class="live-dot"></span>
+      EN VIVO 24/7
+    </div>
+    <h1>La nostalgia de los 90, ahora en tu pantalla</h1>
+    <p>Revive los mejores momentos de Magic Kids: Dragon Ball Z, Sailor Moon, Caballeros del Zodiaco, El Chavo, Ranma 1/2 y mucho mas. Todo en vivo, todo el dia.</p>
+    <div class="hero-buttons">
+      <a href="#apps" class="btn-primary">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+        Ver Ahora
+      </a>
+      <a href="#apps" class="btn-secondary">
+        Descargar App
+      </a>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="num">24/7</div>
+        <div class="label">Transmision en vivo</div>
+      </div>
+      <div class="hero-stat">
+        <div class="num">18+</div>
+        <div class="label">Clasicos de los 90</div>
+      </div>
+      <div class="hero-stat">
+        <div class="num">3</div>
+        <div class="label">Plataformas</div>
+      </div>
+    </div>
+  </div>
+  <div class="hero-static"></div>
+</section>
+
+<!-- EL CANAL -->
+<section id="canal">
+  <div class="section-header">
+    <div class="section-tag">El Canal</div>
+    <h2>Tu canal favorito <span>volvio</span></h2>
+    <p>Magic Kids regresa con la programacion completa que marcó una generacion. Todos los dias, las mejores series y dibujos animados de los 90 en una unica señal.</p>
+  </div>
+
+  <div class="shows-grid">
+    <div class="show-card">
+      <span class="show-icon">&#128170;</span>
+      <h3>Dragon Ball Z</h3>
+      <div class="time">00:00 - 08:30</div>
+    </div>
+    <div class="show-card">
+      <span class="show-icon">&#128302;</span>
+      <h3>Sailor Moon</h3>
+      <div class="time">06:30 - 14:30</div>
+    </div>
+    <div class="show-card">
+      <span class="show-icon">&#9876;</span>
+      <h3>Caballeros del Zodiaco</h3>
+      <div class="time">11:30 - 19:30</div>
+    </div>
+    <div class="show-card">
+      <span class="show-icon">&#128131;</span>
+      <h3>El Chavo del 8</h3>
+      <div class="time">12:30 - 20:30</div>
+    </div>
+    <div class="show-card">
+      <span class="show-icon">&#127939;</span>
+      <h3>Las Guerreras Magicas</h3>
+      <div class="time">00:30 - 08:30</div>
+    </div>
+    <div class="show-card">
+      <span class="show-icon">&#129416;</span>
+      <h3>X-Men</h3>
+      <div class="time">01:00 - 09:00</div>
+    </div>
+    <div class="show-card">
+      <span class="show-icon">&#128138;</span>
+      <h3>Ranma 1/2</h3>
+      <div class="time">12:00 - 20:00</div>
+    </div>
+    <div class="show-card">
+      <span class="show-icon">&#128163;</span>
+      <h3>Power Rangers Zeo</h3>
+      <div class="time">10:30 - 18:30</div>
+    </div>
+    <div class="show-card">
+      <span class="show-icon">&#129409;</span>
+      <h3>Voltron</h3>
+      <div class="time">07:30 - 15:30</div>
+    </div>
+    <div class="show-card">
+      <span class="show-icon">&#128049;</span>
+      <h3>Mikami</h3>
+      <div class="time">10:00 - 18:00</div>
+    </div>
+    <div class="show-card">
+      <span class="show-icon">&#129488;</span>
+      <h3>Alf</h3>
+      <div class="time">14:00 - 22:00</div>
+    </div>
+    <div class="show-card">
+      <span class="show-icon">&#128056;</span>
+      <h3>Street Sharks</h3>
+      <div class="time">13:00 - 21:00</div>
+    </div>
+  </div>
+
+  <div class="programacion-cta">
+    <h3>&#128240; Programacion Completa</h3>
+    <p>Horarios adaptados a tu zona horaria</p>
+    <div class="schedule-grid">
+      <div class="sch-item">
+        <div class="sch-tz">Argentina</div>
+        <div class="sch-label">UTC -3</div>
+      </div>
+      <div class="sch-item">
+        <div class="sch-tz">Colombia</div>
+        <div class="sch-label">UTC -5</div>
+      </div>
+      <div class="sch-item">
+        <div class="sch-tz">Mexico</div>
+        <div class="sch-label">UTC -6</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DESKTOP APP -->
+<section id="apps">
+  <div class="section-header">
+    <div class="section-tag">Plataformas</div>
+    <h2>Disfruta de Magic Kids <span>en cualquier dispositivo</span></h2>
+    <p>Elige tu plataforma favorita y lleva la nostalgia a donde quieras.</p>
+  </div>
+
+  <!-- Desktop App -->
+  <div class="app-showcase">
+    <div class="app-visual">
+      <div class="desktop-mockup">
+        <div class="screen">
+          <div class="bar">
+            <span class="dot r"></span>
+            <span class="dot y"></span>
+            <span class="dot g"></span>
+          </div>
+          <img src="www/Magic Kids Logo.png" alt="Magic Kids">
+          <span class="txt">MAGIC KIDS TV</span>
+          <div class="controls-side">
+            <div class="ctrl-btn active">&#9654; Reproducir</div>
+            <div class="ctrl-btn">&#128266; Volumen</div>
+            <div class="ctrl-btn">&#9974; Pantalla completa</div>
+            <div class="ctrl-btn">&#128172; Chat en vivo</div>
+            <div class="ctrl-btn">&#128240; Programacion</div>
+            <div class="ctrl-btn">&#128199; Horarios</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="app-info">
+      <div class="platform-tag">&#128187; WINDOWS</div>
+      <h3>Magic Kids Desktop</h3>
+      <p class="app-desc">La experiencia completa en tu computadora. Reproduccion en alta calidad, chat en vivo, guia de programacion y actualizaciones automaticas.</p>
+      <div class="features-list">
+        <div class="feature-item">
+          <div class="feature-icon blue">&#9654;</div>
+          <div class="feature-text">
+            <h4>Streaming en alta calidad</h4>
+            <p>Reproduccion fluida con HLS.js y controles de volumen avanzados.</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon purple">&#128172;</div>
+          <div class="feature-text">
+            <h4>Chat en vivo</h4>
+            <p>Conectate con otros fans en tiempo real mientras ves tu programa favorito.</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon green">&#128240;</div>
+          <div class="feature-text">
+            <h4>Guia de programacion</h4>
+            <p>Consulta la grilla completa con soporte para multiples zonas horarias.</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon pink">&#9974;</div>
+          <div class="feature-text">
+            <h4>Pantalla completa inmersiva</h4>
+            <p>Atajos de teclado: F para fullscreen, M para mute, Espacio para play/pause.</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon yellow">&#128640;</div>
+          <div class="feature-text">
+            <h4>Actualizaciones automaticas</h4>
+            <p>Siempre con la ultima version sin hacer nada. Se actualiza solo.</p>
+          </div>
+        </div>
+      </div>
+      <div class="app-buttons">
+        <a href="https://github.com/playok24/magic-kids-tv/releases/download/v1.3.7/Magic-Kids-Desktop-Setup-1.3.7.exe" class="btn-download windows" target="_blank">
+          <svg viewBox="0 0 24 24"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+          Descargar para Windows
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Android App -->
+  <div class="app-showcase reverse">
+    <div class="app-visual">
+      <div class="phone-mockup">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="top-bar-m">
+            <img src="www/Magic Kids Logo.png" alt="MK">
+            <span>Magic Kids TV</span>
+          </div>
+          <div class="video-area">
+            <div class="live-badge">EN VIVO</div>
+            <div class="play-btn">&#9654;</div>
+          </div>
+          <div class="ctrls-m">
+            <span class="ico">&#128172;</span>
+            <span class="ico">&#128266;</span>
+            <span class="ico">&#9974;</span>
+          </div>
+          <div class="prog-m">
+            <div class="prog-title">PROGRAMACION</div>
+            <div class="prog-line"><span class="t">11:30</span><span class="n">Caballeros del Zodiaco</span></div>
+            <div class="prog-line"><span class="t">12:00</span><span class="n">Ranma 1/2</span></div>
+            <div class="prog-line"><span class="t">12:30</span><span class="n">El Chavo del 8</span></div>
+            <div class="prog-line"><span class="t">13:00</span><span class="n">Street Sharks</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="app-info">
+      <div class="platform-tag">&#128241; ANDROID</div>
+      <h3>Magic Kids Movil</h3>
+      <p class="app-desc">Lleva la nostalgia en tu bolsillo. La app movil optimizada para Android con la mejor experiencia en pantalla chica.</p>
+      <div class="features-list">
+        <div class="feature-item">
+          <div class="feature-icon blue">&#9654;</div>
+          <div class="feature-text">
+            <h4>Reproduccion nativa HLS</h4>
+            <p>ExoPlayer integrado para streaming fluido sin interrupciones.</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon purple">&#128172;</div>
+          <div class="feature-text">
+            <h4>Chat en vivo</h4>
+            <p>Chatea con la comunidad desde tu celular en tiempo real.</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon green">&#128240;</div>
+          <div class="feature-text">
+            <h4>Programacion adaptada</h4>
+            <p>Grilla de programas optimizada para pantallas moviles.</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon pink">&#9974;</div>
+          <div class="feature-text">
+            <h4>Fullscreen optimizado</h4>
+            <p>Modo pantalla completa con barra de estado oculta para maxima inmersion.</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon yellow">&#128241;</div>
+          <div class="feature-text">
+            <h4>Liviano y rapido</h4>
+            <p>App ligera que no consume recursos innecesarios de tu dispositivo.</p>
+          </div>
+        </div>
+      </div>
+      <div class="app-buttons">
+        <a href="https://playok24.github.io/magic-kids-tv/Magic-Kids-Android.apk" class="btn-download android" target="_blank">
+          <svg viewBox="0 0 24 24"><path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V7H6v11zM3.5 7C2.67 7 2 7.67 2 8.5v7c0 .83.67 1.5 1.5 1.5S5 16.33 5 15.5v-7C5 7.67 4.33 7 3.5 7zm17 0c-.83 0-1.5.67-1.5 1.5v7c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-7c0-.83-.67-1.5-1.5-1.5zm-4.97-5.84l1.3-1.3c.2-.2.2-.51 0-.71-.2-.2-.51-.2-.71 0l-1.48 1.48C13.85 1.23 12.95 1 12 1c-.96 0-1.86.23-2.66.63L7.85.15c-.2-.2-.51-.2-.71 0-.2.2-.2.51 0 .71l1.31 1.31C6.97 3.26 6 5.01 6 7h12c0-1.99-.97-3.75-2.47-4.84zM10 5H9V4h1v1zm5 0h-1V4h1v1z"/></svg>
+          Descargar APK
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Features Detail Grid -->
+  <div class="features-detail">
+    <div class="detail-card">
+      <div class="dc-icon" style="background:rgba(0,204,255,0.1)">&#128274;</div>
+      <h4>Seguro y confiable</h4>
+      <p>Aplicaciones verificadas y sin permisos innecesarios. Tu privacidad es importante.</p>
+    </div>
+    <div class="detail-card">
+      <div class="dc-icon" style="background:rgba(196,160,255,0.1)">&#128640;</div>
+      <h4>Auto-actualizaciones</h4>
+      <p>Desktop se actualiza automaticamente. Android recibe notificaciones de nuevas versiones.</p>
+    </div>
+    <div class="detail-card">
+      <div class="dc-icon" style="background:rgba(0,255,102,0.1)">&#127760;</div>
+      <h4>Multiplataforma</h4>
+      <p>Windows, Android y navegador. Lleva Magic Kids a donde necesites estar.</p>
+    </div>
+    <div class="detail-card">
+      <div class="dc-icon" style="background:rgba(255,107,157,0.1)">&#128172;</div>
+      <h4>Comunidad activa</h4>
+      <p>Chat en vivo, contador de viewers y moderacion para una experiencia segura.</p>
+    </div>
+    <div class="detail-card">
+      <div class="dc-icon" style="background:rgba(255,217,61,0.1)">&#127911;</div>
+      <h4>Audio personalizable</h4>
+      <p>Control total del volumen, mute rapido con un solo clic o atajo de teclado.</p>
+    </div>
+    <div class="detail-card">
+      <div class="dc-icon" style="background:rgba(255,68,68,0.1)">&#11088;</div>
+      <h4>Gratis para siempre</h4>
+      <p>Sin suscripciones, sin anuncios molestos. Magic Kids es y siempre sera gratuito.</p>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIOS -->
+<section id="testimonios">
+  <div class="section-header">
+    <div class="section-tag">Comunidad</div>
+    <h2>Lo que dicen <span>los fans</span></h2>
+    <p>Miles de personas ya reviven la nostalgia con Magic Kids TV. Estas son algunas de sus experiencias.</p>
+  </div>
+
+  <div class="testimonials-grid">
+    <div class="testimonial-card">
+      <div class="stars">&#11088;&#11088;&#11088;&#11088;&#11088;</div>
+      <p class="quote">"Cuando vi Dragon Ball Z en la pantalla, senti que volvia a tener 8 anos. Esta app es pura nostalgia."</p>
+      <div class="author">
+        <div class="avatar">M</div>
+        <div>
+          <div class="name">Martin</div>
+          <div class="role">Fan desde Buenos Aires</div>
+        </div>
+      </div>
+    </div>
+    <div class="testimonial-card">
+      <div class="stars">&#11088;&#11088;&#11088;&#11088;&#11088;</div>
+      <p class="quote">"El chat en vivo es genial, se siente como estar viendo TV con mis amigos de la infancia. Muchas gracias por esto!"</p>
+      <div class="author">
+        <div class="avatar">L</div>
+        <div>
+          <div class="name">Laura</div>
+          <div class="role">Fan desde Mexico</div>
+        </div>
+      </div>
+    </div>
+    <div class="testimonial-card">
+      <div class="stars">&#11088;&#11088;&#11088;&#11088;&#11088;</div>
+      <p class="quote">"Tengo la app en el celu y en la compu. Donde sea que voy, Magic Kids esta conmigo. Sailor Moon nunca muere!"</p>
+      <div class="author">
+        <div class="avatar">C</div>
+        <div>
+          <div class="name">Carlos</div>
+          <div class="role">Fan desde Colombia</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA FINAL -->
+<section id="cta-final">
+  <div class="cta-box">
+    <h2>&#127775; Unite a la comunidad</h2>
+    <p>Descarga Magic Kids TV y revive los mejores momentos de tu infancia. Gratis, sin registro, sin complicaciones.</p>
+    <div class="cta-buttons">
+      <a href="https://github.com/playok24/magic-kids-tv/releases/download/v1.3.7/Magic-Kids-Desktop-Setup-1.3.7.exe" class="btn-download windows" target="_blank">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+        Windows
+      </a>
+      <a href="https://playok24.github.io/magic-kids-tv/Magic-Kids-Android.apk" class="btn-download android" target="_blank">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V7H6v11zM3.5 7C2.67 7 2 7.67 2 8.5v7c0 .83.67 1.5 1.5 1.5S5 16.33 5 15.5v-7C5 7.67 4.33 7 3.5 7zm17 0c-.83 0-1.5.67-1.5 1.5v7c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-7c0-.83-.67-1.5-1.5-1.5zm-4.97-5.84l1.3-1.3c.2-.2.2-.51 0-.71-.2-.2-.51-.2-.71 0l-1.48 1.48C13.85 1.23 12.95 1 12 1c-.96 0-1.86.23-2.66.63L7.85.15c-.2-.2-.51-.2-.71 0-.2.2-.2.51 0 .71l1.31 1.31C6.97 3.26 6 5.01 6 7h12c0-1.99-.97-3.75-2.47-4.84zM10 5H9V4h1v1zm5 0h-1V4h1v1z"/></svg>
+        Android APK
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">
+    <img src="www/Magic Kids Logo.png" alt="Magic Kids TV">
+    <span>MAGIC KIDS TV</span>
+  </div>
+  <p>Magic Kids Television &copy; 2025. La nostalgia de los 90, viva en tu pantalla.</p>
+  <p style="margin-top:8px;font-size:12px;color:#555">Este proyecto es un homenaje no oficial a Magic Kids. Todos los nombres y marcas son propiedad de sus respectivos dueos.</p>
+  <div class="footer-links">
+    <a href="https://github.com/playok24/magic-kids-tv" target="_blank">GitHub</a>
+    <a href="https://www.instagram.com/elmagictv" target="_blank">Instagram</a>
+    <a href="privacy/">Politica de Privacidad</a>
+    <a href="#canal">El Canal</a>
+    <a href="#apps">Descargas</a>
+  </div>
+</footer>
+
+<script>
+// Navbar scroll effect
+const nav = document.getElementById('navbar');
+window.addEventListener('scroll', () => {
+  nav.classList.toggle('scrolled', window.scrollY > 50);
+});
+
+// Mobile menu
+function toggleMobileMenu() {
+  document.getElementById('mobileMenu').classList.toggle('open');
+}
+
+// Smooth scroll for anchor links
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', e => {
+    e.preventDefault();
+    const target = document.querySelector(a.getAttribute('href'));
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+});
+
+// Animate elements on scroll
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.style.opacity = '1';
+      entry.target.style.transform = 'translateY(0)';
+    }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.show-card, .detail-card, .testimonial-card, .app-showcase').forEach(el => {
+  el.style.opacity = '0';
+  el.style.transform = 'translateY(30px)';
+  el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+  observer.observe(el);
+});
+</script>
+</body>
+</html>
