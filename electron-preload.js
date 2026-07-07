@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     onUpdateAvailable: (cb) => ipcRenderer.on("update-available", (e, v) => cb(v)),
     onUpdateProgress: (cb) => ipcRenderer.on("update-progress", (e, p) => cb(p)),
     onUpdateDownloaded: (cb) => ipcRenderer.on("update-downloaded", () => cb()),
+    onUpdateNotAvailable: (cb) => ipcRenderer.on("update-not-available", () => cb()),
     onUpdateError: (cb) => ipcRenderer.on("update-error", (e, msg) => cb(msg)),
     counterFetch: (url) => ipcRenderer.invoke("counter-fetch", url)
 });

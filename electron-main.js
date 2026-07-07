@@ -78,23 +78,40 @@ const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) { app.quit(); }
 else {
   app.on("second-instance", () => { if (win) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); } });
-  app.whenReady().then(() => { startServer(); createWindow(); setTimeout(() => { autoUpdater.checkForUpdates(); }, 10000); });
-  setInterval(() => { autoUpdater.checkForUpdates(); }, 30 * 60 * 1000);
 
-  autoUpdater.on("update-available", (info) => {
+  let updateTimer = null;
+  function checkUpdates() {
+    if (updateTimer) clearTimeout(updateTimer);
+    updateTimer = setTimeout(() => {
+      if (win) win.webContents.send("update-not-available");
+      updateTimer = null;
+    }, 15000);
+    autoUpdater.checkForUpdates();
+  }
+  function onUpdateResult(handler) {
+    return (...args) => {
+      if (updateTimer) { clearTimeout(updateTimer); updateTimer = null; }
+      handler(...args);
+    };
+  }
+
+  app.whenReady().then(() => { startServer(); createWindow(); setTimeout(checkUpdates, 10000); });
+  setInterval(checkUpdates, 30 * 60 * 1000);
+
+  autoUpdater.on("update-available", onUpdateResult((info) => {
     if (win) win.webContents.send("update-available", info.version);
     autoUpdater.checkForUpdatesAndNotify();
-  });
+  }));
   autoUpdater.on("download-progress", (d) => {
     const pct = Math.round(d.percent);
     if (win) win.webContents.send("update-progress", pct);
   });
-  autoUpdater.on("update-downloaded", () => {
+  autoUpdater.on("update-downloaded", onUpdateResult(() => {
     if (win) win.webContents.send("update-downloaded");
-  });
-  autoUpdater.on("error", (err) => {
+  }));
+  autoUpdater.on("error", onUpdateResult((err) => {
     if (win) win.webContents.send("update-error", err.message || "Error de conexion");
-  });
+  }));
 }
 
 function createWindow() {
@@ -118,7 +135,7 @@ function createWindow() {
 ipcMain.on("fullscreen-toggle", () => { if (win) win.setFullScreen(!win.isFullScreen()); });
 ipcMain.on("fullscreen-enter", () => { if (win) win.setFullScreen(true); });
 ipcMain.on("fullscreen-exit", () => { if (win) win.setFullScreen(false); });
-ipcMain.on("check-for-updates", () => { autoUpdater.checkForUpdates(); });
+ipcMain.on("check-for-updates", () => { checkUpdates(); });
 ipcMain.on("install-update", () => { autoUpdater.quitAndInstall(); });
 ipcMain.handle("counter-fetch", async (event, url) => {
   return new Promise((resolve) => {
