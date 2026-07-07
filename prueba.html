@@ -370,19 +370,15 @@ body.light #name-modal .box input:focus{border-color:#6b3fa0}
 
   <div id="remote">
     <div class="row">
-      <button id="mute">🔇 MUTE</button>
-      <button id="volup">🔊 +</button>
-      <button id="voldown">🔉 -</button>
-    </div>
-    <div class="row">
       <button id="fullscreen">⛶ PANTALLA COMPLETA</button>
     </div>
     <div class="row">
       <button id="check-update">🔄 BUSCAR ACTUALIZACION</button>
     </div>
     <div class="row">
-      <button id="ch-down">▼ CANAL -</button>
-      <button id="ch-up">▲ CANAL +</button>
+      <button id="mute">🔇 MUTE</button>
+      <button id="volup">🔊 +</button>
+      <button id="voldown">🔉 -</button>
     </div>
     <div class="vol-row">
       <span style="font-size:11px;color:#888">VOL</span>
@@ -449,9 +445,9 @@ body.light #name-modal .box input:focus{border-color:#6b3fa0}
 </div>
 <button id="exit-video">&#10005;</button>
 
-<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.20"></script>
 <script>
-const STREAM="https://183.bozztv.com/giatv/giatv-magicplus/magicplus/chunks.m3u8";
+const STREAM="http://127.0.0.1:12345/stream";
+const HLS_FALLBACK="https://183.bozztv.com/giatv/giatv-magicplus/magicplus/chunks.m3u8";
 const PROG_JSON_URL="https://playok24.github.io/magic-kids-tv/programacion.json?t="+Date.now();
 
 const video=document.getElementById("video");
@@ -462,7 +458,6 @@ const volIndicator=document.getElementById("vol-indicator");
 const viewCountEl=document.getElementById("view-count");
 const greetingEl=document.getElementById("greeting-text");
 
-let hlsInstance=null;
 let hlsRetries=0;
 let volTimeout=null;
 
@@ -606,7 +601,6 @@ function showVideo(){
   loading.style.display="none";
   staticScreen.style.display="none";
   video.classList.add("visible");
-  startFreezeWatchdog();
 }
 
 function showStatic(){
@@ -614,157 +608,71 @@ function showStatic(){
   video.classList.remove("visible");
   video.style.opacity="0";
   staticScreen.style.display="block";
-  stopFreezeWatchdog();
 }
 
 function showError(msg){
   loading.innerHTML=`<img class="logo-load" src="www/Magic Kids Logo.png" alt="Magic Kids TV"><div style="color:#ff6b6b;font-size:14px;text-align:center;">${msg}</div>`;
   loading.style.display="flex";
-  stopFreezeWatchdog();
 }
 
 function startPlayback(){
   video.muted=false;
   video.volume=volSlider.value/100;
-  video.play().catch(e=>{
-    console.log("Play blocked:",e);
-  });
+  video.play().catch(function(){});
 }
 
-function initHLS(){
-  stopFreezeWatchdog();
+let _ef=null;
+
+var _wto=null,_sto=null,_eto=null;
+
+function clearEvTimers(){
+  clearTimeout(_wto);_wto=null;
+  clearTimeout(_sto);_sto=null;
+  clearTimeout(_eto);_eto=null;
+}
+
+function initStream(){
+  clearInterval(_ef);_ef=null;
+  clearEvTimers();
   hlsRetries=0;
   loading.innerHTML='<img class="logo-load" src="www/Magic Kids Logo.png" alt="Magic Kids TV"><div class="load-text">Sintonizando...</div>';
   loading.style.display="flex";
   staticScreen.style.display="none";
 
-  if(!Hls.isSupported()){
-    if(video.canPlayType('application/vnd.apple.mpegurl')){
-      video.src=STREAM;
-      video.addEventListener("loadedmetadata",()=>startPlayback());
-    } else {
-      showError("Tu navegador no soporta HLS.");
-    }
-    return;
-  }
+  video.removeAttribute("src");
+  video.load();
 
-  if(hlsInstance){
-    hlsInstance.destroy();
-    hlsInstance=null;
-  }
-
-  hlsInstance=new Hls({
-    enableWorker:true,
-    liveSyncDuration:25,
-    liveMaxLatencyDuration:50,
-    maxBufferLength:20,
-    maxMaxBufferLength:40,
-    backBufferLength:5,
-    liveDurationInfinity:true,
-    maxBufferHole:1,
-    maxStarvationDelay:3,
-    manifestLoadingTimeOut:20000,
-    manifestLoadingMaxRetry:20,
-    manifestLoadingRetryDelay:1000,
-    levelLoadingTimeOut:20000,
-    levelLoadingMaxRetry:20,
-    fragLoadingTimeOut:20000,
-    fragLoadingMaxRetry:20,
-    fragLoadingRetryDelay:1000,
-    startFragPrefetch:true,
-    stretchShortVideoSegment:true,
-    lowLatencyMode:false,
-    nudgeOffset:1,
-    nudgeMaxRetry:8,
-    enableSoftwareAES:true,
-    abrEwmaDefaultEstimate:3000000,
-    abrEwmaFastLive:6,
-    abrEwmaSlowLive:15
-  });
-
-  hlsInstance.loadSource(STREAM);
-  hlsInstance.attachMedia(video);
-
-  hlsInstance.on(Hls.Events.MANIFEST_PARSED,()=>{
-    console.log("HLS manifest parsed");
-    startPlayback();
-  });
-
-  video.addEventListener("playing",showVideo);
-
-  hlsInstance.on(Hls.Events.ERROR,(event,data)=>{
-    if(!data.fatal)return;
-
-    if(data.type===Hls.ErrorTypes.NETWORK_ERROR){
-      showError("Sin conexion. Reintentando...");
-      hlsRetries++;
-      if(hlsRetries<15){
-        setTimeout(()=>{
-          if(hlsInstance){hlsInstance.startLoad();}
-        },2000*Math.min(hlsRetries,5));
-      } else {
-        showError("No se pudo conectar.<br>Haz clic para reintentar.");
-        loading.onclick=()=>{loading.onclick=null;hlsRetries=0;initHLS();};
-      }
-    } else if(data.type===Hls.ErrorTypes.MEDIA_ERROR){
-      showError("Error de media. Recuperando...");
-      if(hlsInstance)hlsInstance.recoverMediaError();
-    } else {
-      hlsRetries++;
-      if(hlsRetries<10){
-        showError(`Reiniciando... (${hlsRetries}/10)`);
-        setTimeout(()=>initHLS(),3000*Math.min(hlsRetries,4));
-      } else {
-        showError("No se pudo conectar.<br>Haz clic en RECONECTAR.");
-        loading.onclick=()=>{loading.onclick=null;hlsRetries=0;initHLS();};
-      }
-    }
-  });
-
-  hlsInstance.on(Hls.Events.FRAG_LOADED,()=>{hlsRetries=0;});
-  hlsInstance.on(Hls.Events.LEVEL_LOADED,()=>{hlsRetries=0;});
-
-  hlsInstance.startLoad();
+  video.src=STREAM;
+  video.load();
+  startPlayback();
+  scheduleFreezeCheck();
 }
 
-let freezeWatchdog=null;
-let lastTime=0;
-let freezeCount=0;
-let gentleRecovery=0;
-function startFreezeWatchdog(){
-  stopFreezeWatchdog();
-  lastTime=video.currentTime||0;
-  freezeCount=0;
-  gentleRecovery=0;
-  freezeWatchdog=setInterval(()=>{
-    if(video.paused||video.ended)return;
-    var ct=video.currentTime||0;
-    if(Math.abs(ct-lastTime)<0.5){
-      freezeCount++;
-      if(freezeCount>=15){
-        freezeCount=0;
-        gentleRecovery++;
-        video.play().catch(function(){});
-        if(gentleRecovery>=3){
-          gentleRecovery=0;
-          hlsRetries=0;
-          initHLS();
-        }
-      }
-    }else{
-      freezeCount=Math.max(0,freezeCount-2);
+function scheduleFreezeCheck() {
+  var last = 0;
+  var timer = setInterval(function() {
+    if (video.paused || video.ended) return;
+    var ct = video.currentTime || 0;
+    if (ct > 0 && Math.abs(ct - last) < 0.3) {
+      clearInterval(timer);
+      initStream();
+      return;
     }
-    lastTime=ct;
-  },3000);
-}
-function stopFreezeWatchdog(){
-  clearInterval(freezeWatchdog);
-  freezeWatchdog=null;
+    last = ct;
+  }, 10000);
+  _ef = timer;
 }
 
-initHLS();
-video.addEventListener("playing",function(){startFreezeWatchdog();});
-video.addEventListener("pause",function(){stopFreezeWatchdog();});
+video.addEventListener("playing",function(){clearEvTimers();showVideo();});
+video.addEventListener("waiting",function(){clearEvTimers();_wto=setTimeout(function(){if(video.readyState<3)initStream();},5000);});
+video.addEventListener("stalled",function(){clearEvTimers();_sto=setTimeout(function(){initStream();},3000);});
+video.addEventListener("ended",function(){clearEvTimers();_eto=setTimeout(function(){initStream();},1000);});
+video.addEventListener("error",function(){
+  showError("Sin conexion.<br>Haz clic para reintentar.");
+  loading.onclick=function(){loading.onclick=null;initStream();};
+});
+
+initStream();
 renderProgramacion();
 
 document.getElementById("mute").onclick=function(){video.muted=!video.muted;this.textContent=video.muted?"🔊 UNMUTE":"🔇 MUTE";};
@@ -798,8 +706,7 @@ if(window.electronAPI){
     document.body.classList.toggle("video-only",!!document.fullscreenElement);
   });
 }
-document.getElementById("ch-down").onclick=()=>{showVolIndicator("Canal abajo...");initHLS();};
-document.getElementById("ch-up").onclick=()=>{showVolIndicator("Canal arriba...");initHLS();};
+
 
 function showVolIndicator(txt){
   volIndicator.textContent=txt;
@@ -809,6 +716,8 @@ function showVolIndicator(txt){
 }
 
 document.addEventListener("keydown",e=>{
+  var tag=e.target&&e.target.tagName;
+  if(tag==="INPUT"||tag==="TEXTAREA"||tag==="SELECT")return;
   if(e.key==="ArrowUp"){volSlider.value=Math.min(100,parseInt(volSlider.value)+5);volSlider.oninput();}
   if(e.key==="ArrowDown"){volSlider.value=Math.max(0,parseInt(volSlider.value)-5);volSlider.oninput();}
   if(e.key===" "||e.key==="k"){e.preventDefault();video.paused?video.play():video.pause();}
