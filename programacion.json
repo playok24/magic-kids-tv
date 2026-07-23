@@ -5,7 +5,7 @@
   {"hora":"01:30","programa":"El Mundo de Beakman"},
   {"hora":"02:00","programa":"La Noche Magic"},
   {"hora":"06:30","programa":"Sailor Moon"},
-  {"hora":"07:00","programa":"Le Temes a la Oscuridad?"},
+  {"hora":"07:00","programa":"Detective Conan"},
   {"hora":"07:30","programa":"Voltron"},
   {"hora":"08:00","programa":"Dragon Ball Gt."},
   {"hora":"08:30","programa":"Las Guerreras Magicas"},
@@ -21,7 +21,7 @@
   {"hora":"13:30","programa":"Samurai Warrior"},
   {"hora":"14:00","programa":"Alf"},
   {"hora":"14:30","programa":"Sailor Moon"},
-  {"hora":"15:00","programa":"Le Temes a la Oscuridad?"},
+  {"hora":"15:00","programa":"Detective Conan"},
   {"hora":"15:30","programa":"Voltron"},
   {"hora":"16:00","programa":"Dragon Ball Gt."},
   {"hora":"16:30","programa":"Las Guerreras Magicas"},
@@ -37,6 +37,6 @@
   {"hora":"21:30","programa":"Samurai Warrior"},
   {"hora":"22:00","programa":"Alf"},
   {"hora":"22:30","programa":"Sailor Moon"},
-  {"hora":"23:00","programa":"Le Temes a la Oscuridad?"},
+  {"hora":"23:00","programa":"Detective Conan"},
   {"hora":"23:30","programa":"Voltron"}
 ]
