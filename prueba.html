@@ -624,6 +624,7 @@ function startPlayback(){
 }
 
 let _ef=null;
+let hls=null;
 
 var _wto=null,_sto=null,_eto=null;
 
@@ -633,9 +634,12 @@ function clearEvTimers(){
   clearTimeout(_eto);_eto=null;
 }
 
+function destroyHls(){if(hls){hls.destroy();hls=null;}}
+
 function initStream(){
   clearInterval(_ef);_ef=null;
   clearEvTimers();
+  destroyHls();
   hlsRetries=0;
   loading.innerHTML='<img class="logo-load" src="www/Magic Kids Logo.png" alt="Magic Kids TV"><div class="load-text">Sintonizando...</div>';
   loading.style.display="flex";
@@ -643,11 +647,69 @@ function initStream(){
 
   video.removeAttribute("src");
   video.load();
-
   video.src=STREAM;
   video.load();
   startPlayback();
+
+  video.onerror=function(){
+    video.onerror=null;
+    console.log("Local stream failed, falling back to HLS");
+    initHls(HLS_FALLBACK);
+  };
+
   scheduleFreezeCheck();
+}
+
+function initHls(url){
+  clearInterval(_ef);_ef=null;
+  clearEvTimers();
+  destroyHls();
+  hlsRetries=0;
+  loading.innerHTML='<img class="logo-load" src="www/Magic Kids Logo.png" alt="Magic Kids TV"><div class="load-text">Sintonizando...</div>';
+  loading.style.display="flex";
+  staticScreen.style.display="none";
+
+  if(!Hls.isSupported()){
+    if(video.canPlayType("application/vnd.apple.mpegurl")){
+      video.src=url;
+      video.onloadedmetadata=function(){startPlayback();};
+    }else{showError("Tu navegador no soporta HLS.");}
+    return;
+  }
+
+  hls=new Hls({
+    enableWorker:true,liveSyncDuration:25,liveMaxLatencyDuration:50,
+    maxBufferLength:30,maxMaxBufferLength:60,backBufferLength:10,
+    liveDurationInfinity:true,maxBufferHole:2,maxStarvationDelay:5,
+    manifestLoadingTimeOut:20000,manifestLoadingMaxRetry:20,manifestLoadingRetryDelay:1000,
+    levelLoadingTimeOut:20000,levelLoadingMaxRetry:20,
+    fragLoadingTimeOut:20000,fragLoadingMaxRetry:20,fragLoadingRetryDelay:1000,
+    startFragPrefetch:true,stretchShortVideoSegment:true,lowLatencyMode:false,
+    nudgeOffset:1,nudgeMaxRetry:8,enableSoftwareAES:true,
+    abrEwmaDefaultEstimate:3000000,abrEwmaFastLive:6,abrEwmaSlowLive:15
+  });
+  hls.loadSource(url);
+  hls.attachMedia(video);
+  hls.on(Hls.Events.MANIFEST_PARSED,function(){startPlayback();});
+  hls.on(Hls.Events.ERROR,function(e,d){
+    if(!d.fatal)return;
+    if(d.type===Hls.ErrorTypes.NETWORK_ERROR){
+      showError("Sin conexion... Reintentando...");
+      hlsRetries++;
+      if(hlsRetries<15){setTimeout(function(){if(hls)hls.startLoad();},2000*Math.min(hlsRetries,5));}
+      else{showError("No se pudo conectar.<br>Haz clic para reintentar.");loading.onclick=function(){loading.onclick=null;initHls(url);};}
+    }else if(d.type===Hls.ErrorTypes.MEDIA_ERROR){
+      showError("Error de media. Recuperando...");
+      if(hls)hls.recoverMediaError();
+    }else{
+      hlsRetries++;
+      if(hlsRetries<10){showError("Reiniciando... ("+hlsRetries+"/10)");setTimeout(function(){initHls(url);},3000*Math.min(hlsRetries,4));}
+      else{showError("Error persistente.<br>Haz clic para reintentar.");loading.onclick=function(){loading.onclick=null;initHls(url);};}
+    }
+  });
+  hls.on(Hls.Events.FRAG_LOADED,function(){hlsRetries=0;});
+  hls.on(Hls.Events.LEVEL_LOADED,function(){hlsRetries=0;});
+  hls.startLoad();
 }
 
 function scheduleFreezeCheck() {
@@ -657,7 +719,7 @@ function scheduleFreezeCheck() {
     var ct = video.currentTime || 0;
     if (ct > 0 && Math.abs(ct - last) < 0.3) {
       clearInterval(timer);
-      initStream();
+      if(hls){initHls(HLS_FALLBACK);}else{initStream();}
       return;
     }
     last = ct;
@@ -666,8 +728,8 @@ function scheduleFreezeCheck() {
 }
 
 video.addEventListener("playing",function(){clearEvTimers();showVideo();});
-video.addEventListener("waiting",function(){clearEvTimers();_wto=setTimeout(function(){if(video.readyState<3)initStream();},5000);});
-video.addEventListener("stalled",function(){clearEvTimers();_sto=setTimeout(function(){initStream();},3000);});
+video.addEventListener("waiting",function(){clearEvTimers();_wto=setTimeout(function(){if(video.readyState<3){if(hls){initHls(HLS_FALLBACK);}else{initStream();}}},5000);});
+video.addEventListener("stalled",function(){clearEvTimers();_sto=setTimeout(function(){if(hls){initHls(HLS_FALLBACK);}else{initStream();}},3000);});
 video.addEventListener("ended",function(){clearEvTimers();_eto=setTimeout(function(){initStream();},1000);});
 video.addEventListener("error",function(){
   showError("Sin conexion.<br>Haz clic para reintentar.");
