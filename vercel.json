@@ -1,0 +1,9 @@
+{
+  "installCommand": "echo 'no dependencies needed'",
+  "builds": [
+    { "src": "api/**/*.js", "use": "@vercel/node" }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/$1" }
+  ]
+}
