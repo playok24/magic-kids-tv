@@ -10,6 +10,11 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ active: false, error: "Email invalido" });
   }
 
+  const ADMIN_EMAILS = ["hgastonsanchez@gmail.com"];
+  if (ADMIN_EMAILS.includes(email.toLowerCase())) {
+    return res.json({ active: true, admin: true });
+  }
+
   const TOKEN = process.env.MP_ACCESS_TOKEN;
   const PLAN_ID = "bf79a3ff88fb416d82052b8429521eda";
 

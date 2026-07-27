@@ -513,6 +513,7 @@ body.fs #video-wrap{position:fixed;top:0;bottom:0;left:0;right:0;padding-top:0;h
 <script>
 (function(){
   var SUB_SERVER="https://magic-kids-tv.vercel.app";
+  var ADMIN_EMAILS=["hgastonsanchez@gmail.com"];
   var deviceId=localStorage.getItem("mk_device_id");
   if(!deviceId){
     deviceId="dev_"+Math.random().toString(36).substr(2,9)+Date.now().toString(36);
@@ -570,10 +571,18 @@ body.fs #video-wrap{position:fixed;top:0;bottom:0;left:0;right:0;padding-top:0;h
   };
 
   document.getElementById("sub-verify-btn").onclick=function(){
-    var email=document.getElementById("sub-email").value.trim();
+    var email=document.getElementById("sub-email").value.trim().toLowerCase();
     if(!email||email.indexOf("@")===-1){
       document.getElementById("sub-status").textContent="Ingresa un email valido";
       document.getElementById("sub-status").className="sub-status err";
+      return;
+    }
+    if(ADMIN_EMAILS.indexOf(email)!==-1){
+      localStorage.setItem("mk_sub_email",email);
+      db.ref("subscriptions/"+deviceId).set({email:email,active:true,activatedAt:firebase.database.ServerValue.TIMESTAMP,planId:"bf79a3ff88fb416d82052b8429521eda"});
+      document.getElementById("sub-status").textContent="Acceso admin activado!";
+      document.getElementById("sub-status").className="sub-status ok";
+      setTimeout(function(){document.getElementById("sub-modal").classList.remove("show");},1000);
       return;
     }
     var btn=document.getElementById("sub-verify-btn");

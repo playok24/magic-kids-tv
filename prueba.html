@@ -1168,6 +1168,7 @@ if(localStorage.getItem("mk_chat_admin")==="1"){chatAdmin=true;addAdminStyles();
 
 var SUB_SERVER="https://magic-kids-tv.vercel.app";
 var CAST_CHECKOUT_URL="https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=bf79a3ff88fb416d82052b8429521eda";
+var ADMIN_EMAILS=["hgastonsanchez@gmail.com"];
 var castActive=false;
 var deviceId=localStorage.getItem("mk_device_id");
 if(!deviceId){
@@ -1210,10 +1211,18 @@ function onCastClick(){
 }
 
 function verifySubscription(){
-  var email=document.getElementById("sub-email").value.trim();
+  var email=document.getElementById("sub-email").value.trim().toLowerCase();
   if(!email||!email.includes("@")){
     document.getElementById("sub-status").textContent="Ingresa un email valido";
     document.getElementById("sub-status").className="sub-status err";
+    return;
+  }
+  if(ADMIN_EMAILS.indexOf(email)!==-1){
+    localStorage.setItem("mk_sub_email",email);
+    db.ref("subscriptions/"+deviceId).set({email:email,active:true,activatedAt:firebase.database.ServerValue.TIMESTAMP,planId:"bf79a3ff88fb416d82052b8429521eda"});
+    document.getElementById("sub-status").textContent="Acceso admin activado!";
+    document.getElementById("sub-status").className="sub-status ok";
+    setTimeout(function(){document.getElementById("sub-modal").classList.remove("show");},1000);
     return;
   }
   var btn=document.getElementById("sub-verify-btn");
