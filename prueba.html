@@ -339,6 +339,59 @@ body.light #name-modal .box h3{color:#6b3fa0}
 body.light #name-modal .box p{color:#555}
 body.light #name-modal .box input{background:#f0f0f5;border-color:#ddd;color:#222}
 body.light #name-modal .box input:focus{border-color:#6b3fa0}
+
+#cast-btn{
+  width:100%;padding:10px;border:1px solid #333;border-radius:8px;
+  background:rgba(255,255,255,0.04);color:#ccc;
+  font-size:12px;font-weight:600;cursor:pointer;
+  transition:all .15s;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px;
+}
+#cast-btn:hover{background:rgba(0,204,255,0.1);border-color:#00ccff;color:#fff}
+#cast-btn.active{background:rgba(0,204,255,0.15);border-color:#00ccff;color:#00ccff}
+#cast-btn .lock{font-size:10px;opacity:0.5}
+
+#sub-modal{
+  position:fixed;inset:0;z-index:200;
+  background:rgba(0,0,0,0.85);
+  display:none;justify-content:center;align-items:center;
+}
+#sub-modal.show{display:flex}
+#sub-modal .box{
+  background:#13131f;border:1px solid #333;border-radius:16px;
+  padding:28px 24px;width:85%;max-width:380px;text-align:center;
+}
+#sub-modal .box h3{color:#c4a0ff;font-size:17px;margin-bottom:6px}
+#sub-modal .box p{color:#888;font-size:12px;margin-bottom:12px}
+#sub-modal .box a{color:#00ccff;font-size:13px;font-weight:700;text-decoration:none;word-break:break-all}
+#sub-modal .box a:hover{text-decoration:underline}
+#sub-modal .box input{
+  width:100%;padding:12px 14px;border-radius:10px;
+  border:1px solid #444;background:#1a1a2e;color:#fff;
+  font-size:14px;text-align:center;outline:none;margin:14px 0 10px;
+}
+#sub-modal .box input:focus{border-color:#c4a0ff}
+#sub-modal .box button{
+  width:100%;padding:12px;border:none;border-radius:10px;
+  background:linear-gradient(135deg,#7c3aed,#5b21b6);
+  color:#fff;font-size:14px;font-weight:700;cursor:pointer;
+}
+#sub-modal .box button:active{opacity:0.8;transform:scale(0.98)}
+#sub-modal .box .sub-status{font-size:12px;margin-top:10px;min-height:18px}
+#sub-modal .box .sub-status.ok{color:#00ff66}
+#sub-modal .box .sub-status.err{color:#ff6b6b}
+#sub-modal .box .sub-status.loading{color:#00ccff}
+#sub-modal .box .close-sub{
+  margin-top:12px;width:100%;padding:10px;border:none;border-radius:10px;
+  background:rgba(255,255,255,0.06);color:#888;font-size:13px;font-weight:700;cursor:pointer;
+}
+#sub-modal .box .close-sub:hover{background:rgba(255,255,255,0.1);color:#fff}
+
+body.light #sub-modal .box{background:#fff;border-color:#ddd}
+body.light #sub-modal .box h3{color:#6b3fa0}
+body.light #sub-modal .box p{color:#555}
+body.light #sub-modal .box input{background:#f0f0f5;border-color:#ddd;color:#222}
+body.light #sub-modal .box input:focus{border-color:#6b3fa0}
+body.light #sub-modal .box .close-sub{background:rgba(0,0,0,0.06);color:#555}
 </style>
 </head>
 <body>
@@ -371,6 +424,9 @@ body.light #name-modal .box input:focus{border-color:#6b3fa0}
   <div id="remote">
     <div class="row">
       <button id="fullscreen">⛶ PANTALLA COMPLETA</button>
+    </div>
+    <div class="row">
+      <button id="cast-btn" onclick="onCastClick()"><span id="cast-icon">&#128252;</span> CAST<span class="lock" id="cast-lock"> &#128274;</span></button>
     </div>
     <div class="row">
       <button id="check-update">🔄 BUSCAR ACTUALIZACION</button>
@@ -441,6 +497,19 @@ body.light #name-modal .box input:focus{border-color:#6b3fa0}
     <input type="text" id="name-input" placeholder="Tu nombre" maxlength="20" autocomplete="off">
     <button id="name-ok">ENTRAR</button>
     <button id="name-cancel" style="display:none;margin-top:8px;width:100%;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,0.06);color:#888;font-size:13px;font-weight:700;cursor:pointer">Cancelar</button>
+  </div>
+</div>
+
+<div id="sub-modal">
+  <div class="box">
+    <h3>&#128252; Suscribite para Castear</h3>
+    <p>Obtiene acceso al boton Cast para transmitir a tu TV</p>
+    <a href="https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=bf79a3ff88fb416d82052b8429521eda" target="_blank" rel="noopener">&#128179; Suscribirme ahora</a>
+    <p style="margin-top:14px;font-size:11px;color:#666">Despues de pagar, ingresa tu email de MercadoPago para verificar</p>
+    <input type="email" id="sub-email" placeholder="Tu email de MercadoPago" autocomplete="off">
+    <button id="sub-verify-btn" onclick="verifySubscription()">VERIFICAR PAGO</button>
+    <div class="sub-status" id="sub-status"></div>
+    <button class="close-sub" onclick="document.getElementById('sub-modal').classList.remove('show')">CERRAR</button>
   </div>
 </div>
 <button id="exit-video">&#10005;</button>
@@ -1096,6 +1165,98 @@ document.getElementById("admin-deactivate-btn").onclick=function(){
   chatAdminPopup.classList.remove("show");
 };
 if(localStorage.getItem("mk_chat_admin")==="1"){chatAdmin=true;addAdminStyles();}
+
+var SUB_SERVER="https://magic-kids-tv.vercel.app";
+var CAST_CHECKOUT_URL="https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=bf79a3ff88fb416d82052b8429521eda";
+var castActive=false;
+var deviceId=localStorage.getItem("mk_device_id");
+if(!deviceId){
+  deviceId="dev_"+Math.random().toString(36).substr(2,9)+Date.now().toString(36);
+  localStorage.setItem("mk_device_id",deviceId);
+}
+
+function updateCastUI(){
+  var btn=document.getElementById("cast-btn");
+  var lock=document.getElementById("cast-lock");
+  if(castActive){
+    btn.classList.add("active");
+    lock.innerHTML=" &#9989;";
+  }else{
+    btn.classList.remove("active");
+    lock.innerHTML=" &#128274;";
+  }
+}
+
+db.ref("subscriptions/"+deviceId).on("value",function(snap){
+  var val=snap.val();
+  castActive=!!(val&&val.active);
+  updateCastUI();
+});
+
+function onCastClick(){
+  if(castActive){
+    if(video.remote&&video.remote.prompt){
+      video.remote.prompt()["catch"](function(){});
+    }else if(navigator.presentation&&navigator.presentation.defaultRequest){
+      navigator.presentation.defaultRequest.start()["catch"](function(){});
+    }
+  }else{
+    document.getElementById("sub-modal").classList.add("show");
+    var saved=localStorage.getItem("mk_sub_email")||"";
+    document.getElementById("sub-email").value=saved;
+    document.getElementById("sub-status").textContent="";
+    document.getElementById("sub-status").className="sub-status";
+  }
+}
+
+function verifySubscription(){
+  var email=document.getElementById("sub-email").value.trim();
+  if(!email||!email.includes("@")){
+    document.getElementById("sub-status").textContent="Ingresa un email valido";
+    document.getElementById("sub-status").className="sub-status err";
+    return;
+  }
+  var btn=document.getElementById("sub-verify-btn");
+  btn.disabled=true;
+  btn.textContent="VERIFICANDO...";
+  document.getElementById("sub-status").textContent="Consultando MercadoPago...";
+  document.getElementById("sub-status").className="sub-status loading";
+
+  fetch(SUB_SERVER+"/api/verify-subscription",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({email:email})
+  }).then(function(r){return r.json();}).then(function(data){
+    btn.disabled=false;
+    btn.textContent="VERIFICAR PAGO";
+    if(data.active){
+      localStorage.setItem("mk_sub_email",email);
+      db.ref("subscriptions/"+deviceId).set({
+        email:email,
+        active:true,
+        activatedAt:firebase.database.ServerValue.TIMESTAMP,
+        planId:"bf79a3ff88fb416d82052b8429521eda"
+      });
+      document.getElementById("sub-status").textContent="Suscripcion verificada! Cast activado.";
+      document.getElementById("sub-status").className="sub-status ok";
+      setTimeout(function(){document.getElementById("sub-modal").classList.remove("show");},1500);
+    }else{
+      document.getElementById("sub-status").textContent="No se encontro una suscripcion activa. Verifica que pagaste con el mismo email.";
+      document.getElementById("sub-status").className="sub-status err";
+    }
+  }).catch(function(){
+    btn.disabled=false;
+    btn.textContent="VERIFICAR PAGO";
+    document.getElementById("sub-status").textContent="Error de conexion con el servidor. Intenta de nuevo.";
+    document.getElementById("sub-status").className="sub-status err";
+  });
+}
+
+document.getElementById("sub-email").onkeydown=function(e){
+  if(e.key==="Enter")verifySubscription();
+};
+
+updateCastUI();
 </script>
 </body>
 </html>

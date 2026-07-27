@@ -1,10 +1,2 @@
 node_modules
-*.html
-www
 dist
-server
-scripts
-src
-capacitor.config.json
-android
-ios
