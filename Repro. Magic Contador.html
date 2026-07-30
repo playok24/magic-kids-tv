@@ -83,17 +83,19 @@ var tzo=parseInt(localStorage.getItem("mc_tzo")||"-3");
 tz.value=localStorage.getItem("mc_tzo")||"-3";
 
 // Firebase
-var fc={apiKey:"AIzaSyDM7YiLoP5Q-jTB1BBbMluvWL1LIPqCtxI",authDomain:"contadores-magic.firebaseapp.com",databaseURL:"https://contadores-magic-default-rtdb.firebaseio.com",projectId:"contadores-magic",storageBucket:"contadores-magic.firebasestorage.app",messagingSenderId:"58723817117",appId:"1:58723817117:web:f479abaeacf191364ae674"};
-firebase.initializeApp(fc);
-firebase.auth().signInAnonymously().catch(function(e){console.log("auth err",e);});
-var db=firebase.database();
-var sid="mcc_"+Math.random().toString(36).substr(2,9);
-var sr=db.ref("sessions/"+sid);
-sr.set({localTs:Date.now()});
-setInterval(function(){sr.update({localTs:Date.now()});},10000);
-db.ref("sessions").on("value",function(s){var c=0,n=Date.now()-60000;s.forEach(function(x){var v=x.val();if(v&&v.localTs&&v.localTs>n)c++;});vc.textContent=c;});
-window.addEventListener("beforeunload",function(){sr.remove();});
-window.addEventListener("pagehide",function(){sr.remove();});
+try {
+  var fc={apiKey:"AIzaSyDM7YiLoP5Q-jTB1BBbMluvWL1LIPqCtxI",authDomain:"contadores-magic.firebaseapp.com",databaseURL:"https://contadores-magic-default-rtdb.firebaseio.com",projectId:"contadores-magic",storageBucket:"contadores-magic.firebasestorage.app",messagingSenderId:"58723817117",appId:"1:58723817117:web:f479abaeacf191364ae674"};
+  if(!firebase.apps.length)firebase.initializeApp(fc);
+  firebase.auth().signInAnonymously().catch(function(e){console.log("auth err",e);});
+  var db=firebase.database();
+  var sid="mcc_"+Math.random().toString(36).substr(2,9);
+  var sr=db.ref("sessions/"+sid);
+  sr.set({localTs:Date.now()});
+  setInterval(function(){sr.update({localTs:Date.now()});},10000);
+  db.ref("sessions").on("value",function(s){var c=0,n=Date.now()-60000;s.forEach(function(x){var v=x.val();if(v&&v.localTs&&v.localTs>n)c++;});vc.textContent=c;});
+  window.addEventListener("beforeunload",function(){sr.remove();});
+  window.addEventListener("pagehide",function(){sr.remove();});
+} catch(e) { console.error("Firebase init failed",e); }
 
 // Programacion
 tz.onchange=function(){tzo=parseInt(this.value);localStorage.setItem("mc_tzo",this.value);renderP();};

@@ -587,9 +587,11 @@ var PROG_URL="https://playok24.github.io/magic-kids-tv/programacion.json";
 var STREAM_URL="https://183.bozztv.com/giatv/giatv-magicplus/magicplus/chunks.m3u8";
 var APP_VER="1.3.6";
 
-if(!firebase.apps.length){firebase.initializeApp({apiKey:FW_API,databaseURL:FW_DB,authDomain:"contadores-magic.firebaseapp.com",projectId:"contadores-magic",storageBucket:"contadores-magic.firebasestorage.app",messagingSenderId:"58723817117",appId:"1:58723817117:web:f479abaeacf191364ae674"});}
-firebase.auth().signInAnonymously().catch(function(e){console.log("auth err",e);});
-var db=firebase.database();
+try {
+  if(!firebase.apps.length){firebase.initializeApp({apiKey:FW_API,databaseURL:FW_DB,authDomain:"contadores-magic.firebaseapp.com",projectId:"contadores-magic",storageBucket:"contadores-magic.firebasestorage.app",messagingSenderId:"58723817117",appId:"1:58723817117:web:f479abaeacf191364ae674"});}
+  firebase.auth().signInAnonymously().catch(function(e){console.log("auth err",e);});
+  var db=firebase.database();
+} catch(e) { console.error("Firebase init failed",e); var db=null; }
 
 var deviceId=localStorage.getItem("mk_device_id");
 if(!deviceId){deviceId="dev_"+Math.random().toString(36).substr(2,9)+Date.now().toString(36);localStorage.setItem("mk_device_id",deviceId);}
@@ -619,16 +621,18 @@ if(video){
   video.load();
 }
 
-var sessionId="mk_"+Math.random().toString(36).substr(2,9);
-var sessionRef=db.ref("sessions/"+sessionId);
-sessionRef.set({localTs:Date.now()});
-setInterval(function(){sessionRef.update({localTs:Date.now()});},10000);
+if(db){
+  var sessionId="mk_"+Math.random().toString(36).substr(2,9);
+  var sessionRef=db.ref("sessions/"+sessionId);
+  sessionRef.set({localTs:Date.now()});
+  setInterval(function(){sessionRef.update({localTs:Date.now()});},10000);
 
-db.ref("sessions").on("value",function(snap){
-  var c=0,n=Date.now()-60000;
-  snap.forEach(function(x){var v=x.val();if(v&&v.localTs&&v.localTs>n)c++;});
-  var el=document.getElementById("view-count");if(el)el.textContent=c;
-});
+  db.ref("sessions").on("value",function(snap){
+    var c=0,n=Date.now()-60000;
+    snap.forEach(function(x){var v=x.val();if(v&&v.localTs&&v.localTs>n)c++;});
+    var el=document.getElementById("view-count");if(el)el.textContent=c;
+  });
+}
 
 var tzSelect=document.getElementById("tz-select");
 var progList=document.getElementById("prog-list-mobile");
