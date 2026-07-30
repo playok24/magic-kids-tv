@@ -204,20 +204,6 @@ body{background:transparent;font-family:'Segoe UI',system-ui,sans-serif}
 
 <script>
 (function(){
-var fc={apiKey:"AIzaSyDM7YiLoP5Q-jTB1BBbMluvWL1LIPqCtxI",authDomain:"contadores-magic.firebaseapp.com",databaseURL:"https://contadores-magic-default-rtdb.firebaseio.com",projectId:"contadores-magic",storageBucket:"contadores-magic.firebasestorage.app",messagingSenderId:"58723817117",appId:"1:58723817117:web:f479abaeacf191364ae674"};
-if(!firebase.apps.length)firebase.initializeApp(fc);
-firebase.auth().signInAnonymously().catch(function(e){console.log("auth err",e);});
-var db=firebase.database();
-
-var chatAdmin=false;
-var chatSessionId="chat_"+Math.random().toString(36).substr(2,9);
-var chatBannedRef=db.ref("chat/banned");
-var chatMessagesRef=db.ref("chat/messages");
-var chatLikesRef=db.ref("chat/likes");
-var deviceId="";
-try{deviceId=localStorage.getItem("mk_device_id")||"";}catch(e){}
-if(!deviceId){deviceId="dev_"+Math.random().toString(36).substr(2,9)+Date.now().toString(36);try{localStorage.setItem("mk_device_id",deviceId);}catch(e){}}
-
 var loginEl=document.getElementById("mk-login");
 var ml=document.getElementById("mk-ml");
 var ci=document.getElementById("mk-ci");
@@ -230,6 +216,52 @@ var loginAvatarEl=document.getElementById("mk-lav");
 var loginFileEl=document.getElementById("mk-lf");
 var userAvatar=null;
 try{userAvatar=localStorage.getItem("mk_user_avatar");}catch(e){}
+
+var userName="";
+var chatReady="";
+try{userName=localStorage.getItem("mk_user")||"";}catch(e){}
+try{chatReady=localStorage.getItem("mk_chat_ready")||"";}catch(e){}
+
+function avatarColor(name){
+  var hash=0;
+  for(var i=0;i<name.length;i++){hash=name.charCodeAt(i)+((hash<<5)-hash);}
+  var colors=["#7c3aed","#2563eb","#059669","#d97706","#dc2626","#db2777","#0891b2","#4f46e5"];
+  return colors[Math.abs(hash)%colors.length];
+}
+
+function updateLoginPreview(){
+  if(!loginAvatarEl)return;
+  if(userAvatar){
+    loginAvatarEl.innerHTML='<img src="'+userAvatar+'" alt="avatar">';
+  }else{
+    var n=userName||"";
+    var initial=n?n.charAt(0).toUpperCase():"?";
+    var color=avatarColor(n);
+    loginAvatarEl.innerHTML='<span class="mk-ai" style="background:'+color+'">'+initial+'</span>';
+  }
+}
+
+function renderAvatar(){
+  var el=document.getElementById("mk-ua");
+  if(!el)return;
+  if(userAvatar){
+    el.innerHTML='<img src="'+userAvatar+'" alt="avatar">';
+  }else{
+    var initial=userName?userName.charAt(0).toUpperCase():"?";
+    var color=avatarColor(userName);
+    el.innerHTML='<span class="mk-ai" style="background:'+color+'">'+initial+'</span>';
+  }
+}
+
+function showUserBar(){
+  document.getElementById("mk-ub").style.display="flex";
+  renderAvatar();
+  document.getElementById("mk-un").textContent=userName;
+}
+
+updateLoginPreview();
+
+if(chatReady&&userName){loginEl.classList.add("hidden");showUserBar();}
 
 if(loginAvatarEl)loginAvatarEl.onclick=function(){if(loginFileEl)loginFileEl.click();};
 if(loginFileEl)loginFileEl.onchange=function(e){
@@ -251,52 +283,6 @@ if(loginFileEl)loginFileEl.onchange=function(e){
   reader.readAsDataURL(file);
 };
 
-function updateLoginPreview(){
-  if(!loginAvatarEl)return;
-  if(userAvatar){
-    loginAvatarEl.innerHTML='<img src="'+userAvatar+'" alt="avatar">';
-  }else{
-    var n=userName||"";
-    var initial=n?n.charAt(0).toUpperCase():"?";
-    var color=avatarColor(n);
-    loginAvatarEl.innerHTML='<span class="mk-ai" style="background:'+color+'">'+initial+'</span>';
-  }
-}
-
-var userName="";
-var chatReady="";
-try{userName=localStorage.getItem("mk_user")||"";}catch(e){}
-try{chatReady=localStorage.getItem("mk_chat_ready")||"";}catch(e){}
-
-updateLoginPreview();
-
-function avatarColor(name){
-  var hash=0;
-  for(var i=0;i<name.length;i++){hash=name.charCodeAt(i)+((hash<<5)-hash);}
-  var colors=["#7c3aed","#2563eb","#059669","#d97706","#dc2626","#db2777","#0891b2","#4f46e5"];
-  return colors[Math.abs(hash)%colors.length];
-}
-
-function renderAvatar(){
-  var el=document.getElementById("mk-ua");
-  if(!el)return;
-  if(userAvatar){
-    el.innerHTML='<img src="'+userAvatar+'" alt="avatar">';
-  }else{
-    var initial=userName?userName.charAt(0).toUpperCase():"?";
-    var color=avatarColor(userName);
-    el.innerHTML='<span class="mk-ai" style="background:'+color+'">'+initial+'</span>';
-  }
-}
-
-function showUserBar(){
-  document.getElementById("mk-ub").style.display="flex";
-  renderAvatar();
-  document.getElementById("mk-un").textContent=userName;
-}
-
-if(chatReady&&userName){loginEl.classList.add("hidden");showUserBar();}
-
 document.getElementById("mk-nok").onclick=function(){
   var v=document.getElementById("mk-ni").value.trim();
   if(!v)return;
@@ -310,6 +296,22 @@ document.getElementById("mk-nok").onclick=function(){
   ci.focus();
 };
 document.getElementById("mk-ni").onkeydown=function(e){if(e.key==="Enter")document.getElementById("mk-nok").click();};
+
+try {
+  var fc={apiKey:"AIzaSyDM7YiLoP5Q-jTB1BBbMluvWL1LIPqCtxI",authDomain:"contadores-magic.firebaseapp.com",databaseURL:"https://contadores-magic-default-rtdb.firebaseio.com",projectId:"contadores-magic",storageBucket:"contadores-magic.firebasestorage.app",messagingSenderId:"58723817117",appId:"1:58723817117:web:f479abaeacf191364ae674"};
+  if(!firebase.apps.length)firebase.initializeApp(fc);
+  firebase.auth().signInAnonymously().catch(function(e){console.log("auth err",e);});
+  var db=firebase.database();
+} catch(e) { console.error("Firebase init failed",e); return; }
+
+var chatAdmin=false;
+var chatSessionId="chat_"+Math.random().toString(36).substr(2,9);
+var chatBannedRef=db.ref("chat/banned");
+var chatMessagesRef=db.ref("chat/messages");
+var chatLikesRef=db.ref("chat/likes");
+var deviceId="";
+try{deviceId=localStorage.getItem("mk_device_id")||"";}catch(e){}
+if(!deviceId){deviceId="dev_"+Math.random().toString(36).substr(2,9)+Date.now().toString(36);try{localStorage.setItem("mk_device_id",deviceId);}catch(e){}}
 
 chatBannedRef.child(deviceId).on("value",function(snap){
   if(snap.exists()){ci.disabled=true;cs.disabled=true;ci.placeholder="Has sido bloqueado del chat";}
