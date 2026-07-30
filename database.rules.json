@@ -1,0 +1,51 @@
+{
+  "rules": {
+    ".read": "auth !== null",
+    ".write": "auth !== null",
+    "sessions": {
+      ".indexOn": "localTs",
+      "$sid": {
+        ".validate": "newData.hasChildren(['localTs']) && newData.child('localTs').isNumber() && newData.child('localTs').val() <= now"
+      }
+    },
+    "chat": {
+      "messages": {
+        "$mid": {
+          ".validate": "newData.hasChildren(['user','text','timestamp']) && newData.child('user').isString() && newData.child('text').isString() && newData.child('timestamp').isNumber()"
+        }
+      },
+      "likes": {
+        "$mid": {
+          "$uid": {
+            ".validate": "newData.val() === true"
+          }
+        }
+      },
+      "banned": {
+        "$uid": {
+          ".validate": "newData.hasChildren(['bannedAt']) && newData.child('bannedAt').isNumber() && newData.child('bannedAt').val() <= now"
+        }
+      },
+      "online": {
+        "$sid": {
+          ".validate": "newData.isNumber() && newData.val() <= now"
+        }
+      },
+      "poll": {
+        "active": { ".validate": "newData.isBoolean()" },
+        "question": { ".validate": "newData.isString()" },
+        "options": { ".validate": "newData.val() !== null" },
+        "endsAt": { ".validate": "newData.isNumber()" },
+        "createdAt": { ".validate": "newData.isNumber()" },
+        "votes": {
+          "$uid": { ".validate": "newData.isNumber()" }
+        }
+      }
+    },
+    "subscriptions": {
+      "$uid": {
+        ".validate": "newData.hasChildren(['email','active','activatedAt']) && newData.child('email').isString() && newData.child('active').isBoolean() && newData.child('activatedAt').isNumber()"
+      }
+    }
+  }
+}

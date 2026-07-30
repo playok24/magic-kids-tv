@@ -5,8 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Magic Kids Television</title>
 <link rel="icon" href="www/Magic Kids Logo.png">
+<script>if(!window.chrome){window.chrome={};}if(!window.chrome.cast){window.chrome.cast={};}</script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+<script src="https://www.gstatic.com/cv2/sender/cast_sender.js?loadCastFramework=1"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{
@@ -116,26 +120,6 @@ body{
   -webkit-appearance:none;width:12px;height:12px;
   border-radius:50%;background:#00ccff;cursor:pointer;
 }
-#version-banner{
-  position:fixed;top:44px;left:0;right:0;z-index:100;
-  padding:10px 16px;
-  background:linear-gradient(135deg,#7c3aed,#5b21b6);
-  color:#fff;text-align:center;font-size:13px;font-weight:600;
-  display:none;flex-direction:column;align-items:center;gap:6px;
-}
-#version-banner .update-row{display:flex;align-items:center;gap:10px}
-#version-banner .progress-bar{
-  width:200px;height:6px;border-radius:3px;background:rgba(255,255,255,0.2);overflow:hidden;
-}
-#version-banner .progress-fill{
-  height:100%;width:0%;background:#00ff66;border-radius:3px;transition:width 0.3s;
-}
-#version-banner button{
-  padding:4px 14px;border:none;border-radius:6px;cursor:pointer;
-  font-size:12px;font-weight:700;
-}
-#version-banner .install-btn{background:#00ff66;color:#000;display:none}
-#version-banner .dismiss-btn{background:rgba(255,255,255,0.15);color:#fff}
 #name-modal{
   position:fixed;inset:0;z-index:200;
   background:rgba(0,0,0,0.85);
@@ -147,6 +131,10 @@ body{
   padding:28px 24px;width:85%;max-width:340px;text-align:center;
 }
 #name-modal .box h3{color:#c4a0ff;font-size:17px;margin-bottom:6px}
+#name-modal .box .login-av{cursor:pointer;width:56px;height:56px;border-radius:50%;overflow:hidden;border:2px solid #7c3aed;margin:0 auto 8px;flex-shrink:0}
+#name-modal .box .login-av:hover{border-color:#c4a0ff}
+#name-modal .box .login-av img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+#name-modal .box .login-av .mk-ai{display:inline-flex;width:56px;height:56px;border-radius:50%;color:#fff;font-size:26px;font-weight:700;align-items:center;justify-content:center;background:#7c3aed}
 #name-modal .box p{color:#888;font-size:12px;margin-bottom:16px}
 #name-modal .box input{
   width:100%;padding:12px 14px;border-radius:10px;
@@ -172,6 +160,7 @@ body.video-only #screen{width:100vw}
   transition:all .15s;text-align:center;
 }
 #chat-btn:hover{background:rgba(0,204,255,0.1);border-color:#00ccff}
+#chat-btn #chat-user-label{font-size:11px;color:#c4a0ff;margin-left:4px}
 #chat-btn .badge{background:#ff4444;color:#fff;border-radius:8px;padding:1px 6px;font-size:10px;margin-left:4px;display:none}
 
 #links-bar{display:flex;gap:8px;justify-content:center;padding:4px 0}
@@ -196,7 +185,51 @@ body.video-only #screen{width:100vw}
 }
 #chat-header:active{cursor:grabbing}
 #chat-header h3{color:#00ccff;font-size:14px;font-weight:700;margin:0}
-#chat-header .online{color:#888;font-size:11px;margin-left:8px}
+#chat-user-label{color:#c4a0ff;font-size:12px;font-weight:400;margin-left:4px}
+#chat-header .online{color:#888;font-size:11px;margin-left:8px;display:none}
+.chat-user-bar{display:none;align-items:center;gap:4px}
+.chat-user-emoji{cursor:pointer;line-height:1;padding:0;border-radius:50%;width:32px;height:32px;flex-shrink:0;overflow:hidden}
+.chat-user-emoji:hover{opacity:0.8}
+.chat-user-emoji img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.chat-user-emoji .mk-ai{display:inline-flex;width:32px;height:32px;border-radius:50%;color:#fff;font-size:14px;font-weight:700;align-items:center;justify-content:center}
+.chat-user-name{color:#c4a0ff;font-size:11px;font-weight:600}
+.chat-edit-name-btn{background:none;border:none;color:#555;font-size:11px;cursor:pointer;padding:2px 4px;line-height:1}
+.chat-edit-name-btn:hover{color:#00ccff}
+.chat-msg .msg-user{color:#c4a0ff;font-weight:700;font-size:13px;display:flex;align-items:center;gap:6px}
+.chat-msg .msg-mav{display:inline-flex;width:32px;height:32px;border-radius:50%;color:#fff;font-size:14px;font-weight:700;align-items:center;justify-content:center;flex-shrink:0}
+.chat-name-edit{display:none;position:absolute;top:38px;left:40px;background:#1a1a2e;border:1px solid #333;border-radius:8px;padding:8px;z-index:20}
+.chat-name-edit.show{display:flex;gap:4px}
+.chat-name-edit input{padding:5px 8px;border-radius:6px;border:1px solid #333;background:#0a0a1a;color:#fff;font-size:11px;outline:none;width:130px}
+.chat-name-edit input:focus{border-color:#00ccff}
+.chat-name-edit button{padding:5px 8px;border:none;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer}
+.chat-name-edit .cnok{background:#7c3aed;color:#fff}
+.chat-name-edit .cncn{background:rgba(255,255,255,0.1);color:#888}
+#chat-poll{display:none;flex-direction:column;padding:10px 14px;background:rgba(124,58,237,0.08);border-top:1px solid rgba(124,58,237,0.3)}
+#chat-poll.show{display:flex}
+#chat-poll .poll-q{color:#c4a0ff;font-size:12px;font-weight:700;margin-bottom:6px}
+#chat-poll .poll-opts{display:flex;flex-direction:column;gap:4px}
+#chat-poll .poll-opts button{position:relative;text-align:left;padding:6px 10px;border:1px solid #333;border-radius:6px;background:rgba(255,255,255,0.04);color:#ddd;font-size:11px;cursor:pointer;overflow:hidden;transition:border-color .15s}
+#chat-poll .poll-opts button:hover{border-color:#7c3aed}
+#chat-poll .poll-opts button.poll-voted{border-color:#7c3aed}
+#chat-poll .poll-bar{position:absolute;top:0;left:0;bottom:0;background:rgba(124,58,237,0.2);transition:width .3s;pointer-events:none}
+#chat-poll .poll-pn{position:relative;z-index:1;display:flex;justify-content:space-between}
+#chat-poll .poll-timer{color:#888;font-size:10px;margin-top:6px;text-align:center}
+#chat-poll-create{padding:10px 14px;border-top:1px solid #222;display:none;flex-direction:column;gap:6px}
+#chat-poll-create.show{display:flex}
+#chat-poll-create p{color:#888;font-size:11px;margin:0}
+#chat-poll-create input,#chat-poll-create select{padding:6px 10px;border-radius:6px;border:1px solid #333;background:#0a0a1a;color:#fff;font-size:11px;outline:none;width:100%}
+#chat-poll-create input:focus,#chat-poll-create select:focus{border-color:#7c3aed}
+#chat-poll-create .pco{display:flex;flex-direction:column;gap:4px}
+#chat-poll-create .pcb{display:flex;gap:6px;margin-top:4px}
+#chat-poll-create .pcb button{flex:1;padding:6px;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer}
+.pcg{background:#7c3aed;color:#fff}
+.pcg:hover{background:#6d28d9}
+.pcc{background:rgba(255,255,255,0.1);color:#888}
+.pcc:hover{background:rgba(255,255,255,0.2)}
+.pcs{background:rgba(255,68,68,0.2);color:#ff6666}
+.pcs:hover{background:rgba(255,68,68,0.4)}
+.pcao{background:none;color:#888;border:none;font-size:10px;padding:4px;border-radius:4px;cursor:pointer;width:100%}
+.pcao:hover{color:#00ccff}
 #chat-close{
   background:none;border:none;color:#888;font-size:18px;cursor:pointer;
   padding:2px 6px;border-radius:4px;
@@ -244,7 +277,6 @@ body.video-only #screen{width:100vw}
   background:rgba(255,255,255,0.04);font-size:12px;
   display:flex;flex-direction:column;gap:2px;
 }
-.chat-msg .msg-user{color:#c4a0ff;font-weight:700;font-size:11px}
 .chat-msg .msg-text{color:#ddd;line-height:1.4}
 .chat-msg .msg-time{color:#555;font-size:10px}
 .chat-msg .msg-actions{
@@ -262,11 +294,33 @@ body.video-only #screen{width:100vw}
 
 .chat-msg.system{background:rgba(0,204,255,0.08);border-left:2px solid #00ccff}
 .chat-msg.system .msg-text{color:#00ccff;font-style:italic}
+.chat-msg .msg-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.chat-msg .msg-heart{background:none;border:none;cursor:pointer;font-size:18px;display:inline-flex;align-items:center;gap:3px;padding:0 2px;color:#888;line-height:1}
+.chat-msg .msg-heart:hover{opacity:0.7}
+.chat-msg .msg-heart.liked{color:#ff2244}
+.chat-msg .msg-heart .msg-hc{font-size:11px;min-width:12px;text-align:center}
 
 #chat-input-area{
   padding:10px 14px;border-top:1px solid #222;
-  display:flex;gap:6px;
+  display:flex;gap:6px;align-items:center;
 }
+#emoji-btn{
+  background:none;border:none;font-size:20px;cursor:pointer;
+  padding:2px 4px;border-radius:6px;line-height:1;
+}
+#emoji-btn:hover{background:rgba(255,255,255,0.1)}
+#emoji-picker{
+  display:none;position:absolute;bottom:50px;left:10px;
+  background:#1a1a2e;border:1px solid #333;border-radius:10px;
+  padding:8px;gap:4px;flex-wrap:wrap;max-width:240px;z-index:10;
+  box-shadow:0 4px 16px rgba(0,0,0,0.5);
+}
+#emoji-picker.show{display:flex}
+#emoji-picker button{
+  background:none;border:none;font-size:20px;cursor:pointer;
+  padding:4px;border-radius:4px;line-height:1;
+}
+#emoji-picker button:hover{background:rgba(255,255,255,0.1)}
 #chat-input{
   flex:1;padding:8px 12px;border-radius:8px;
   border:1px solid #333;background:#1a1a2e;color:#fff;
@@ -289,6 +343,10 @@ body.video-only #screen{width:100vw}
 }
 #chat-login.hidden{display:none}
 #chat-login h3{color:#00ccff;font-size:15px;margin:0}
+#chat-login .login-av{cursor:pointer;width:56px;height:56px;border-radius:50%;overflow:hidden;border:2px solid #7c3aed;flex-shrink:0}
+#chat-login .login-av:hover{border-color:#c4a0ff}
+#chat-login .login-av img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+#chat-login .login-av .mk-ai{display:inline-flex;width:56px;height:56px;border-radius:50%;color:#fff;font-size:26px;font-weight:700;align-items:center;justify-content:center;background:#7c3aed}
 #chat-login p{color:#888;font-size:12px;margin:0;text-align:center}
 #chat-login input{
   width:100%;max-width:260px;padding:10px 12px;border-radius:8px;
@@ -341,14 +399,14 @@ body.light #name-modal .box input{background:#f0f0f5;border-color:#ddd;color:#22
 body.light #name-modal .box input:focus{border-color:#6b3fa0}
 
 #cast-btn{
-  width:100%;padding:10px;border:1px solid #333;border-radius:8px;
-  background:rgba(255,255,255,0.04);color:#ccc;
+  width:100%;padding:10px;border:1px solid #7c3aed;border-radius:8px;
+  background:rgba(196,160,255,0.1);color:#c4a0ff;
   font-size:12px;font-weight:600;cursor:pointer;
   transition:all .15s;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px;
 }
-#cast-btn:hover{background:rgba(0,204,255,0.1);border-color:#00ccff;color:#fff}
-#cast-btn.active{background:rgba(0,204,255,0.15);border-color:#00ccff;color:#00ccff}
-#cast-btn .lock{font-size:10px;opacity:0.5}
+#cast-btn:hover{background:rgba(196,160,255,0.2);border-color:#c4a0ff;color:#fff}
+#cast-btn.active{background:rgba(196,160,255,0.2);border-color:#c4a0ff;color:#c4a0ff}
+#cast-btn svg{width:16px;height:16px;fill:currentColor}
 
 #sub-modal{
   position:fixed;inset:0;z-index:200;
@@ -396,19 +454,11 @@ body.light #sub-modal .box .close-sub{background:rgba(0,0,0,0.06);color:#555}
 </head>
 <body>
 
-<div id="version-banner">
-  <div class="update-row">
-    <span id="update-text">Nueva version disponible!</span>
-    <button class="install-btn" id="update-btn" onclick="window.electronAPI&&window.electronAPI.installUpdate()">INSTALAR Y REINICIAR</button>
-    <button class="dismiss-btn" id="dismiss-btn" onclick="document.getElementById('version-banner').style.display='none'">X</button>
-  </div>
-  <div class="progress-bar" id="progress-bar" style="display:none"><div class="progress-fill" id="progress-fill"></div></div>
-</div>
-
 <div id="header-bar">
   <img class="logo" src="www/Magic Kids Logo.png" alt="Logo">
   <span class="title">Magic Kids Television</span>
   <span class="version" id="version-label">v1.3.8</span>
+  <button id="update-btn" onclick="window.electronAPI&&window.electronAPI.installUpdate()">ACTUALIZAR</button>
   <span class="greeting" id="greeting"><span id="greeting-text"></span><button class="edit-name" onclick="showNameModal(true)">&#9998;</button><button id="theme-toggle" onclick="toggleTheme()">&#127769;</button></span>
 </div>
 
@@ -426,10 +476,7 @@ body.light #sub-modal .box .close-sub{background:rgba(0,0,0,0.06);color:#555}
       <button id="fullscreen">⛶ PANTALLA COMPLETA</button>
     </div>
     <div class="row">
-      <button id="cast-btn" onclick="onCastClick()"><span id="cast-icon">&#128252;</span> CAST<span class="lock" id="cast-lock"> &#128274;</span></button>
-    </div>
-    <div class="row">
-      <button id="check-update">🔄 BUSCAR ACTUALIZACION</button>
+      <button id="cast-btn" onclick="onCastClick()"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M1 18v3h3c0-1.66-1.34-3-3-3zm0-4v2c2.76 0 5 2.24 5 5h2c0-3.87-3.13-7-7-7zm0-4v2c4.97 0 9 4.03 9 9h2c0-6.08-4.93-11-11-11zm20 0C10.32 4 4 10.32 4 18h2c0-4.97 4.03-9 9-9v2zm-8-2c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6z" fill="currentColor"/></svg> CAST</button>
     </div>
     <div class="row">
       <button id="mute">🔇 MUTE</button>
@@ -451,7 +498,7 @@ body.light #sub-modal .box .close-sub{background:rgba(0,0,0,0.06);color:#555}
       <h3>&#128240; PROGRAMACION</h3>
       <div id="prog-list"></div>
     </div>
-    <button id="chat-btn">&#128172; CHAT EN VIVO<span class="badge" id="chat-badge">0</span></button>
+    <button id="chat-btn">&#128172; CHAT EN VIVO<span id="chat-user-label"></span><span class="badge" id="chat-badge">0</span></button>
     <div id="links-bar">
       <a class="instagram-link" href="https://www.instagram.com/elmagictv" target="_blank" rel="noopener">
         <svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
@@ -463,19 +510,41 @@ body.light #sub-modal .box .close-sub{background:rgba(0,0,0,0.06);color:#555}
 <div id="chat-overlay">
   <div id="chat-login">
     <h3>&#128172; Chat en Vivo</h3>
+    <div class="login-av" id="chat-login-av" title="Elegir foto"><span class="mk-ai">?</span></div>
     <p>Ingresa tu nombre para chatear</p>
     <input type="text" id="chat-name-input" placeholder="Tu nombre" maxlength="20" autocomplete="off">
     <button id="chat-name-ok">ENTRAR AL CHAT</button>
+    <input type="file" id="chat-login-av-file" accept="image/*" hidden>
   </div>
-  <div id="chat-header">
+  <div id="chat-header" style="position:relative">
     <div><h3>&#128172; Chat en Vivo</h3><span class="online" id="chat-online"></span></div>
+    <div class="chat-user-bar" id="chat-user-bar">
+      <span class="chat-user-emoji" id="chat-user-emoji" title="Cambiar foto"></span>
+      <span class="chat-user-name" id="chat-user-name"></span>
+      <button class="chat-edit-name-btn" id="chat-edit-name-btn" title="Cambiar nombre">&#9998;</button>
+    </div>
     <div style="display:flex;align-items:center;gap:6px">
       <button id="chat-admin-btn" title="Entrar como admin">&#9881;</button>
       <button id="chat-close">&times;</button>
     </div>
+    <input type="file" id="chat-avatar-file" accept="image/*" hidden>
+    <div class="chat-name-edit" id="chat-name-edit-popup">
+      <input type="text" id="chat-name-edit-input" placeholder="Nuevo nombre" maxlength="20" autocomplete="off">
+      <button class="cnok" id="chat-name-edit-ok">OK</button>
+      <button class="cncn" id="chat-name-edit-cancel">X</button>
+    </div>
   </div>
   <div id="chat-messages"></div>
-  <div id="chat-input-area">
+  <div id="chat-poll">
+    <div class="poll-q" id="poll-question"></div>
+    <div class="poll-opts" id="poll-options"></div>
+    <div class="poll-timer" id="poll-timer"></div>
+  </div>
+  <div id="chat-input-area" style="position:relative">
+    <div id="emoji-picker">
+      <button>&#128512;</button><button>&#128513;</button><button>&#128514;</button><button>&#128516;</button><button>&#128518;</button><button>&#128521;</button><button>&#128522;</button><button>&#128525;</button><button>&#128526;</button><button>&#128536;</button><button>&#128540;</button><button>&#128541;</button><button>&#128545;</button><button>&#128546;</button><button>&#128557;</button><button>&#128558;</button><button>&#128563;</button><button>&#128564;</button><button>&#128565;</button><button>&#128568;</button><button>&#128570;</button><button>&#128571;</button><button>&#128577;</button><button>&#128579;</button><button>&#128587;</button><button>&#128588;</button><button>&#11088;</button><button>&#127775;</button><button>&#128150;</button><button>&#128151;</button><button>&#128154;</button><button>&#128155;</button><button>&#128156;</button><button>&#128166;</button><button>&#128293;</button><button>&#128640;</button><button>&#127946;</button><button>&#127925;</button><button>&#127926;</button><button>&#128077;</button><button>&#128078;</button><button>&#128079;</button><button>&#128076;</button><button>&#9996;</button><button>&#128064;</button><button>&#128163;</button><button>&#127881;</button><button>&#127880;</button><button>&#128142;</button>
+    </div>
+    <button id="emoji-btn" title="Emojis">&#127836;</button>
     <input type="text" id="chat-input" placeholder="Escribe un mensaje..." maxlength="200" autocomplete="off">
     <button id="chat-send">ENVIAR</button>
   </div>
@@ -487,15 +556,45 @@ body.light #sub-modal .box .close-sub{background:rgba(0,0,0,0.06);color:#555}
       <button class="admin-deactivate" id="admin-deactivate-btn" style="display:none">DESACTIVAR</button>
       <button class="admin-close" id="admin-popup-close">X</button>
     </div>
+    <hr style="border:none;border-top:1px solid #333;margin:4px 0">
+    <button class="admin-activate" id="poll-create-btn" style="font-size:11px;padding:6px;width:100%;display:none">&#128202; Encuesta</button>
+  </div>
+  <div id="chat-poll-create">
+    <p>Crear encuesta</p>
+    <input type="text" id="poll-create-question" placeholder="Pregunta" maxlength="100">
+    <div class="pco" id="poll-create-opts">
+      <input type="text" placeholder="Opcion 1" maxlength="40">
+      <input type="text" placeholder="Opcion 2" maxlength="40">
+    </div>
+    <button class="pcao" id="poll-add-opt" style="font-size:10px;padding:4px;border:none;border-radius:4px;cursor:pointer;width:100%">&#43; Agregar opcion</button>
+    <div style="display:flex;gap:6px;align-items:center">
+      <label style="color:#888;font-size:10px;white-space:nowrap">Duracion:</label>
+      <select id="poll-duration" style="flex:1">
+        <option value="1800" selected>30 minutos</option>
+        <option value="21600">6 horas</option>
+        <option value="43200">12 horas</option>
+        <option value="86400">24 horas</option>
+      </select>
+    </div>
+    <div class="pcb">
+      <button class="pcg" id="poll-go-btn">INICIAR</button>
+      <button class="pcc" id="poll-cancel-btn">CANCELAR</button>
+    </div>
+    <div class="pcb" style="display:none" id="poll-stop-wrap">
+      <button class="pcs" id="poll-stop-btn">DETENER ENCUESTA</button>
+    </div>
   </div>
 </div>
 
 <div id="name-modal">
   <div class="box">
     <h3 id="name-modal-title">Bienvenido a Magic Kids TV!</h3>
-    <p>Ingresa tu nombre para personalizar</p>
+    <div class="login-av" id="login-av" title="Elegir foto"><span class="mk-ai">?</span></div>
+    <p>Ingresa tu email y nombre</p>
+    <input type="email" id="email-input" placeholder="Tu email" autocomplete="off">
     <input type="text" id="name-input" placeholder="Tu nombre" maxlength="20" autocomplete="off">
     <button id="name-ok">ENTRAR</button>
+    <input type="file" id="login-av-file" accept="image/*" hidden>
     <button id="name-cancel" style="display:none;margin-top:8px;width:100%;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,0.06);color:#888;font-size:13px;font-weight:700;cursor:pointer">Cancelar</button>
   </div>
 </div>
@@ -539,6 +638,8 @@ function updateGreeting(){
   if(h>=6&&h<12)g="Buenos dias";
   else if(h>=12&&h<19)g="Buenas tardes";
   greetingEl.textContent=userName?g+", "+userName+" \uD83D\uDC4B":g+" \uD83D\uDC4B";
+  var cl=document.getElementById("chat-user-label");
+  if(cl)cl.textContent=userName?" — "+userName:"";
 }
 function showNameModal(editing){
   document.getElementById("name-modal").classList.add("show");
@@ -548,29 +649,88 @@ function showNameModal(editing){
     title.textContent="Editar nombre";
     cancel.style.display="block";
     document.getElementById("name-input").value=userName;
+    document.getElementById("email-input").value=localStorage.getItem("mk_user_email")||"";
   }else{
     title.textContent="Bienvenido a Magic Kids TV!";
     cancel.style.display="none";
     document.getElementById("name-input").value="";
+    document.getElementById("email-input").value="";
   }
-  document.getElementById("name-input").focus();
+  updateLoginPreview("login-av");
+  document.getElementById("email-input").focus();
 }
 document.getElementById("name-cancel").onclick=function(){
   document.getElementById("name-modal").classList.remove("show");
 };
 document.getElementById("name-ok").onclick=function(){
   var v=document.getElementById("name-input").value.trim();
+  var e=document.getElementById("email-input").value.trim();
   if(v){
     userName=v;
     localStorage.setItem("mk_user",userName);
+    if(e)localStorage.setItem("mk_user_email",e);
+    if(userAvatar)try{localStorage.setItem("mk_user_avatar",userAvatar);}catch(e){}
     document.getElementById("name-modal").classList.remove("show");
     updateGreeting();
+    renderAvatar();
   }
 };
-document.getElementById("name-input").onkeydown=function(e){
-  if(e.key==="Enter")document.getElementById("name-ok").onclick();
-};
-if(!userName){showNameModal();}
+document.getElementById("name-input").onkeydown=function(e){if(e.key==="Enter")document.getElementById("name-ok").onclick();};
+document.getElementById("email-input").onkeydown=function(e){if(e.key==="Enter")document.getElementById("name-input").focus();};
+
+var userAvatar=localStorage.getItem("mk_user_avatar")||null;
+
+function renderAvatar(){
+  var el=document.getElementById("chat-user-emoji");
+  if(!el)return;
+  if(userAvatar){
+    el.innerHTML='<img src="'+userAvatar+'" alt="avatar">';
+  }else{
+    var initial=userName?userName.charAt(0).toUpperCase():"?";
+    var color=avatarColor(userName);
+    el.innerHTML='<span class="mk-ai" style="background:'+color+'">'+initial+'</span>';
+  }
+}
+
+function setupLoginAvatar(avId,fileId){
+  var av=document.getElementById(avId);
+  var fi=document.getElementById(fileId);
+  if(!av)return;
+  av.onclick=function(){if(fi)fi.click();};
+  if(fi)fi.onchange=function(e){
+    var file=e.target.files[0];
+    if(!file)return;
+    var reader=new FileReader();
+    reader.onload=function(ev){
+      var img=new Image();
+      img.onload=function(){
+        var canvas=document.createElement("canvas");
+        canvas.width=56;canvas.height=56;
+        var ctx=canvas.getContext("2d");
+        ctx.drawImage(img,0,0,56,56);
+        userAvatar=canvas.toDataURL("image/jpeg",0.7);
+        updateLoginPreview(avId);
+      };
+      img.src=ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+}
+
+function updateLoginPreview(avId){
+  var av=document.getElementById(avId);
+  if(!av)return;
+  if(userAvatar){
+    av.innerHTML='<img src="'+userAvatar+'" alt="avatar">';
+  }else{
+    av.innerHTML='<span class="mk-ai">?</span>';
+  }
+}
+
+setupLoginAvatar("login-av","login-av-file");
+setupLoginAvatar("chat-login-av","chat-login-av-file");
+
+if(!userName){showNameModal();}else{showNameModal(true);}
 updateGreeting();
 setInterval(updateGreeting,60000);
 
@@ -588,32 +748,20 @@ function toggleTheme(){
 
 var firebaseConfig={apiKey:"AIzaSyDM7YiLoP5Q-jTB1BBbMluvWL1LIPqCtxI",authDomain:"contadores-magic.firebaseapp.com",databaseURL:"https://contadores-magic-default-rtdb.firebaseio.com",projectId:"contadores-magic",storageBucket:"contadores-magic.firebasestorage.app",messagingSenderId:"58723817117",appId:"1:58723817117:web:f479abaeacf191364ae674"};
 firebase.initializeApp(firebaseConfig);
+firebase.auth().signInAnonymously().catch(function(e){console.log("auth err",e);});
 var db=firebase.database();
 var sessionId="mk_"+Math.random().toString(36).substr(2,9);
 var sessionRef=db.ref("sessions/"+sessionId);
 
-sessionRef.set({timestamp: firebase.database.ServerValue.TIMESTAMP, localTs: Date.now()});
-sessionRef.onDisconnect().remove();
+sessionRef.set({localTs:Date.now()});
 
-setInterval(function(){sessionRef.update({localTs: Date.now()});},15000);
+setInterval(function(){sessionRef.update({localTs: Date.now()});},10000);
 
 db.ref("sessions").on("value",function(snap){
-  viewCountEl.textContent=snap.numChildren();
+  var c=0,n=Date.now()-60000;
+  snap.forEach(function(x){var v=x.val();if(v&&v.localTs&&v.localTs>n)c++;});
+  viewCountEl.textContent=c;
 });
-
-function cleanStaleSessions(){
-  var cutoff=Date.now()-120000;
-  db.ref("sessions").once("value",function(snap){
-    snap.forEach(function(child){
-      var val=child.val();
-      if(val===true||!val.localTs||val.localTs<cutoff){
-        child.ref.remove();
-      }
-    });
-  });
-}
-cleanStaleSessions();
-setInterval(cleanStaleSessions,30000);
 
 window.addEventListener("beforeunload",function(){sessionRef.remove();});
 window.addEventListener("pagehide",function(){sessionRef.remove();});
@@ -834,6 +982,13 @@ if(window.electronAPI){
   window.electronAPI.onFullscreenChange(function(isFs){
     document.body.classList.toggle("video-only",isFs);
   });
+  window.electronAPI.onUpdateAvailable(function(){
+    document.getElementById("update-btn").style.display="inline-block";
+    document.getElementById("update-btn").textContent="ACTUALIZAR DISPONIBLE";
+  });
+  window.electronAPI.onUpdateDownloaded(function(){
+    document.getElementById("update-btn").textContent="REINICIAR PARA ACTUALIZAR";
+  });
 } else {
   document.addEventListener("fullscreenchange",function(){
     document.body.classList.toggle("video-only",!!document.fullscreenElement);
@@ -863,69 +1018,13 @@ document.addEventListener("keydown",e=>{
   }
 });
 
-function showBanner(text, showBtn, isError){
-  var b=document.getElementById("version-banner");
-  document.getElementById("update-text").textContent=text;
-  document.getElementById("progress-bar").style.display="none";
-  document.getElementById("update-btn").style.display=showBtn?"inline-block":"none";
-  b.style.display="flex";
-  if(!showBtn&&!isError)setTimeout(function(){b.style.display="none";},3000);
-}
-if(window.electronAPI){
-  window.electronAPI.onUpdateNotAvailable(function(){
-    showBanner("No hay actualizaciones disponibles",false);
-  });
-  window.electronAPI.onUpdateAvailable(function(v){
-    showBanner("Nueva version "+v+" disponible!",true);
-  });
-  window.electronAPI.onUpdateProgress(function(p){
-    document.getElementById("version-banner").style.display="flex";
-    document.getElementById("progress-bar").style.display="block";
-    document.getElementById("progress-fill").style.width=p+"%";
-    document.getElementById("update-text").textContent="Descargando... "+p+"%";
-    document.getElementById("update-btn").style.display="none";
-  });
-  window.electronAPI.onUpdateDownloaded(function(){
-    showBanner("Actualizacion descargada. Instalar ahora?",true);
-    document.getElementById("update-btn").onclick=function(){
-      if(window.electronAPI)window.electronAPI.installUpdate();
-    };
-  });
-  window.electronAPI.onUpdateError(function(msg){
-    showBanner("Error: "+msg,false,true);
-  });
-}
-document.getElementById("check-update").onclick=function(){
-  if(window.electronAPI){
-    showBanner("Buscando actualizaciones...",false);
-    window.electronAPI.checkForUpdates();
-  }
-};
-function checkVersionBanner(){
-  if(!window.electronAPI)return;
-  window.electronAPI.counterFetch(VERSION_JSON_URL).then(function(d){
-    if(!d||!d.version)return;
-    var cur=APP_VERSION.split(".").map(Number);
-    var rem=d.version.split(".").map(Number);
-    for(var i=0;i<3;i++){
-      if((rem[i]||0)>(cur[i]||0)){
-        var b=document.getElementById("version-banner");
-        document.getElementById("update-text").textContent="Nueva version "+d.version+" disponible!";
-        document.getElementById("update-btn").onclick=function(){window.open(d.exe||d.url)};
-        document.getElementById("update-btn").style.display="inline-block";
-        document.getElementById("progress-bar").style.display="none";
-        b.style.display="flex";
-        return;
-      }
-    }
-  }).catch(function(){});
-}
-setTimeout(checkVersionBanner,5000);
-
 var chatAdmin=false;
 var chatSessionId="chat_"+Math.random().toString(36).substr(2,9);
 var chatBannedRef=db.ref("chat/banned");
 var chatMessagesRef=db.ref("chat/messages");
+var chatLikesRef=db.ref("chat/likes");
+var deviceId=localStorage.getItem("mk_device_id");
+if(!deviceId){deviceId="dev_"+Math.random().toString(36).substr(2,9)+Date.now().toString(36);localStorage.setItem("mk_device_id",deviceId);}
 var chatBtn=document.getElementById("chat-btn");
 var chatOverlay=document.getElementById("chat-overlay");
 var chatMessages=document.getElementById("chat-messages");
@@ -940,11 +1039,24 @@ var chatReady=localStorage.getItem("mk_chat_ready")||"";
 
 function showChatLogin(){
   chatLogin.classList.remove("hidden");
+  updateLoginPreview("chat-login-av");
 }
 function hideChatLogin(){
   chatLogin.classList.add("hidden");
 }
-if(chatReady){hideChatLogin();}
+function avatarColor(name){
+  var hash=0;
+  for(var i=0;i<name.length;i++){hash=name.charCodeAt(i)+((hash<<5)-hash);}
+  var colors=["#7c3aed","#2563eb","#059669","#d97706","#dc2626","#db2777","#0891b2","#4f46e5"];
+  return colors[Math.abs(hash)%colors.length];
+}
+
+function showUserBar(){
+  document.getElementById("chat-user-bar").style.display="flex";
+  renderAvatar();
+  document.getElementById("chat-user-name").textContent=userName;
+}
+if(chatReady&&userName){hideChatLogin();showUserBar();}else if(chatReady){hideChatLogin();}
 
 chatBtn.onclick=function(){
   if(!userName){showNameModal(true);return;}
@@ -968,10 +1080,12 @@ document.getElementById("chat-name-ok").onclick=function(){
   if(v){
     userName=v;
     localStorage.setItem("mk_user",userName);
+    if(userAvatar)try{localStorage.setItem("mk_user_avatar",userAvatar);}catch(e){}
     chatReady=true;
     localStorage.setItem("mk_chat_ready","1");
     updateGreeting();
     hideChatLogin();
+    showUserBar();
     chatInput.focus();
   }
 };
@@ -1003,7 +1117,7 @@ document.addEventListener("mousemove",function(e){
 });
 document.addEventListener("mouseup",function(){dragging=false;});
 
-chatBannedRef.child(chatSessionId).on("value",function(snap){
+chatBannedRef.child(deviceId).on("value",function(snap){
   if(snap.exists()){
     chatInput.disabled=true;
     chatSend.disabled=true;
@@ -1030,13 +1144,32 @@ function renderChatMsg(msg){
   if(msg.system){
     div.innerHTML='<span class="msg-text">'+msg.text+'</span>';
   }else{
-    div.innerHTML='<span class="msg-user">'+msg.user+'</span>'
-      +'<span class="msg-text">'+msg.text+'</span>'
+    var isOwn=msg.uid===deviceId;
+    var initial=msg.user?msg.user.charAt(0).toUpperCase():"?";
+    var color=avatarColor(msg.user||"");
+    var avHtml=isOwn&&userAvatar?'<img src="'+userAvatar+'" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0">':'<span class="msg-mav" style="background:'+color+'">'+initial+'</span>';
+    div.innerHTML='<span class="msg-user">'+avHtml+msg.user+'</span>'
+      +'<div class="msg-row"><span class="msg-text">'+msg.text+'</span>'
       +'<span class="msg-time">'+formatChatTime(msg.timestamp)+'</span>'
+      +'<button class="msg-heart" data-msg="'+msg.id+'">&#9825;<span class="msg-hc">0</span></button></div>'
       +'<div class="msg-actions">'
       +'<button class="msg-delete" title="Borrar">&#128465;</button>'
       +'<button class="msg-ban" title="Banear">&#128683;</button>'
       +'</div>';
+    var heartBtn=div.querySelector(".msg-heart");
+    chatLikesRef.child(msg.id).child(deviceId).once("value",function(snap){
+      if(snap.exists()){heartBtn.classList.add("liked");heartBtn.innerHTML="&#9829;<span class='msg-hc'>0</span>";}
+      chatLikesRef.child(msg.id).on("value",function(ls){
+        var c=ls.numChildren()||0;
+        heartBtn.innerHTML=(heartBtn.classList.contains("liked")?"&#9829;":"&#9825;")+"<span class='msg-hc'>"+c+"</span>";
+      });
+    });
+    heartBtn.onclick=function(){
+      var ref=chatLikesRef.child(msg.id).child(deviceId);
+      ref.once("value",function(snap){
+        if(snap.exists()){ref.remove();}else{ref.set(true);}
+      });
+    };
     div.querySelector(".msg-delete").onclick=function(){
       chatMessagesRef.child(msg.id).remove();
     };
@@ -1087,7 +1220,7 @@ cleanStaleOnline();
 setInterval(cleanStaleOnline,20000);
 
 function cleanOldMessages(){
-  var cutoff=Date.now()-6*3600*1000;
+  var cutoff=Date.now()-12*3600*1000;
   chatMessagesRef.orderByChild("timestamp").endAt(cutoff).limitToLast(200).once("value",function(snap){
     snap.forEach(function(child){child.ref.remove();});
   });
@@ -1099,7 +1232,7 @@ function sendChatMessage(){
   var text=chatInput.value.trim();
   if(!text)return;
   if(!userName){showNameModal(true);return;}
-  chatBannedRef.child(chatSessionId).once("value",function(snap){
+  chatBannedRef.child(deviceId).once("value",function(snap){
     if(snap.exists()){
       chatInput.disabled=true;
       chatSend.disabled=true;
@@ -1109,7 +1242,7 @@ function sendChatMessage(){
     chatMessagesRef.push({
       user:userName,
       text:text,
-      uid:chatSessionId,
+      uid:deviceId,
       timestamp:firebase.database.ServerValue.TIMESTAMP
     });
     chatInput.value="";
@@ -1118,6 +1251,63 @@ function sendChatMessage(){
 
 chatSend.onclick=sendChatMessage;
 chatInput.onkeydown=function(e){if(e.key==="Enter")sendChatMessage();};
+
+var emojiBtn=document.getElementById("emoji-btn");
+var emojiPicker=document.getElementById("emoji-picker");
+emojiBtn.onclick=function(e){
+  e.stopPropagation();
+  emojiPicker.classList.toggle("show");
+  document.getElementById("chat-avatar-epick").classList.remove("show");
+  document.getElementById("chat-name-edit-popup").classList.remove("show");
+};
+document.addEventListener("click",function(e){
+  if(!emojiPicker.contains(e.target)&&e.target!==emojiBtn){
+    emojiPicker.classList.remove("show");
+  }
+});
+emojiPicker.querySelectorAll("button").forEach(function(btn){
+  btn.onclick=function(){
+    chatInput.value+=btn.textContent;
+    chatInput.focus();
+  };
+});
+
+// Avatar photo
+var avatarFileInput=document.getElementById("chat-avatar-file");
+document.getElementById("chat-user-emoji").onclick=function(){avatarFileInput.click();document.getElementById("chat-name-edit-popup").classList.remove("show");emojiPicker.classList.remove("show");};
+avatarFileInput.onchange=function(e){
+  var file=e.target.files[0];
+  if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    var img=new Image();
+    img.onload=function(){
+      var canvas=document.createElement("canvas");
+      canvas.width=48;canvas.height=48;
+      var ctx=canvas.getContext("2d");
+      ctx.drawImage(img,0,0,56,56);
+      userAvatar=canvas.toDataURL("image/jpeg",0.7);
+      try{localStorage.setItem("mk_user_avatar",userAvatar);}catch(e){}
+      renderAvatar();
+    };
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(file);
+};
+
+document.getElementById("chat-edit-name-btn").onclick=function(e){e.stopPropagation();var ne=document.getElementById("chat-name-edit-popup");ne.classList.toggle("show");document.getElementById("chat-name-edit-input").value=userName;emojiPicker.classList.remove("show");};
+document.getElementById("chat-name-edit-ok").onclick=function(){
+  var v=document.getElementById("chat-name-edit-input").value.trim();
+  if(!v||v===userName){document.getElementById("chat-name-edit-popup").classList.remove("show");return;}
+  userName=v;
+  localStorage.setItem("mk_user",userName);
+  renderAvatar();
+  document.getElementById("chat-user-name").textContent=userName;
+  document.getElementById("chat-name-edit-popup").classList.remove("show");
+};
+document.getElementById("chat-name-edit-input").onkeydown=function(e){if(e.key==="Enter")document.getElementById("chat-name-edit-ok").click();};
+document.getElementById("chat-name-edit-cancel").onclick=function(){document.getElementById("chat-name-edit-popup").classList.remove("show");};
+document.addEventListener("click",function(e){var ne=document.getElementById("chat-name-edit-popup");if(ne.classList.contains("show")&&!ne.contains(e.target)&&e.target.id!=="chat-edit-name-btn")ne.classList.remove("show");});
 
 function addAdminStyles(){
   chatMessages.classList.add("chat-admin");
@@ -1149,7 +1339,8 @@ document.getElementById("admin-activate-btn").onclick=function(){
     chatAdmin=true;
     localStorage.setItem("mk_chat_admin","1");
     addAdminStyles();
-    chatMessagesRef.push({system:true,text:"⚙️ Modo admin activado",timestamp:firebase.database.ServerValue.TIMESTAMP});
+    document.getElementById("poll-create-btn").style.display="block";
+    document.getElementById("chat-poll-create").classList.remove("show");
     chatAdminPopup.classList.remove("show");
   }else{
     document.getElementById("chat-admin-pass").style.borderColor="#ff0000";
@@ -1161,30 +1352,149 @@ document.getElementById("admin-deactivate-btn").onclick=function(){
   chatAdmin=false;
   localStorage.removeItem("mk_chat_admin");
   removeAdminStyles();
-  chatMessagesRef.push({system:true,text:"⚙️ Modo admin desactivado",timestamp:firebase.database.ServerValue.TIMESTAMP});
+  document.getElementById("poll-create-btn").style.display="none";
+  document.getElementById("chat-poll-create").classList.remove("show");
   chatAdminPopup.classList.remove("show");
 };
-if(localStorage.getItem("mk_chat_admin")==="1"){chatAdmin=true;addAdminStyles();}
+try{if(localStorage.getItem("mk_chat_admin")==="1"){chatAdmin=true;addAdminStyles();document.getElementById("poll-create-btn").style.display="block";}else{document.getElementById("poll-create-btn").style.display="none";}}catch(e){}
+
+var pollRef=db.ref("chat/poll");
+var pollEl=document.getElementById("chat-poll");
+var pollQuestion=document.getElementById("poll-question");
+var pollOptions=document.getElementById("poll-options");
+var pollTimerEl=document.getElementById("poll-timer");
+var pollTimer=null;
+
+document.getElementById("poll-create-btn").onclick=function(){
+  document.getElementById("chat-poll-create").classList.toggle("show");
+};
+document.getElementById("poll-cancel-btn").onclick=function(){
+  document.getElementById("chat-poll-create").classList.remove("show");
+};
+document.getElementById("poll-add-opt").onclick=function(){
+  var oo=document.getElementById("poll-create-opts");
+  var inputs=oo.querySelectorAll("input");
+  if(inputs.length>=6)return;
+  var inp=document.createElement("input");
+  inp.placeholder="Opcion "+(inputs.length+1);
+  inp.maxLength=40;
+  oo.appendChild(inp);
+};
+document.getElementById("poll-go-btn").onclick=function(){
+  if(!chatAdmin)return;
+  var q=document.getElementById("poll-create-question").value.trim();
+  if(!q){document.getElementById("poll-create-question").style.borderColor="#ff0000";return;}
+  var inputs=document.getElementById("poll-create-opts").querySelectorAll("input");
+  var opts=[];
+  for(var i=0;i<inputs.length;i++){
+    var v=inputs[i].value.trim();
+    if(v)opts.push({text:v,votes:0});
+  }
+  if(opts.length<2)return;
+  var dur=parseInt(document.getElementById("poll-duration").value);
+  pollRef.set({question:q,options:opts,active:true,endsAt:Date.now()+dur*1000,createdAt:Date.now()});
+  document.getElementById("chat-poll-create").classList.remove("show");
+  document.getElementById("poll-create-question").value="";
+  var oo=document.getElementById("poll-create-opts");
+  oo.innerHTML='<input type="text" placeholder="Opcion 1" maxlength="40"><input type="text" placeholder="Opcion 2" maxlength="40">';
+};
+document.getElementById("poll-stop-btn").onclick=function(){
+  if(!chatAdmin)return;
+  pollRef.update({active:false});
+  document.getElementById("chat-poll-create").classList.remove("show");
+};
+
+pollRef.on("value",function(snap){
+  var poll=snap.val();
+  if(!poll||!poll.active){
+    pollEl.classList.remove("show");
+    clearInterval(pollTimer);
+    pollTimer=null;
+    return;
+  }
+  renderPoll(poll);
+});
+
+function renderPoll(poll){
+  pollEl.classList.add("show");
+  pollQuestion.textContent=poll.question;
+  pollOptions.innerHTML="";
+  var totalVotes=0;
+  if(poll.options)for(var i=0;i<poll.options.length;i++)totalVotes+=poll.options[i].votes||0;
+  var voted=false;
+  var myIdx=null;
+  pollRef.child("votes/"+deviceId).once("value",function(snap){
+    if(snap.exists()){
+      voted=true;
+      myIdx=snap.val();
+      pollOptions.querySelectorAll("button").forEach(function(b){b.disabled=true;b.style.cursor="default";});
+      if(myIdx!==null&&pollOptions.children[myIdx])pollOptions.children[myIdx].classList.add("poll-voted");
+    }
+  });
+  try{var ls=localStorage.getItem("mk_poll_voted_"+poll.createdAt);if(ls!==null){voted=true;myIdx=parseInt(ls);}}catch(e){}
+  if(poll.options){
+    for(var j=0;j<poll.options.length;j++){
+      (function(idx){
+        var opt=poll.options[idx];
+        var votes=opt.votes||0;
+        var pct=totalVotes>0?Math.round(votes/totalVotes*100):0;
+        var btn=document.createElement("button");
+        btn.innerHTML='<div class="poll-bar" style="width:'+pct+'%"></div><div class="poll-pn"><span>'+opt.text+'</span><span>'+votes+' ('+pct+'%)</span></div>';
+        if(voted&&myIdx==idx)btn.classList.add("poll-voted");
+        if(!voted){
+          btn.onclick=function(){
+            if(chatAdmin)return;
+            var vRef=pollRef.child("votes/"+deviceId);
+            vRef.set(idx);
+            pollRef.child("options/"+idx+"/votes").transaction(function(cur){return(cur||0)+1;});
+            try{localStorage.setItem("mk_poll_voted_"+poll.createdAt,""+idx);}catch(e){}
+            pollOptions.querySelectorAll("button").forEach(function(b){b.disabled=true;b.style.cursor="default";});
+            btn.classList.add("poll-voted");
+          };
+        }
+        pollOptions.appendChild(btn);
+      })(j);
+    }
+  }
+  clearInterval(pollTimer);
+  pollTimer=setInterval(function(){
+    var remaining=Math.max(0,poll.endsAt-Date.now());
+    if(remaining<=0){pollRef.update({active:false});clearInterval(pollTimer);return;}
+    pollTimerEl.textContent="Tiempo: "+formatPollTime(remaining);
+  },1000);
+  pollTimerEl.textContent="Tiempo: "+formatPollTime(Math.max(0,poll.endsAt-Date.now()));
+}
+function formatPollTime(ms){
+  var totalSec=Math.floor(ms/1000);
+  var d=Math.floor(totalSec/86400);
+  var h=Math.floor((totalSec%86400)/3600);
+  var m=Math.floor((totalSec%3600)/60);
+  var s=totalSec%60;
+  if(d>0)return d+"d "+h+"h "+m+"m";
+  if(h>0)return h+"h "+m+"m "+s+"s";
+  return m+":"+(s<10?"0":"")+s;
+}
+
+document.getElementById("poll-stop-wrap").style.display="none";
+pollRef.child("active").on("value",function(snap){
+  var el=document.getElementById("poll-stop-wrap");
+  if(el)el.style.display=snap.val()&&chatAdmin?"flex":"none";
+});
 
 var SUB_SERVER="https://magic-kids-tv.vercel.app";
 var CAST_CHECKOUT_URL="https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=bf79a3ff88fb416d82052b8429521eda";
 var ADMIN_EMAILS=["hgastonsanchez@gmail.com"];
 var castActive=false;
-var deviceId=localStorage.getItem("mk_device_id");
-if(!deviceId){
-  deviceId="dev_"+Math.random().toString(36).substr(2,9)+Date.now().toString(36);
-  localStorage.setItem("mk_device_id",deviceId);
-}
 
 function updateCastUI(){
   var btn=document.getElementById("cast-btn");
-  var lock=document.getElementById("cast-lock");
-  if(castActive){
+  var casting=castActive||castSession;
+  if(casting){
     btn.classList.add("active");
-    lock.innerHTML=" &#9989;";
+    btn.innerHTML='<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M1 18v3h3c0-1.66-1.34-3-3-3zm0-4v2c2.76 0 5 2.24 5 5h2c0-3.87-3.13-7-7-7zm0-4v2c4.97 0 9 4.03 9 9h2c0-6.08-4.93-11-11-11zm20 0C10.32 4 4 10.32 4 18h2c0-4.97 4.03-9 9-9v2zm-8-2c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6z" fill="currentColor"/></svg> CAST ACTIVO &#10004;';
   }else{
     btn.classList.remove("active");
-    lock.innerHTML=" &#128274;";
+    btn.innerHTML='<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M1 18v3h3c0-1.66-1.34-3-3-3zm0-4v2c2.76 0 5 2.24 5 5h2c0-3.87-3.13-7-7-7zm0-4v2c4.97 0 9 4.03 9 9h2c0-6.08-4.93-11-11-11zm20 0C10.32 4 4 10.32 4 18h2c0-4.97 4.03-9 9-9v2zm-8-2c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6z" fill="currentColor"/></svg> CAST';
   }
 }
 
@@ -1194,21 +1504,38 @@ db.ref("subscriptions/"+deviceId).on("value",function(snap){
   updateCastUI();
 });
 
-function onCastClick(){
-  if(castActive){
-    if(video.remote&&video.remote.prompt){
-      video.remote.prompt()["catch"](function(){});
-    }else if(navigator.presentation&&navigator.presentation.defaultRequest){
-      navigator.presentation.defaultRequest.start()["catch"](function(){});
-    }
-  }else{
-    document.getElementById("sub-modal").classList.add("show");
-    var saved=localStorage.getItem("mk_sub_email")||"";
-    document.getElementById("sub-email").value=saved;
-    document.getElementById("sub-status").textContent="";
-    document.getElementById("sub-status").className="sub-status";
-  }
+var castSession=null;
+function initCastSDK(){
+  if(!window.cast||!window.cast.framework)return;
+  window.cast.framework.CastContext.getInstance().setOptions({
+    receiverApplicationId:window.cast.media.DEFAULT_MEDIA_RECEIVER_APPLICATION_ID,
+    autoJoinPolicy:window.cast.framework.AutoJoinPolicy.ORIGIN_SCOPED
+  });
 }
+function onCastClick(){
+  if(castSession){
+    castSession.endSession(true);
+    castSession=null;
+    updateCastUI();
+    return;
+  }
+  if(!window.cast||!window.cast.framework){
+    alert("Google Cast no disponible.\nAsegurate de tener Chrome y el receptor encendido.");
+    return;
+  }
+  window.cast.framework.CastContext.getInstance().requestSession().then(function(session){
+    castSession=session;
+    var mediaInfo=new window.cast.media.MediaInfo("https://183.bozztv.com/giatv/giatv-magicplus/magicplus/chunks.m3u8","application/x-mpegURL");
+    mediaInfo.streamType=window.cast.media.StreamType.LIVE;
+    var request=new window.cast.media.LoadRequest(mediaInfo);
+    request.autoplay=true;
+    session.getCurrentMediaSession().load(mediaInfo);
+    updateCastUI();
+  })["catch"](function(e){console.log("Cast error:",e);});
+}
+try{initCastSDK();}catch(e){}
+setTimeout(function(){try{initCastSDK();}catch(e){}},2000);
+setTimeout(function(){try{initCastSDK();}catch(e){}},5000);
 
 function verifySubscription(){
   var email=document.getElementById("sub-email").value.trim().toLowerCase();

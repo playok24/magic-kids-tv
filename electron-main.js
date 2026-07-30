@@ -1,150 +1,143 @@
-const { app, BrowserWindow, ipcMain } = require("electron");
-const { autoUpdater } = require("electron-updater");
+const {app, BrowserWindow, ipcMain} = require("electron");
 const path = require("path");
-const https = require("https");
 const http = require("http");
-const fs = require("fs");
-const { spawn } = require("child_process");
+const {spawn} = require("child_process");
+const {autoUpdater} = require("electron-updater");
 
-let win;
-const logPath = path.join(app.getPath("userData"), "mk-error.log");
-function logErr(msg, err) {
-  try {
-    const s = new Date().toISOString() + " " + msg + (err ? " " + (err.stack || err.message || err) : "") + "\n";
-    fs.appendFileSync(logPath, s);
-  } catch (e) {}
-}
+app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
+app.commandLine.appendSwitch("enable-features", "MediaRouter");
+app.commandLine.appendSwitch("enable-features", "CastMediaRoute");
+
+let mainWindow;
+let proxyServer = null;
+const PROXY_PORT = 12345;
+const STREAM_URL = "https://183.bozztv.com/giatv/giatv-magicplus/magicplus/chunks.m3u8";
 
 autoUpdater.autoDownload = true;
 autoUpdater.autoInstallOnAppQuit = true;
 
-app.commandLine.appendSwitch("ignore-gpu-blocklist");
-app.commandLine.appendSwitch("disable-background-timer-throttling");
-app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
-
-const MOBILE_UA = "Mozilla/5.0 (Linux; Android 14; SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36";
-app.userAgentFallback = MOBILE_UA;
-
-const HLS_URL = "https://183.bozztv.com/giatv/giatv-magicplus/magicplus/chunks.m3u8";
-const PROXY_PORT = 12345;
-
-let ffmpegPath = null;
-try { ffmpegPath = require("ffmpeg-static"); } catch (e) {}
-if (ffmpegPath && app.isPackaged) {
-  const unpackedDir = path.join(process.resourcesPath, "app.asar.unpacked");
-  const p = path.join(unpackedDir, "node_modules", "ffmpeg-static", "ffmpeg.exe");
-  if (fs.existsSync(p)) ffmpegPath = p;
-  else logErr("ffmpeg unpacked not found at " + p);
-}
-
-function startStream(res) {
-  if (!ffmpegPath) { logErr("ffmpeg not found"); if (!res.writableEnded) { res.writeHead(502); res.end("no_ffmpeg"); } return; }
-  const proc = spawn(ffmpegPath, [
-    "-user_agent", MOBILE_UA,
-    "-analyzeduration", "500000",
-    "-i", HLS_URL,
-    "-c", "copy",
-    "-bsf:a", "aac_adtstoasc",
-    "-f", "mp4",
-    "-movflags", "frag_keyframe+default_base_moof",
-    "-"
-  ], { stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
-  proc.stdout.pipe(res);
-  let errBuf = "";
-  proc.stderr.on("data", (d) => { errBuf += d; if (errBuf.length > 2000) errBuf = errBuf.slice(-2000); });
-  proc.on("error", (e) => { logErr("spawn " + e.message); if (!res.writableEnded) res.end(); });
-  proc.on("exit", (code, sig) => {
-    logErr("ffmpeg exit=" + code + " sig=" + sig);
-    if (!res.writableEnded) res.end();
-  });
-  res.on("close", () => { proc.kill(); });
-}
-
-function startServer() {
-  const server = http.createServer((req, res) => {
-    if (req.url === "/stream") {
-      res.writeHead(200, { "Content-Type": "video/mp4", "Access-Control-Allow-Origin": "*", "Cache-Control": "no-cache" });
-      startStream(res);
-    } else if (req.method === "OPTIONS") {
-      res.writeHead(204, { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET", "Access-Control-Allow-Headers": "*" });
-      res.end();
-    } else { res.writeHead(404); res.end(); }
-  });
-  server.on("error", (e) => logErr("server", e));
-  server.listen(PROXY_PORT, "127.0.0.1", () => logErr("proxy ok ffmpeg=" + (ffmpegPath ? "yes" : "no")));
-}
-
-const gotTheLock = app.requestSingleInstanceLock();
-if (!gotTheLock) { app.quit(); }
-else {
-  app.on("second-instance", () => { if (win) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); } });
-
-  let updateTimer = null;
-  function checkUpdates() {
-    if (updateTimer) clearTimeout(updateTimer);
-    updateTimer = setTimeout(() => {
-      if (win) win.webContents.send("update-not-available");
-      updateTimer = null;
-    }, 15000);
-    autoUpdater.checkForUpdates();
-  }
-  function onUpdateResult(handler) {
-    return (...args) => {
-      if (updateTimer) { clearTimeout(updateTimer); updateTimer = null; }
-      handler(...args);
-    };
-  }
-
-  app.whenReady().then(() => { startServer(); createWindow(); setTimeout(checkUpdates, 10000); });
-  setInterval(checkUpdates, 30 * 60 * 1000);
-
-  autoUpdater.on("update-available", onUpdateResult((info) => {
-    if (win) win.webContents.send("update-available", info.version);
-    autoUpdater.checkForUpdatesAndNotify();
-  }));
-  autoUpdater.on("download-progress", (d) => {
-    const pct = Math.round(d.percent);
-    if (win) win.webContents.send("update-progress", pct);
-  });
-  autoUpdater.on("update-downloaded", onUpdateResult(() => {
-    if (win) win.webContents.send("update-downloaded");
-  }));
-  autoUpdater.on("error", onUpdateResult((err) => {
-    if (win) win.webContents.send("update-error", err.message || "Error de conexion");
-  }));
-}
-
-function createWindow() {
+function getFfmpegPath(){
   try {
-    win = new BrowserWindow({
-      width: 1380, height: 783, center: true, resizable: true, autoHideMenuBar: true, title: "",
-      icon: path.join(__dirname, "icon.ico"),
-      webPreferences: { nodeIntegration: false, contextIsolation: true, webSecurity: false, backgroundThrottling: false, preload: path.join(__dirname, "electron-preload.js") }
-    });
-    win.loadFile(path.join(__dirname, "prueba.html"));
-    win.on("closed", () => { win = null; });
-    win.on("enter-full-screen", () => { if (win) win.webContents.send("fullscreen-changed", true); });
-    win.on("leave-full-screen", () => { if (win) win.webContents.send("fullscreen-changed", false); });
-    win.webContents.on("before-input-event", (e, input) => { if (input.key === "F11") { e.preventDefault(); if (win) win.setFullScreen(!win.isFullScreen()); } });
-    win.webContents.on("did-finish-load", () => { if (win) { win.show(); win.focus(); } });
-    win.webContents.on("crashed", (event, killed) => { logErr("crash", { killed }); });
-    win.webContents.on("unresponsive", () => { logErr("unresponsive"); });
-  } catch (e) { logErr("create", e); }
+    var p = require("ffmpeg-static");
+    if(p && require("fs").existsSync(p)) return p;
+  } catch(e){}
+  return "ffmpeg";
 }
 
-ipcMain.on("fullscreen-toggle", () => { if (win) win.setFullScreen(!win.isFullScreen()); });
-ipcMain.on("fullscreen-enter", () => { if (win) win.setFullScreen(true); });
-ipcMain.on("fullscreen-exit", () => { if (win) win.setFullScreen(false); });
-ipcMain.on("check-for-updates", () => { checkUpdates(); });
-ipcMain.on("install-update", () => { autoUpdater.quitAndInstall(); });
-ipcMain.handle("counter-fetch", async (event, url) => {
-  return new Promise((resolve) => {
-    https.get(url, (res) => {
-      let data = "";
-      res.on("data", (c) => data += c);
-      res.on("end", () => { try { resolve(JSON.parse(data)); } catch (e) { resolve(null); } });
-    }).on("error", () => resolve(null));
+function startProxy(){
+  return new Promise(function(resolve){
+    if(proxyServer){ resolve(); return; }
+    proxyServer = http.createServer(function(req, res){
+      res.setHeader("Connection", "keep-alive");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      var url = req.url.split("?")[0];
+      if(url !== "/stream"){
+        res.writeHead(404);
+        res.end();
+        return;
+      }
+      res.writeHead(200, {"Content-Type": "video/mp2t"});
+      var ffmpegPath = getFfmpegPath();
+      var args = [
+        "-reconnect", "1",
+        "-reconnect_streamed", "1",
+        "-reconnect_delay_max", "5",
+        "-i", STREAM_URL,
+        "-c", "copy",
+        "-f", "mpegts",
+        "pipe:1"
+      ];
+      var proc = spawn(ffmpegPath, args, {stdio: ["ignore", "pipe", "pipe"]});
+      proc.stdout.pipe(res);
+      proc.stderr.on("data", function(){});
+      proc.on("error", function(err){
+        console.log("ffmpeg error:", err.message);
+        try{res.end();}catch(e){}
+      });
+      proc.on("close", function(){
+        try{res.end();}catch(e){}
+      });
+      req.on("close", function(){
+        try{proc.kill("SIGTERM");}catch(e){}
+      });
+    });
+    proxyServer.listen(PROXY_PORT, "127.0.0.1", function(){
+      console.log("proxy ok ffmpeg=yes port=" + PROXY_PORT);
+      resolve();
+    });
+    proxyServer.on("error", function(err){
+      console.log("proxy error:", err.message);
+      resolve();
+    });
   });
+}
+
+function createWindow(){
+  mainWindow = new BrowserWindow({
+    width: 1280,
+    height: 800,
+    icon: path.join(__dirname, "www", "Magic Kids Logo.png"),
+    webPreferences: {
+      preload: path.join(__dirname, "electron-preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+  mainWindow.loadFile("prueba.html");
+  mainWindow.setMenuBarVisibility(false);
+
+  mainWindow.on("closed", function(){ mainWindow = null; });
+
+  mainWindow.webContents.on("did-finish-load", function(){
+    autoUpdater.checkForUpdates().catch(function(){});
+  });
+
+  mainWindow.webContents.setWindowOpenHandler(function(details){
+    require("electron").shell.openExternal(details.url);
+    return {action: "deny"};
+  });
+
+  mainWindow.webContents.on("will-navigate", function(event, url){
+    if(url !== mainWindow.webContents.getURL()){
+      event.preventDefault();
+      require("electron").shell.openExternal(url);
+    }
+  });
+}
+
+ipcMain.on("fullscreen-toggle", function(){
+  if(!mainWindow) return;
+  if(mainWindow.isFullScreen()){
+    mainWindow.setFullScreen(false);
+    mainWindow.webContents.send("fullscreen-change", false);
+  } else {
+    mainWindow.setFullScreen(true);
+    mainWindow.webContents.send("fullscreen-change", true);
+  }
 });
-app.on("window-all-closed", () => { app.quit(); });
-app.on("activate", () => { if (!win) createWindow(); });
+
+ipcMain.on("fullscreen-exit", function(){
+  if(!mainWindow) return;
+  if(mainWindow.isFullScreen()){
+    mainWindow.setFullScreen(false);
+    mainWindow.webContents.send("fullscreen-change", false);
+  }
+});
+
+ipcMain.on("install-update", function(){
+  autoUpdater.quitAndInstall();
+});
+
+autoUpdater.on("update-available", function(){
+  if(mainWindow) mainWindow.webContents.send("update-available");
+});
+
+autoUpdater.on("update-downloaded", function(){
+  if(mainWindow) mainWindow.webContents.send("update-downloaded");
+});
+
+app.whenReady().then(function(){
+  startProxy().then(createWindow);
+});
+app.on("window-all-closed", function(){ app.quit(); });

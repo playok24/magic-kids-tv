@@ -1,0 +1,667 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Chat en Vivo - Magic Kids TV</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:transparent;font-family:'Segoe UI',system-ui,sans-serif}
+
+.mk-chat{width:100%;max-width:800px;min-height:300px;height:100vh;max-height:800px;display:flex;flex-direction:column;background:rgba(13,13,26,0.98);border:1px solid #333;border-radius:12px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.5);position:relative}
+.mk-chat .mk-ch{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #222}
+.mk-chat .mk-ch h3{color:#00ccff;font-size:14px;font-weight:700;margin:0}
+.mk-chat .mk-ch .mk-ol{display:none}
+.mk-chat .mk-ch .mk-ub{display:flex;align-items:center;gap:4px}
+.mk-chat .mk-ch .mk-ua{cursor:pointer;line-height:1;padding:0;border-radius:50%;width:32px;height:32px;flex-shrink:0;overflow:hidden;position:relative}
+.mk-chat .mk-ch .mk-ua:hover{opacity:0.8}
+.mk-chat .mk-ch .mk-ua img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.mk-chat .mk-ch .mk-ua .mk-ai{display:inline-flex;width:32px;height:32px;border-radius:50%;color:#fff;font-size:14px;font-weight:700;align-items:center;justify-content:center}
+.mk-chat .mk-msg .mk-mu{color:#c4a0ff;font-weight:700;font-size:13px;display:flex;align-items:center;gap:6px}
+.mk-chat .mk-msg .mk-mav{display:inline-flex;width:32px;height:32px;border-radius:50%;color:#fff;font-size:14px;font-weight:700;align-items:center;justify-content:center;flex-shrink:0}
+.mk-chat .mk-ch .mk-un{color:#c4a0ff;font-size:11px;font-weight:600}
+.mk-chat .mk-ch .mk-ue{background:none;border:none;color:#555;font-size:11px;cursor:pointer;padding:2px 4px;line-height:1}
+.mk-chat .mk-ch .mk-ue:hover{color:#00ccff}
+.mk-chat .mk-ch .mk-ca{background:none;border:1px solid #333;border-radius:4px;color:#888;font-size:14px;cursor:pointer;padding:2px 6px}
+.mk-chat .mk-ch .mk-ca:hover{color:#00ccff;border-color:#00ccff}
+.mk-chat .mk-ch .mk-ca.active{color:#00ff66;border-color:#00ff66}
+.mk-chat .mk-name-edit{display:none;position:absolute;top:38px;left:40px;background:#1a1a2e;border:1px solid #333;border-radius:8px;padding:8px;z-index:20}
+.mk-chat .mk-name-edit.show{display:flex;gap:4px}
+.mk-chat .mk-name-edit input{padding:5px 8px;border-radius:6px;border:1px solid #333;background:#0a0a1a;color:#fff;font-size:11px;outline:none;width:130px}
+.mk-chat .mk-name-edit input:focus{border-color:#00ccff}
+.mk-chat .mk-name-edit button{padding:5px 8px;border:none;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer}
+.mk-chat .mk-name-edit .mk-nok{background:#7c3aed;color:#fff}
+.mk-chat .mk-name-edit .mk-ncn{background:rgba(255,255,255,0.1);color:#888}
+
+.mk-chat .mk-ml{flex:1;overflow-y:auto;padding:10px 14px;display:flex;flex-direction:column;gap:6px}
+.mk-chat .mk-ml::-webkit-scrollbar{width:4px}
+.mk-chat .mk-ml::-webkit-scrollbar-thumb{background:#333;border-radius:2px}
+
+.mk-chat .mk-msg{position:relative;padding:6px 10px;border-radius:8px;background:rgba(255,255,255,0.04);font-size:12px;display:flex;flex-direction:column;gap:2px}
+.mk-chat .mk-msg .mk-mt{color:#ddd;line-height:1.4}
+.mk-chat .mk-msg .mk-mti{color:#555;font-size:10px}
+.mk-chat .mk-msg .mk-ma{position:absolute;top:4px;right:4px;display:none;gap:4px}
+.mk-chat .mk-ml.mk-admin .mk-msg:hover .mk-ma{display:flex}
+.mk-chat .mk-msg .mk-ma button{width:22px;height:22px;border:none;border-radius:4px;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.mk-chat .mk-mb{background:rgba(255,68,68,0.2);color:#ff6666}
+.mk-chat .mk-mb:hover{background:rgba(255,68,68,0.4)}
+.mk-chat .mk-mba{background:rgba(255,150,0,0.2);color:#ffaa00}
+.mk-chat .mk-mba:hover{background:rgba(255,150,0,0.4)}
+.mk-chat .mk-msg.mk-sys{background:rgba(0,204,255,0.08);border-left:2px solid #00ccff}
+.mk-chat .mk-msg.mk-sys .mk-mt{color:#00ccff;font-style:italic}
+.mk-chat .mk-msg .mk-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.mk-chat .mk-msg .mk-heart{background:none;border:none;cursor:pointer;font-size:18px;display:inline-flex;align-items:center;gap:3px;padding:0 2px;color:#888;line-height:1}
+.mk-chat .mk-msg .mk-heart:hover{opacity:0.7}
+.mk-chat .mk-msg .mk-heart.liked{color:#ff2244}
+.mk-chat .mk-msg .mk-heart .mk-hc{font-size:11px;min-width:12px;text-align:center}
+
+.mk-chat .mk-ia{padding:10px 14px;border-top:1px solid #222;display:flex;gap:6px}
+.mk-chat .mk-ia input{flex:1;padding:8px 12px;border-radius:8px;border:1px solid #333;background:#1a1a2e;color:#fff;font-size:12px;outline:none}
+.mk-chat .mk-ia input:focus{border-color:#00ccff}
+.mk-chat .mk-ia input::placeholder{color:#555}
+.mk-chat .mk-ia button{padding:8px 14px;border:none;border-radius:8px;background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;font-size:12px;font-weight:700;cursor:pointer}
+.mk-chat .mk-ia button:hover{opacity:0.85}
+.mk-chat .mk-ia button:disabled{opacity:0.4;cursor:not-allowed}
+.mk-chat .mk-ia .mk-eb{background:none;border:none;font-size:20px;cursor:pointer;padding:4px 6px;border-radius:6px;line-height:1;color:#888}
+.mk-chat .mk-ia .mk-eb:hover{background:rgba(255,255,255,0.1)}
+.mk-chat .mk-ep{position:absolute;bottom:54px;left:10px;right:10px;background:#1a1a2e;border:1px solid #333;border-radius:10px;padding:10px;display:none;flex-wrap:wrap;gap:4px;z-index:10;max-height:140px;overflow-y:auto}
+.mk-chat .mk-ep.show{display:flex}
+.mk-chat .mk-ep button{background:none;border:none;font-size:20px;cursor:pointer;padding:4px;border-radius:4px;line-height:1}
+.mk-chat .mk-ep button:hover{background:rgba(255,255,255,0.1)}
+
+.mk-chat .mk-login{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:12px;background:rgba(13,13,26,0.98);border-radius:12px;padding:20px;z-index:5}
+.mk-chat .mk-login.hidden{display:none}
+.mk-chat .mk-login h3{color:#00ccff;font-size:15px;margin:0}
+.mk-chat .mk-login .mk-lav{cursor:pointer;width:56px;height:56px;border-radius:50%;overflow:hidden;border:2px solid #7c3aed;flex-shrink:0}
+.mk-chat .mk-login .mk-lav:hover{border-color:#00ccff}
+.mk-chat .mk-login .mk-lav img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.mk-chat .mk-login .mk-lav .mk-ai{display:inline-flex;width:56px;height:56px;border-radius:50%;color:#fff;font-size:26px;font-weight:700;align-items:center;justify-content:center}
+.mk-chat .mk-login p{color:#888;font-size:12px;margin:0;text-align:center}
+.mk-chat .mk-login input{width:100%;max-width:260px;padding:10px 12px;border-radius:8px;border:1px solid #333;background:#1a1a2e;color:#fff;font-size:13px;text-align:center;outline:none}
+.mk-chat .mk-login input:focus{border-color:#00ccff}
+.mk-chat .mk-login button{padding:10px 30px;border:none;border-radius:8px;background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;font-size:13px;font-weight:700;cursor:pointer}
+.mk-chat .mk-login button:hover{opacity:0.85}
+
+.mk-chat .mk-ap{position:absolute;top:40px;right:10px;z-index:10;background:#1a1a2e;border:1px solid #333;border-radius:10px;padding:14px;display:none;flex-direction:column;gap:8px;width:220px;box-shadow:0 4px 20px rgba(0,0,0,0.5)}
+.mk-chat .mk-ap.show{display:flex}
+.mk-chat .mk-ap p{color:#888;font-size:11px;margin:0}
+.mk-chat .mk-ap input{padding:8px 10px;border-radius:6px;border:1px solid #333;background:#0a0a1a;color:#ff6666;font-size:12px;outline:none;width:100%}
+.mk-chat .mk-ap input:focus{border-color:#ff6666}
+.mk-chat .mk-ap .mk-ab{display:flex;gap:6px}
+.mk-chat .mk-ap .mk-ab button{flex:1;padding:6px;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer}
+.mk-chat .mk-aa{background:#7c3aed;color:#fff}
+.mk-chat .mk-aa:hover{background:#6d28d9}
+.mk-chat .mk-ad{background:rgba(255,68,68,0.2);color:#ff6666}
+.mk-chat .mk-ad:hover{background:rgba(255,68,68,0.4)}
+.mk-chat .mk-acls{background:rgba(255,255,255,0.1);color:#888}
+.mk-chat .mk-acls:hover{background:rgba(255,255,255,0.2)}
+
+.mk-chat .mk-poll{display:none;flex-direction:column;padding:10px 14px;background:rgba(124,58,237,0.08);border-top:1px solid rgba(124,58,237,0.3)}
+.mk-chat .mk-poll.show{display:flex}
+.mk-chat .mk-poll .mk-pq{color:#c4a0ff;font-size:12px;font-weight:700;margin-bottom:6px}
+.mk-chat .mk-poll .mk-po{display:flex;flex-direction:column;gap:4px}
+.mk-chat .mk-poll .mk-po button{position:relative;text-align:left;padding:6px 10px;border:1px solid #333;border-radius:6px;background:rgba(255,255,255,0.04);color:#ddd;font-size:11px;cursor:pointer;overflow:hidden;transition:border-color .15s}
+.mk-chat .mk-poll .mk-po button:hover{border-color:#7c3aed}
+.mk-chat .mk-poll .mk-po button.mk-pv{border-color:#7c3aed}
+.mk-chat .mk-poll .mk-pb{position:absolute;top:0;left:0;bottom:0;background:rgba(124,58,237,0.2);transition:width .3s;pointer-events:none}
+.mk-chat .mk-poll .mk-pn{position:relative;z-index:1;display:flex;justify-content:space-between}
+.mk-chat .mk-poll .mk-pt{color:#888;font-size:10px;margin-top:6px;text-align:center}
+
+.mk-chat .mk-pec{padding:10px 14px;border-top:1px solid #222;display:none;flex-direction:column;gap:6px}
+.mk-chat .mk-pec.show{display:flex}
+.mk-chat .mk-pec p{color:#888;font-size:11px;margin:0}
+.mk-chat .mk-pec input,.mk-chat .mk-pec select{padding:6px 10px;border-radius:6px;border:1px solid #333;background:#0a0a1a;color:#fff;font-size:11px;outline:none;width:100%}
+.mk-chat .mk-pec input:focus,.mk-chat .mk-pec select:focus{border-color:#7c3aed}
+.mk-chat .mk-pec .mk-peo{display:flex;flex-direction:column;gap:4px}
+.mk-chat .mk-pec .mk-pecb{display:flex;gap:6px;margin-top:4px}
+.mk-chat .mk-pec .mk-pecb button{flex:1;padding:6px;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer}
+.mk-chat .mk-pec .mk-pego{background:#7c3aed;color:#fff}
+.mk-chat .mk-pec .mk-pego:hover{background:#6d28d9}
+.mk-chat .mk-pec .mk-pecancel{background:rgba(255,255,255,0.1);color:#888}
+.mk-chat .mk-pec .mk-pecancel:hover{background:rgba(255,255,255,0.2)}
+.mk-chat .mk-pec .mk-pestop{background:rgba(255,68,68,0.2);color:#ff6666}
+.mk-chat .mk-pec .mk-pestop:hover{background:rgba(255,68,68,0.4)}
+</style>
+</head>
+<body>
+
+<div class="mk-chat" id="mk-chat">
+  <div class="mk-login" id="mk-login">
+    <h3>Chat en Vivo</h3>
+    <div class="mk-lav" id="mk-lav" title="Elegir foto"><span class="mk-ai" style="background:#7c3aed">?</span></div>
+    <p>Ingresa tu nombre para chatear</p>
+    <input type="text" id="mk-ni" placeholder="Tu nombre" maxlength="20" autocomplete="off">
+    <button id="mk-nok">ENTRAR AL CHAT</button>
+    <input type="file" id="mk-lf" accept="image/*" hidden>
+  </div>
+  <div class="mk-ch" style="position:relative">
+    <div><h3>Chat en Vivo</h3><span class="mk-ol" id="mk-ol"></span></div>
+    <div class="mk-ub" id="mk-ub" style="display:none">
+      <span class="mk-ua" id="mk-ua" title="Cambiar foto"></span>
+      <span class="mk-un" id="mk-un"></span>
+      <button class="mk-ue" id="mk-ue" title="Cambiar nombre">&#9998;</button>
+    </div>
+    <button class="mk-ca" id="mk-ca" title="Admin">&#9881;</button>
+    <input type="file" id="mk-af" accept="image/*" hidden>
+    <div class="mk-name-edit" id="mk-ne">
+      <input type="text" id="mk-nei" placeholder="Nuevo nombre" maxlength="20" autocomplete="off">
+      <button class="mk-nok" id="mk-neok">OK</button>
+      <button class="mk-ncn" id="mk-necn">X</button>
+    </div>
+  </div>
+  <div class="mk-ml" id="mk-ml"></div>
+  <div class="mk-poll" id="mk-poll">
+    <div class="mk-pq" id="mk-pq"></div>
+    <div class="mk-po" id="mk-po"></div>
+    <div class="mk-pt" id="mk-pt"></div>
+  </div>
+  <div class="mk-ia">
+    <div class="mk-ep" id="mk-ep"></div>
+    <button class="mk-eb" id="mk-eb" title="Emoticones">&#128578;</button>
+    <input type="text" id="mk-ci" placeholder="Escribe un mensaje..." maxlength="200" autocomplete="off">
+    <button id="mk-cs">ENVIAR</button>
+  </div>
+  <div class="mk-ap" id="mk-ap">
+    <p>Modo Admin</p>
+    <input type="password" id="mk-apass" placeholder="Password" autocomplete="off">
+    <div class="mk-ab">
+      <button class="mk-aa" id="mk-aact">ACTIVAR</button>
+      <button class="mk-ad" id="mk-adea" style="display:none">DESACTIVAR</button>
+      <button class="mk-acls" id="mk-acls">X</button>
+    </div>
+    <hr style="border:none;border-top:1px solid #333;margin:4px 0">
+    <button class="mk-aa" id="mk-pecbtn" style="font-size:11px;padding:6px;width:100%">&#128202; Encuesta</button>
+  </div>
+  <div class="mk-pec" id="mk-pec">
+    <p>Crear encuesta</p>
+    <input type="text" id="mk-peqt" placeholder="Pregunta" maxlength="100">
+    <div class="mk-peo" id="mk-peoo">
+      <input type="text" placeholder="Opcion 1" maxlength="40">
+      <input type="text" placeholder="Opcion 2" maxlength="40">
+    </div>
+    <button class="mk-pecancel" id="mk-peao" style="font-size:10px;padding:4px;border:none;border-radius:4px;cursor:pointer;width:100%">&#43; Agregar opcion</button>
+    <div style="display:flex;gap:6px;align-items:center">
+      <label style="color:#888;font-size:10px;white-space:nowrap">Duracion:</label>
+      <select id="mk-ped" style="flex:1">
+        <option value="1800" selected>30 minutos</option>
+        <option value="21600">6 horas</option>
+        <option value="43200">12 horas</option>
+        <option value="86400">24 horas</option>
+      </select>
+    </div>
+    <div class="mk-pecb">
+      <button class="mk-pego" id="mk-pegoo">INICIAR</button>
+      <button class="mk-pecancel" id="mk-peccl">CANCELAR</button>
+    </div>
+    <div class="mk-pecb" style="display:none" id="mk-pestb">
+      <button class="mk-pestop" id="mk-pestp">DETENER ENCUESTA</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+var fc={apiKey:"AIzaSyDM7YiLoP5Q-jTB1BBbMluvWL1LIPqCtxI",authDomain:"contadores-magic.firebaseapp.com",databaseURL:"https://contadores-magic-default-rtdb.firebaseio.com",projectId:"contadores-magic",storageBucket:"contadores-magic.firebasestorage.app",messagingSenderId:"58723817117",appId:"1:58723817117:web:f479abaeacf191364ae674"};
+if(!firebase.apps.length)firebase.initializeApp(fc);
+firebase.auth().signInAnonymously().catch(function(e){console.log("auth err",e);});
+var db=firebase.database();
+
+var chatAdmin=false;
+var chatSessionId="chat_"+Math.random().toString(36).substr(2,9);
+var chatBannedRef=db.ref("chat/banned");
+var chatMessagesRef=db.ref("chat/messages");
+var chatLikesRef=db.ref("chat/likes");
+var deviceId="";
+try{deviceId=localStorage.getItem("mk_device_id")||"";}catch(e){}
+if(!deviceId){deviceId="dev_"+Math.random().toString(36).substr(2,9)+Date.now().toString(36);try{localStorage.setItem("mk_device_id",deviceId);}catch(e){}}
+
+var loginEl=document.getElementById("mk-login");
+var ml=document.getElementById("mk-ml");
+var ci=document.getElementById("mk-ci");
+var cs=document.getElementById("mk-cs");
+var ol=document.getElementById("mk-ol");
+var caBtn=document.getElementById("mk-ca");
+var ap=document.getElementById("mk-ap");
+
+var loginAvatarEl=document.getElementById("mk-lav");
+var loginFileEl=document.getElementById("mk-lf");
+var userAvatar=null;
+try{userAvatar=localStorage.getItem("mk_user_avatar");}catch(e){}
+
+if(loginAvatarEl)loginAvatarEl.onclick=function(){if(loginFileEl)loginFileEl.click();};
+if(loginFileEl)loginFileEl.onchange=function(e){
+  var file=e.target.files[0];
+  if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    var img=new Image();
+    img.onload=function(){
+      var canvas=document.createElement("canvas");
+      canvas.width=56;canvas.height=56;
+      var ctx=canvas.getContext("2d");
+      ctx.drawImage(img,0,0,56,56);
+      userAvatar=canvas.toDataURL("image/jpeg",0.7);
+      updateLoginPreview();
+    };
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(file);
+};
+
+function updateLoginPreview(){
+  if(!loginAvatarEl)return;
+  if(userAvatar){
+    loginAvatarEl.innerHTML='<img src="'+userAvatar+'" alt="avatar">';
+  }else{
+    var n=userName||"";
+    var initial=n?n.charAt(0).toUpperCase():"?";
+    var color=avatarColor(n);
+    loginAvatarEl.innerHTML='<span class="mk-ai" style="background:'+color+'">'+initial+'</span>';
+  }
+}
+
+var userName="";
+var chatReady="";
+try{userName=localStorage.getItem("mk_user")||"";}catch(e){}
+try{chatReady=localStorage.getItem("mk_chat_ready")||"";}catch(e){}
+
+updateLoginPreview();
+
+function avatarColor(name){
+  var hash=0;
+  for(var i=0;i<name.length;i++){hash=name.charCodeAt(i)+((hash<<5)-hash);}
+  var colors=["#7c3aed","#2563eb","#059669","#d97706","#dc2626","#db2777","#0891b2","#4f46e5"];
+  return colors[Math.abs(hash)%colors.length];
+}
+
+function renderAvatar(){
+  var el=document.getElementById("mk-ua");
+  if(!el)return;
+  if(userAvatar){
+    el.innerHTML='<img src="'+userAvatar+'" alt="avatar">';
+  }else{
+    var initial=userName?userName.charAt(0).toUpperCase():"?";
+    var color=avatarColor(userName);
+    el.innerHTML='<span class="mk-ai" style="background:'+color+'">'+initial+'</span>';
+  }
+}
+
+function showUserBar(){
+  document.getElementById("mk-ub").style.display="flex";
+  renderAvatar();
+  document.getElementById("mk-un").textContent=userName;
+}
+
+if(chatReady&&userName){loginEl.classList.add("hidden");showUserBar();}
+
+document.getElementById("mk-nok").onclick=function(){
+  var v=document.getElementById("mk-ni").value.trim();
+  if(!v)return;
+  userName=v;
+  try{localStorage.setItem("mk_user",userName);}catch(e){}
+  if(userAvatar)try{localStorage.setItem("mk_user_avatar",userAvatar);}catch(e){}
+  chatReady=true;
+  try{localStorage.setItem("mk_chat_ready","1");}catch(e){}
+  loginEl.classList.add("hidden");
+  showUserBar();
+  ci.focus();
+};
+document.getElementById("mk-ni").onkeydown=function(e){if(e.key==="Enter")document.getElementById("mk-nok").click();};
+
+chatBannedRef.child(deviceId).on("value",function(snap){
+  if(snap.exists()){ci.disabled=true;cs.disabled=true;ci.placeholder="Has sido bloqueado del chat";}
+});
+
+function scrollChat(){ml.scrollTop=ml.scrollHeight;}
+function formatChatTime(ts){var d=new Date(ts);return d.getHours().toString().padStart(2,"0")+":"+d.getMinutes().toString().padStart(2,"0");}
+
+function renderChatMsg(msg){
+  var div=document.createElement("div");
+  div.className="mk-msg"+(msg.system?" mk-sys":"");
+  div.dataset.id=msg.id;
+  div.dataset.uid=msg.uid||"";
+  if(msg.system){
+    div.innerHTML='<span class="mk-mt">'+msg.text+'</span>';
+  }else{
+    var isOwn=msg.uid===deviceId;
+    var initial=msg.user?msg.user.charAt(0).toUpperCase():"?";
+    var color=avatarColor(msg.user||"");
+    var avHtml=isOwn&&userAvatar?'<img src="'+userAvatar+'" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0">':'<span class="mk-mav" style="background:'+color+'">'+initial+'</span>';
+    div.innerHTML='<span class="mk-mu">'+avHtml+msg.user+'</span>'
+      +'<div class="mk-row"><span class="mk-mt">'+msg.text+'</span>'
+      +'<span class="mk-mti">'+formatChatTime(msg.timestamp)+'</span>'
+      +'<button class="mk-heart" data-msg="'+msg.id+'">&#9825;<span class="mk-hc">0</span></button></div>'
+      +'<div class="mk-ma">'
+      +'<button class="mk-mb" title="Borrar">&#128465;</button>'
+      +'<button class="mk-mba" title="Banear">&#128683;</button>'
+      +'</div>';
+    var heartBtn=div.querySelector(".mk-heart");
+    chatLikesRef.child(msg.id).child(deviceId).once("value",function(snap){
+      if(snap.exists()){heartBtn.classList.add("liked");heartBtn.innerHTML="&#9829;<span class='mk-hc'>0</span>";}
+      chatLikesRef.child(msg.id).on("value",function(ls){
+        var c=ls.numChildren()||0;
+        heartBtn.innerHTML=(heartBtn.classList.contains("liked")?"&#9829;":"&#9825;")+"<span class='mk-hc'>"+c+"</span>";
+      });
+    });
+    heartBtn.onclick=function(){
+      var ref=chatLikesRef.child(msg.id).child(deviceId);
+      ref.once("value",function(snap){
+        if(snap.exists()){ref.remove();}else{ref.set(true);}
+      });
+    };
+    div.querySelector(".mk-mb").onclick=function(){
+      chatMessagesRef.child(msg.id).remove();
+    };
+    div.querySelector(".mk-mba").onclick=function(){
+      if(confirm("Banear a "+msg.user+" del chat?")){
+        chatBannedRef.child(msg.uid).set(true);
+        chatMessagesRef.child(msg.id).remove();
+        chatMessagesRef.push({system:true,text:"\uD83D\uDEAB "+msg.user+" ha sido bloqueado del chat",timestamp:firebase.database.ServerValue.TIMESTAMP});
+      }
+    };
+  }
+  ml.appendChild(div);
+}
+
+chatMessagesRef.orderByChild("timestamp").limitToLast(50).on("child_added",function(snap){
+  var msg=snap.val();
+  msg.id=snap.key;
+  renderChatMsg(msg);
+  scrollChat();
+});
+
+chatMessagesRef.orderByChild("timestamp").limitToLast(50).on("child_removed",function(snap){
+  var el=ml.querySelector('[data-id="'+snap.key+'"]');
+  if(el)el.remove();
+});
+
+db.ref("chat/online").on("value",function(snap){
+  ol.textContent=snap.numChildren()+" en linea";
+});
+
+var chatOnlineRef=db.ref("chat/online/"+chatSessionId);
+chatOnlineRef.set(firebase.database.ServerValue.TIMESTAMP);
+chatOnlineRef.onDisconnect().remove();
+setInterval(function(){chatOnlineRef.set(firebase.database.ServerValue.TIMESTAMP);},15000);
+
+function cleanStaleOnline(){
+  var cutoff=Date.now()-30000;
+  db.ref("chat/online").orderByChild("timestamp").endAt(cutoff).once("value",function(snap){
+    snap.forEach(function(child){child.ref.remove();});
+  });
+}
+cleanStaleOnline();
+setInterval(cleanStaleOnline,20000);
+
+function cleanOldMessages(){
+  var cutoff=Date.now()-12*3600*1000;
+  chatMessagesRef.orderByChild("timestamp").endAt(cutoff).limitToLast(200).once("value",function(snap){
+    snap.forEach(function(child){child.ref.remove();});
+  });
+}
+cleanOldMessages();
+setInterval(cleanOldMessages,300000);
+
+function sendChatMessage(){
+  var text=ci.value.trim();
+  if(!text)return;
+  if(!userName){loginEl.classList.remove("hidden");document.getElementById("mk-ni").focus();return;}
+  chatBannedRef.child(deviceId).once("value",function(snap){
+    if(snap.exists()){
+      ci.disabled=true;cs.disabled=true;
+      ci.placeholder="Has sido bloqueado del chat";
+      return;
+    }
+    chatMessagesRef.push({
+      user:userName,
+      text:text,
+      uid:deviceId,
+      timestamp:firebase.database.ServerValue.TIMESTAMP
+    });
+    ci.value="";
+  });
+}
+
+cs.onclick=sendChatMessage;
+ci.onkeydown=function(e){if(e.key==="Enter")sendChatMessage();};
+
+// Avatar photo
+document.getElementById("mk-ua").onclick=function(){document.getElementById("mk-af").click();document.getElementById("mk-ne").classList.remove("show");};
+document.getElementById("mk-af").onchange=function(e){
+  var file=e.target.files[0];
+  if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    var img=new Image();
+    img.onload=function(){
+      var canvas=document.createElement("canvas");
+      canvas.width=56;canvas.height=56;
+      var ctx=canvas.getContext("2d");
+      ctx.drawImage(img,0,0,56,56);
+      userAvatar=canvas.toDataURL("image/jpeg",0.7);
+      try{localStorage.setItem("mk_user_avatar",userAvatar);}catch(e){}
+      renderAvatar();
+    };
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(file);
+};
+
+// Editor de nombre
+document.getElementById("mk-ue").onclick=function(e){e.stopPropagation();var ne=document.getElementById("mk-ne");ne.classList.toggle("show");document.getElementById("mk-nei").value=userName;};
+document.getElementById("mk-neok").onclick=function(){
+  var v=document.getElementById("mk-nei").value.trim();
+  if(!v||v===userName){document.getElementById("mk-ne").classList.remove("show");return;}
+  userName=v;
+  try{localStorage.setItem("mk_user",userName);}catch(e){}
+  renderAvatar();
+  document.getElementById("mk-un").textContent=userName;
+  document.getElementById("mk-ne").classList.remove("show");
+};
+document.getElementById("mk-nei").onkeydown=function(e){if(e.key==="Enter")document.getElementById("mk-neok").click();};
+document.getElementById("mk-necn").onclick=function(){document.getElementById("mk-ne").classList.remove("show");};
+document.addEventListener("click",function(e){var ne=document.getElementById("mk-ne");if(ne.classList.contains("show")&&!ne.contains(e.target)&&e.target.id!=="mk-ue")ne.classList.remove("show");});
+
+function addAdminStyles(){ml.classList.add("mk-admin");caBtn.classList.add("active");}
+function removeAdminStyles(){ml.classList.remove("mk-admin");caBtn.classList.remove("active");}
+
+caBtn.onclick=function(){
+  ap.classList.toggle("show");
+  if(chatAdmin){
+    document.getElementById("mk-aact").style.display="none";
+    document.getElementById("mk-adea").style.display="block";
+  }else{
+    document.getElementById("mk-aact").style.display="block";
+    document.getElementById("mk-adea").style.display="none";
+    document.getElementById("mk-apass").value="";
+  }
+};
+document.getElementById("mk-acls").onclick=function(){ap.classList.remove("show");};
+document.getElementById("mk-aact").onclick=function(){
+  var pass=document.getElementById("mk-apass").value.trim();
+  if(pass==="tiosam2026"){
+    chatAdmin=true;
+    try{localStorage.setItem("mk_chat_admin","1");}catch(e){}
+    addAdminStyles();
+    document.getElementById("mk-pecbtn").style.display="block";
+    document.getElementById("mk-pec").classList.remove("show");
+    ap.classList.remove("show");
+  }else{
+    document.getElementById("mk-apass").style.borderColor="#ff0000";
+    document.getElementById("mk-apass").value="";
+    document.getElementById("mk-apass").placeholder="Password incorrecta";
+  }
+};
+document.getElementById("mk-adea").onclick=function(){
+  chatAdmin=false;
+  try{localStorage.removeItem("mk_chat_admin");}catch(e){}
+  removeAdminStyles();
+  document.getElementById("mk-pecbtn").style.display="none";
+  document.getElementById("mk-pec").classList.remove("show");
+  ap.classList.remove("show");
+};
+try{if(localStorage.getItem("mk_chat_admin")==="1"){chatAdmin=true;addAdminStyles();document.getElementById("mk-pecbtn").style.display="block";}else{document.getElementById("mk-pecbtn").style.display="none";}}catch(e){}
+
+var emojis=["😀","😂","🤣","😍","🥰","😘","😎","🤩","🥳","😢","😭","😡","🤔","🤫","🤭","😴","🤮","👍","👎","❤️","🔥","⭐","🎉","🎮","📺","🎵","🌈","☀️","🌙","💀","👻","🤡","👹","🙌","👏","💪","🤝","✌️","🤞","🙏","💤","💯","🚀","👀","🫶","💜","💙","💚","🧡","❤️‍🔥","✨","⚡","🌟","🪩","🧸","🎈","🎊"];
+var emojiPanel=document.getElementById("mk-ep");
+var emojiBtn=document.getElementById("mk-eb");
+emojis.forEach(function(e){
+  var b=document.createElement("button");
+  b.textContent=e;
+  b.onclick=function(){
+    ci.value+=e;
+    ci.focus();
+    emojiPanel.classList.remove("show");
+  };
+  emojiPanel.appendChild(b);
+});
+emojiBtn.onclick=function(e){e.stopPropagation();emojiPanel.classList.toggle("show");};
+document.addEventListener("click",function(e){if(!emojiPanel.contains(e.target)&&e.target!==emojiBtn)emojiPanel.classList.remove("show");});
+
+// === ENCUESTA ===
+var pollRef=db.ref("chat/poll");
+var pollEl=document.getElementById("mk-poll");
+var pollQ=document.getElementById("mk-pq");
+var pollO=document.getElementById("mk-po");
+var pollT=document.getElementById("mk-pt");
+var pollTimer=null;
+
+document.getElementById("mk-pecbtn").onclick=function(){
+  document.getElementById("mk-pec").classList.toggle("show");
+};
+document.getElementById("mk-peccl").onclick=function(){
+  document.getElementById("mk-pec").classList.remove("show");
+};
+
+document.getElementById("mk-peao").onclick=function(){
+  var oo=document.getElementById("mk-peoo");
+  var inputs=oo.querySelectorAll("input");
+  if(inputs.length>=6)return;
+  var inp=document.createElement("input");
+  inp.placeholder="Opcion "+(inputs.length+1);
+  inp.maxLength=40;
+  oo.appendChild(inp);
+};
+
+document.getElementById("mk-pegoo").onclick=function(){
+  if(!chatAdmin)return;
+  var q=document.getElementById("mk-peqt").value.trim();
+  if(!q){document.getElementById("mk-peqt").style.borderColor="#ff0000";return;}
+  var inputs=document.getElementById("mk-peoo").querySelectorAll("input");
+  var opts=[];
+  for(var i=0;i<inputs.length;i++){
+    var v=inputs[i].value.trim();
+    if(v)opts.push({text:v,votes:0});
+  }
+  if(opts.length<2){return;}
+  var dur=parseInt(document.getElementById("mk-ped").value);
+  pollRef.set({
+    question:q,
+    options:opts,
+    active:true,
+    endsAt:Date.now()+dur*1000,
+    createdAt:Date.now()
+  });
+  document.getElementById("mk-pec").classList.remove("show");
+  document.getElementById("mk-peqt").value="";
+  var oo=document.getElementById("mk-peoo");
+  oo.innerHTML='<input type="text" placeholder="Opcion 1" maxlength="40"><input type="text" placeholder="Opcion 2" maxlength="40">';
+};
+
+document.getElementById("mk-pestp").onclick=function(){
+  if(!chatAdmin)return;
+  pollRef.update({active:false});
+  document.getElementById("mk-pec").classList.remove("show");
+};
+
+pollRef.on("value",function(snap){
+  var poll=snap.val();
+  if(!poll||!poll.active){
+    pollEl.classList.remove("show");
+    clearInterval(pollTimer);
+    pollTimer=null;
+    return;
+  }
+  renderPoll(poll);
+});
+
+function renderPoll(poll){
+  pollEl.classList.add("show");
+  pollQ.textContent=poll.question;
+  pollO.innerHTML="";
+  var totalVotes=0;
+  if(poll.options)for(var i=0;i<poll.options.length;i++)totalVotes+=poll.options[i].votes||0;
+  var voted=false;
+  var myIdx=null;
+  pollRef.child("votes/"+deviceId).once("value",function(snap){
+    if(snap.exists()){
+      voted=true;
+      myIdx=snap.val();
+      pollO.querySelectorAll("button").forEach(function(b){b.disabled=true;b.style.cursor="default";});
+      if(myIdx!==null&&pollO.children[myIdx])pollO.children[myIdx].classList.add("mk-pv");
+    }
+  });
+  try{var ls=localStorage.getItem("mk_poll_voted_"+poll.createdAt);if(ls!==null){voted=true;myIdx=parseInt(ls);}}catch(e){}
+
+  if(poll.options){
+    for(var j=0;j<poll.options.length;j++){
+      (function(idx){
+        var opt=poll.options[idx];
+        var votes=opt.votes||0;
+        var pct=totalVotes>0?Math.round(votes/totalVotes*100):0;
+        var btn=document.createElement("button");
+        btn.innerHTML='<div class="mk-pb" style="width:'+pct+'%"></div><div class="mk-pn"><span>'+opt.text+'</span><span>'+votes+' ('+pct+'%)</span></div>';
+        if(voted&&myIdx==idx)btn.classList.add("mk-pv");
+        if(!voted){
+          btn.onclick=function(){
+            if(chatAdmin)return;
+            var vRef=pollRef.child("votes/"+deviceId);
+            vRef.set(idx);
+            pollRef.child("options/"+idx+"/votes").transaction(function(cur){return(cur||0)+1;});
+            try{localStorage.setItem("mk_poll_voted_"+poll.createdAt,""+idx);}catch(e){}
+            pollO.querySelectorAll("button").forEach(function(b){b.disabled=true;b.style.cursor="default";});
+            btn.classList.add("mk-pv");
+          };
+        }
+        pollO.appendChild(btn);
+      })(j);
+    }
+  }
+
+  clearInterval(pollTimer);
+  pollTimer=setInterval(function(){
+    var remaining=Math.max(0,poll.endsAt-Date.now());
+    if(remaining<=0){
+      pollRef.update({active:false});
+      clearInterval(pollTimer);
+      return;
+    }
+    pollT.textContent="Tiempo: "+formatPollTime(remaining);
+  },1000);
+
+  pollT.textContent="Tiempo: "+formatPollTime(Math.max(0,poll.endsAt-Date.now()));
+}
+
+function formatPollTime(ms){
+  var totalSec=Math.floor(ms/1000);
+  var d=Math.floor(totalSec/86400);
+  var h=Math.floor((totalSec%86400)/3600);
+  var m=Math.floor((totalSec%3600)/60);
+  var s=totalSec%60;
+  if(d>0)return d+"d "+h+"h "+m+"m";
+  if(h>0)return h+"h "+m+"m "+s+"s";
+  return m+":"+(s<10?"0":"")+s;
+}
+
+document.getElementById("mk-pestb").style.display="none";
+pollRef.child("active").on("value",function(snap){
+  var el=document.getElementById("mk-pestb");
+  if(el)el.style.display=snap.val()&&chatAdmin?"flex":"none";
+});
+})();
+</script>
+</body>
+</html>

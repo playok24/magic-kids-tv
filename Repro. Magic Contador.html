@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Repro. Magic Contador</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.20"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:transparent;font-family:'Segoe UI',system-ui,sans-serif;color:#fff;overflow:hidden}
+#mc{width:100%;max-width:800px;margin:0 auto;background:transparent}
+#mc .top{display:flex;align-items:center;gap:8px;padding:6px 12px;background:rgba(10,10,26,0.85);backdrop-filter:blur(8px)}
+#mc .top img{width:22px;height:22px;border-radius:4px;object-fit:contain}
+#mc .top .tit{font-size:12px;font-weight:800;background:linear-gradient(135deg,#c4a0ff,#00ccff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+#mc .top .cnt{margin-left:auto;font-size:11px;color:#888;display:flex;align-items:center;gap:4px}
+#mc .top .cnt span{color:#00ff66;font-weight:700;min-width:20px;text-align:center}
+#mc .vid{position:relative;background:#000;width:100%;aspect-ratio:16/9}
+#mc .vid video{width:100%;height:100%;display:block;object-fit:contain;opacity:0;transition:opacity .5s}
+#mc .vid video.mk-on{opacity:1}
+#mc .ld{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#000;z-index:5}
+#mc .ld img{width:60px;height:60px;border-radius:12px;object-fit:contain;animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.7;transform:scale(.95)}}
+#mc .ld .lt{color:#00ff66;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;text-shadow:0 0 8px #00ff66}
+#mc .pg{background:rgba(10,10,26,0.9);border-top:1px solid rgba(255,255,255,0.06);overflow:hidden}
+#mc .pg .ph{display:flex;align-items:center;justify-content:space-between;padding:8px 12px}
+#mc .pg .ph span{font-size:12px;font-weight:700;color:#c4a0ff}
+#mc .pg .ph select{padding:3px 8px;border-radius:4px;border:1px solid #444;background:#1a1a2e;color:#00ccff;font-size:11px;font-weight:700;cursor:pointer;outline:none}
+#mc .pg .pb{overflow-x:auto;overflow-y:hidden;white-space:nowrap;padding:0 12px 8px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.12) transparent}
+#mc .pg .pb::-webkit-scrollbar{height:4px}
+#mc .pg .pb::-webkit-scrollbar-track{background:transparent}
+#mc .pg .pb::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.15);border-radius:2px}
+#mc .pg .pi{display:inline-flex;gap:6px;padding:5px 12px;border-radius:5px;font-size:12px;margin-right:4px;transition:background .12s}
+#mc .pg .pi.mk-now{background:rgba(196,160,255,0.15);border:1px solid rgba(196,160,255,0.3)}
+#mc .pg .pi .hr{color:#00ccff;font-weight:700}
+#mc .pg .pi .nm{color:#bbb}
+#mc .pg .pi.mk-now .nm{color:#fff;font-weight:600}
+</style>
+</head>
+<body>
+
+<div id="mc">
+  <div class="top">
+    <img src="www/Magic Kids Logo.png" alt="MK">
+    <span class="tit">Repro. Magic Contador</span>
+    <div class="cnt">&#x1F441; <span id="vc">0</span> viendo</div>
+  </div>
+  <div class="vid">
+    <div class="ld" id="ld">
+      <img src="www/Magic Kids Logo.png" alt="MK">
+      <div class="lt">Sintonizando...</div>
+    </div>
+    <video id="video" controls autoplay muted playsinline preload="auto"></video>
+  </div>
+  <div class="pg">
+    <div class="ph">
+      <span>&#128240; PROGRAMACION</span>
+      <select id="tz">
+        <option value="-3">ARG</option>
+        <option value="-5">COL</option>
+        <option value="-6">MEX</option>
+      </select>
+    </div>
+    <div class="pb" id="pb"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+var STREAM="https://183.bozztv.com/giatv/giatv-magicplus/magicplus/chunks.m3u8";
+var PROG_URL="https://playok24.github.io/magic-kids-tv/programacion.json?t="+Date.now();
+
+var video=document.getElementById("video");
+var ld=document.getElementById("ld");
+var vc=document.getElementById("vc");
+var pb=document.getElementById("pb");
+var tz=document.getElementById("tz");
+
+var hls=null,prog=[];
+var tzo=parseInt(localStorage.getItem("mc_tzo")||"-3");
+tz.value=localStorage.getItem("mc_tzo")||"-3";
+
+// Firebase
+var fc={apiKey:"AIzaSyDM7YiLoP5Q-jTB1BBbMluvWL1LIPqCtxI",authDomain:"contadores-magic.firebaseapp.com",databaseURL:"https://contadores-magic-default-rtdb.firebaseio.com",projectId:"contadores-magic",storageBucket:"contadores-magic.firebasestorage.app",messagingSenderId:"58723817117",appId:"1:58723817117:web:f479abaeacf191364ae674"};
+firebase.initializeApp(fc);
+firebase.auth().signInAnonymously().catch(function(e){console.log("auth err",e);});
+var db=firebase.database();
+var sid="mcc_"+Math.random().toString(36).substr(2,9);
+var sr=db.ref("sessions/"+sid);
+sr.set({localTs:Date.now()});
+setInterval(function(){sr.update({localTs:Date.now()});},10000);
+db.ref("sessions").on("value",function(s){var c=0,n=Date.now()-60000;s.forEach(function(x){var v=x.val();if(v&&v.localTs&&v.localTs>n)c++;});vc.textContent=c;});
+window.addEventListener("beforeunload",function(){sr.remove();});
+window.addEventListener("pagehide",function(){sr.remove();});
+
+// Programacion
+tz.onchange=function(){tzo=parseInt(this.value);localStorage.setItem("mc_tzo",this.value);renderP();};
+fetch(PROG_URL).then(function(r){return r.json();}).then(function(d){prog=d;renderP();}).catch(function(){});
+function tM(h){var p=h.split(":");return parseInt(p[0])*60+parseInt(p[1]);}
+function gN(){var n=new Date(),u=n.getTime(),l=u+tzo*3600000,h=Math.floor((((l%86400000)+86400000)%86400000)/3600000),m=Math.floor(((((l%86400000)+86400000)%86400000)%3600000)/60000),a=h*60+m;for(var i=0;i<prog.length;i++){var ac=tM(prog[i].hora),sg=i+1<prog.length?tM(prog[i+1].hora):1440;if(a>=ac&&a<sg)return{i:i,p:prog[i].programa};}return{i:-1,p:"---"};}
+function renderP(){
+  var n=gN();pb.innerHTML="";var ne=null;
+  prog.forEach(function(p,i){
+    var e=document.createElement("span");
+    e.className="pi"+(i===n.i?" mk-now":"");
+    e.innerHTML='<span class="hr">'+p.hora+'</span><span class="nm">'+p.programa+'</span>';
+    pb.appendChild(e);
+    if(i===n.i)ne=e;
+  });
+  if(ne)ne.scrollIntoView({behavior:"smooth",block:"nearest",inline:"center"});
+}
+setInterval(renderP,60000);
+
+// HLS
+var re=0;
+function sV(){ld.style.display="none";video.classList.add("mk-on");}
+function sE(m){ld.innerHTML='<img src="www/Magic Kids Logo.png" alt="MK"><div style="color:#ff6b6b;font-size:11px;text-align:center;padding:0 16px">'+m+'</div>';ld.style.display="flex";}
+function iH(){
+  re=0;
+  ld.innerHTML='<img src="www/Magic Kids Logo.png" alt="MK"><div class="lt">Sintonizando...</div>';
+  ld.style.display="flex";
+  if(!Hls.isSupported()){
+    if(video.canPlayType("application/vnd.apple.mpegurl")){
+      video.src=STREAM;
+      video.addEventListener("loadedmetadata",function(){video.play()["catch"](function(){});});
+    }else{sE("Tu navegador no soporta HLS.");}
+    return;
+  }
+  if(hls){hls.destroy();hls=null;}
+  hls=new Hls({
+    enableWorker:true,liveSyncDuration:25,liveMaxLatencyDuration:50,
+    maxBufferLength:30,maxMaxBufferLength:60,backBufferLength:10,
+    liveDurationInfinity:true,maxBufferHole:2,maxStarvationDelay:5,
+    manifestLoadingTimeOut:20000,manifestLoadingMaxRetry:20,manifestLoadingRetryDelay:1000,
+    levelLoadingTimeOut:20000,levelLoadingMaxRetry:20,
+    fragLoadingTimeOut:20000,fragLoadingMaxRetry:20,fragLoadingRetryDelay:1000,
+    startFragPrefetch:true,stretchShortVideoSegment:true,lowLatencyMode:false,
+    nudgeOffset:1,nudgeMaxRetry:8,enableSoftwareAES:true,
+    abrEwmaDefaultEstimate:3000000,abrEwmaFastLive:6,abrEwmaSlowLive:15
+  });
+  hls.loadSource(STREAM);
+  hls.attachMedia(video);
+  hls.on(Hls.Events.MANIFEST_PARSED,function(){video.play()["catch"](function(){});});
+  video.addEventListener("playing",sV);
+  hls.on(Hls.Events.ERROR,function(e,d){
+    if(!d.fatal)return;
+    if(d.type===Hls.ErrorTypes.NETWORK_ERROR){
+      sE("Sin conexion... Reintentando...");re++;
+      if(re<15){setTimeout(function(){if(hls)hls.startLoad();},2000*Math.min(re,5));}
+      else{sE("No se pudo conectar.<br>Haz clic para reintentar.");ld.onclick=function(){ld.onclick=null;re=0;iH();};}
+    }else if(d.type===Hls.ErrorTypes.MEDIA_ERROR){
+      sE("Error de media. Recuperando...");if(hls)hls.recoverMediaError();
+    }else{
+      re++;if(re<10){sE("Reiniciando... ("+re+"/10)");setTimeout(function(){iH();},3000*Math.min(re,4));}
+      else{sE("Error persistente.<br>Haz clic para reintentar.");ld.onclick=function(){ld.onclick=null;re=0;iH();};}
+    }
+  });
+  hls.on(Hls.Events.FRAG_LOADED,function(){re=0;});
+  hls.on(Hls.Events.LEVEL_LOADED,function(){re=0;});
+  hls.startLoad();
+}
+
+// Freeze watchdog (reduced sensitivity)
+var wd=null,lt=0,frz=0,gr=0;
+function sW(){lt=video.currentTime||0;frz=0;gr=0;wd=setInterval(function(){
+  if(video.paused||video.ended||ld.style.display!="none")return;var ct=video.currentTime||0;
+  if(Math.abs(ct-lt)<0.3){frz++;if(frz>=30){frz=0;gr++;if(gr>=3){gr=0;re=0;iH();}}}
+  else{frz=Math.max(0,frz-1);}lt=ct;
+},5000);}
+function tW(){clearInterval(wd);wd=null;}
+video.addEventListener("playing",function(){sW();});
+video.addEventListener("pause",function(){tW();});
+
+renderP();
+iH();
+})();
+</script>
+</body>
+</html>

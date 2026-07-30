@@ -1,16 +1,10 @@
-const { contextBridge, ipcRenderer } = require("electron");
+const {contextBridge, ipcRenderer} = require("electron");
 
 contextBridge.exposeInMainWorld("electronAPI", {
-    fullscreenToggle: () => ipcRenderer.send("fullscreen-toggle"),
-    fullscreenEnter: () => ipcRenderer.send("fullscreen-enter"),
-    fullscreenExit: () => ipcRenderer.send("fullscreen-exit"),
-    onFullscreenChange: (cb) => ipcRenderer.on("fullscreen-changed", (e, isFs) => cb(isFs)),
-    checkForUpdates: () => ipcRenderer.send("check-for-updates"),
-    installUpdate: () => ipcRenderer.send("install-update"),
-    onUpdateAvailable: (cb) => ipcRenderer.on("update-available", (e, v) => cb(v)),
-    onUpdateProgress: (cb) => ipcRenderer.on("update-progress", (e, p) => cb(p)),
-    onUpdateDownloaded: (cb) => ipcRenderer.on("update-downloaded", () => cb()),
-    onUpdateNotAvailable: (cb) => ipcRenderer.on("update-not-available", () => cb()),
-    onUpdateError: (cb) => ipcRenderer.on("update-error", (e, msg) => cb(msg)),
-    counterFetch: (url) => ipcRenderer.invoke("counter-fetch", url)
+  fullscreenToggle: function(){ ipcRenderer.send("fullscreen-toggle"); },
+  fullscreenExit: function(){ ipcRenderer.send("fullscreen-exit"); },
+  onFullscreenChange: function(cb){ ipcRenderer.on("fullscreen-change", function(e, isFs){ cb(isFs); }); },
+  onUpdateAvailable: function(cb){ ipcRenderer.on("update-available", function(){ cb(); }); },
+  onUpdateDownloaded: function(cb){ ipcRenderer.on("update-downloaded", function(){ cb(); }); },
+  installUpdate: function(){ ipcRenderer.send("install-update"); }
 });
