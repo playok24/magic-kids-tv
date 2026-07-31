@@ -44,6 +44,20 @@ body{font-family:Arial,sans-serif;background:#0b0b14;color:#eee;min-height:100vh
 .btn-unblock{background:rgba(0,255,102,0.15);color:#00ff66}
 .btn-admin-off{background:rgba(255,204,0,0.15);color:#ffcc00}
 .btn-admin-on{background:rgba(255,204,0,0.3);color:#ffcc00}
+#codes-section{background:#13131f;border:1px solid #333;border-radius:12px;padding:16px;margin-bottom:20px}
+#codes-header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+#codes-header h2{font-size:15px;color:#c4a0ff}
+#codes-header button{padding:8px 14px;border:none;border-radius:8px;background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;font-size:12px;font-weight:700;cursor:pointer}
+#new-code-box{background:#1a1a2e;border:1px solid #333;border-radius:8px;padding:12px;display:none;align-items:center;gap:10px;margin-bottom:12px}
+#new-code-value{flex:1;font-size:20px;font-weight:700;color:#00ff66;letter-spacing:3px;font-family:monospace;word-break:break-all}
+#copy-code-btn{padding:8px 12px;border:none;border-radius:8px;background:rgba(0,255,102,0.15);color:#00ff66;font-size:12px;font-weight:700;cursor:pointer}
+#codes-list{display:flex;flex-direction:column;gap:8px}
+.code-card{background:#0f0f1a;border:1px solid #333;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.code-card .code{font-family:monospace;font-weight:700;font-size:16px;letter-spacing:2px;flex:1;min-width:120px}
+.code-card .meta{font-size:11px;color:#666;flex:1;min-width:140px}
+.code-card button{padding:6px 10px;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer}
+.code-revoke{background:rgba(255,204,0,0.15);color:#ffcc00}
+.code-del{background:rgba(255,68,68,0.2);color:#ff6b6b}
 #empty{color:#666;text-align:center;padding:40px;font-size:14px}
 #denied{display:none;justify-content:center;align-items:center;min-height:100vh;text-align:center}
 #denied .box{background:#13131f;border:1px solid #333;border-radius:16px;padding:28px 24px;width:85%;max-width:340px}
@@ -82,6 +96,17 @@ body{font-family:Arial,sans-serif;background:#0b0b14;color:#eee;min-height:100vh
       <button id="refresh-btn">ACTUALIZAR</button>
       <button class="logout" id="panel-logout-btn">SALIR</button>
     </div>
+  </div>
+  <div id="codes-section">
+    <div id="codes-header">
+      <h2>Códigos de activación</h2>
+      <button id="gen-code-btn">GENERAR CÓDIGO</button>
+    </div>
+    <div id="new-code-box">
+      <span id="new-code-value"></span>
+      <button id="copy-code-btn">COPIAR</button>
+    </div>
+    <div id="codes-list"></div>
   </div>
   <div id="user-list"></div>
   <div id="empty">No hay usuarios registrados todavia.</div>
@@ -217,12 +242,99 @@ function userCard(u){
   return card;
 }
 
+var CODE_CHARS="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+var codesListening=false;
+function genCode(){
+  var a=new Uint32Array(8);
+  crypto.getRandomValues(a);
+  var s="";
+  for(var i=0;i<8;i++){
+    s+=CODE_CHARS[a[i]%CODE_CHARS.length];
+    if(i===3)s+="-";
+  }
+  return s;
+}
+function fmtDate(t){return t?new Date(t).toLocaleString():"-";}
+function codeCard(c){
+  var card=document.createElement("div");
+  card.className="code-card";
+  var status=c.revoked?'<span class="badge blocked">REVOCADO</span>':(c.used?'<span class="badge blocked">USADO</span>':'<span class="badge active">SIN USAR</span>');
+  var meta=c.used?("Dispositivo: "+(c.usedBy||"-")+" | Usado: "+fmtDate(c.usedAt)):"Creado: "+fmtDate(c.createdAt);
+  card.innerHTML='<span class="code">'+c.code+'</span>'
+    +status
+    +'<span class="meta">'+meta+'</span>';
+  var actions=document.createElement("div");
+  actions.className="user-actions";
+  if(!c.revoked){
+    var rev=document.createElement("button");
+    rev.className="code-revoke";
+    rev.textContent=c.used?"REVOCAR USO":"REVOCAR";
+    rev.onclick=function(){
+      db.ref("codes/"+c.code).update({revoked:true});
+    };
+    actions.appendChild(rev);
+  }
+  var del=document.createElement("button");
+  del.className="code-del";
+  del.textContent="BORRAR";
+  del.onclick=function(){
+    if(confirm("¿Borrar el codigo "+c.code+"?"))db.ref("codes/"+c.code).remove();
+  };
+  actions.appendChild(del);
+  card.appendChild(actions);
+  return card;
+}
+function loadCodes(){
+  codesListening=true;
+  db.ref("codes").on("value",function(snap){
+    var listEl=document.getElementById("codes-list");
+    listEl.innerHTML="";
+    var codes=[];
+    snap.forEach(function(child){
+      var v=child.val()||{};
+      codes.push({code:child.key,createdAt:v.createdAt||0,createdBy:v.createdBy||"",used:v.used===true,usedBy:v.usedBy||"",usedAt:v.usedAt||0,revoked:v.revoked===true});
+    });
+    codes.sort(function(a,b){return (b.createdAt||0)-(a.createdAt||0);});
+    if(codes.length===0){
+      listEl.innerHTML='<div style="color:#666;font-size:12px">Todavia no generaste codigos.</div>';
+    }
+    codes.forEach(function(c){listEl.appendChild(codeCard(c));});
+  });
+}
+
+document.getElementById("gen-code-btn").onclick=function(){
+  var code=genCode();
+  var box=document.getElementById("new-code-box");
+  document.getElementById("new-code-value").textContent=code;
+  box.style.display="flex";
+  db.ref("codes/"+code).set({
+    createdAt:firebase.database.ServerValue.TIMESTAMP,
+    createdBy:firebase.auth().currentUser.uid,
+    used:false,
+    revoked:false
+  }).catch(function(e){
+    document.getElementById("new-code-value").textContent="Error: "+((e&&e.message)||"no se pudo crear");
+  });
+};
+document.getElementById("copy-code-btn").onclick=function(){
+  var v=document.getElementById("new-code-value").textContent;
+  if(navigator.clipboard&&v){
+    navigator.clipboard.writeText(v).then(function(){
+      document.getElementById("copy-code-btn").textContent="COPIADO!";
+      setTimeout(function(){document.getElementById("copy-code-btn").textContent="COPIAR";},1500);
+    });
+  }
+};
+
 firebase.auth().onAuthStateChanged(function(user){
   if(!user){
     usersListening=false;
+    codesListening=false;
     showView("login");
     document.getElementById("admin-email").textContent="";
     document.getElementById("user-list").innerHTML="";
+    document.getElementById("codes-list").innerHTML="";
+    document.getElementById("new-code-box").style.display="none";
     document.getElementById("empty").style.display="none";
     return;
   }
@@ -233,6 +345,7 @@ firebase.auth().onAuthStateChanged(function(user){
     if(data.isAdmin===true){
       showView("panel");
       loadUsers();
+      loadCodes();
       return;
     }
     var email=user.email||"";
@@ -248,6 +361,7 @@ firebase.auth().onAuthStateChanged(function(user){
       }).then(function(){
         showView("panel");
         loadUsers();
+        loadCodes();
       }).catch(function(){
         showView("denied");
       });

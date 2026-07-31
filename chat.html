@@ -14,7 +14,7 @@ body{background:transparent;font-family:'Segoe UI',system-ui,sans-serif}
 .mk-chat{width:100%;max-width:800px;min-height:300px;height:100vh;max-height:800px;display:flex;flex-direction:column;background:rgba(13,13,26,0.98);border:1px solid #333;border-radius:12px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.5);position:relative}
 .mk-chat .mk-ch{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #222}
 .mk-chat .mk-ch h3{color:#00ccff;font-size:14px;font-weight:700;margin:0}
-.mk-chat .mk-ch .mk-ol{display:none}
+.mk-chat .mk-ch .mk-ol{color:#888;font-size:11px;margin-left:8px}
 .mk-chat .mk-ch .mk-ub{display:flex;align-items:center;gap:4px}
 .mk-chat .mk-ch .mk-ua{cursor:pointer;line-height:1;padding:0;border-radius:50%;width:32px;height:32px;flex-shrink:0;overflow:hidden;position:relative}
 .mk-chat .mk-ch .mk-ua:hover{opacity:0.8}
@@ -391,8 +391,12 @@ setInterval(function(){chatOnlineRef.set(firebase.database.ServerValue.TIMESTAMP
 
 function cleanStaleOnline(){
   var cutoff=Date.now()-30000;
-  db.ref("chat/online").orderByChild("timestamp").endAt(cutoff).once("value",function(snap){
-    snap.forEach(function(child){child.ref.remove();});
+  db.ref("chat/online").once("value",function(snap){
+    snap.forEach(function(child){
+      var v=child.val();
+      var ts=typeof v==="number"?v:(v&&typeof v.timestamp==="number"?v.timestamp:0);
+      if(ts&&ts<cutoff)child.ref.remove();
+    });
   });
 }
 cleanStaleOnline();

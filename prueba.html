@@ -171,6 +171,41 @@ body{
 #blocked-screen .box h3{color:#ff6b6b;font-size:18px;margin-bottom:10px}
 #blocked-screen .box p{color:#aaa;font-size:13px;margin-bottom:16px}
 #blocked-screen .box button{width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,68,68,0.2);color:#ff6b6b;font-size:14px;font-weight:700;cursor:pointer}
+#activate-screen{
+  position:fixed;inset:0;z-index:250;
+  background:rgba(0,0,0,0.92);
+  display:none;justify-content:center;align-items:center;
+}
+#activate-screen.show{display:flex}
+#activate-screen .box{
+  background:#13131f;border:1px solid #333;border-radius:16px;
+  padding:28px 24px;width:85%;max-width:340px;text-align:center;
+}
+#activate-screen .box h3{color:#c4a0ff;font-size:17px;margin-bottom:6px}
+#activate-screen .box p{color:#888;font-size:12px;margin-bottom:16px}
+#activate-screen .box input{
+  width:100%;padding:12px 14px;border-radius:10px;
+  border:1px solid #444;background:#1a1a2e;color:#fff;
+  font-size:18px;text-align:center;outline:none;margin-bottom:16px;
+  text-transform:uppercase;letter-spacing:2px;
+}
+#activate-screen .box input:focus{border-color:#c4a0ff}
+#activate-screen .box button{
+  width:100%;padding:12px;border:none;border-radius:10px;
+  background:linear-gradient(135deg,#7c3aed,#5b21b6);
+  color:#fff;font-size:14px;font-weight:700;cursor:pointer;
+}
+#activate-screen .box button:active{opacity:0.8;transform:scale(0.98)}
+#activate-screen .box .auth-link{background:none;border:none;color:#00ccff;font-size:12px;cursor:pointer;margin-top:8px;width:100%;text-align:center;padding:6px}
+#activate-screen .box .auth-link:hover{text-decoration:underline}
+#activate-screen .box #activate-status{font-size:12px;margin-top:10px;min-height:16px;color:#ff6b6b}
+#activate-screen .box #activate-status.ok{color:#00ff66}
+#activate-screen .box #activate-status.err{color:#ff6b6b}
+body.light #activate-screen .box{background:#fff;border-color:#ddd}
+body.light #activate-screen .box p{color:#555}
+body.light #activate-screen .box input{background:#f0f0f5;border-color:#ddd;color:#222}
+body.light #activate-screen .box input:focus{border-color:#6b3fa0}
+body.light #activate-screen .box .auth-link{color:#2563eb}
 
 body.video-only #header-bar,body.video-only #remote,body.video-only #chat-overlay{display:none}
 body.video-only #container{flex:1}
@@ -209,7 +244,7 @@ body.video-only #screen{width:100vw}
 #chat-header:active{cursor:grabbing}
 #chat-header h3{color:#00ccff;font-size:14px;font-weight:700;margin:0}
 #chat-user-label{color:#c4a0ff;font-size:12px;font-weight:400;margin-left:4px}
-#chat-header .online{color:#888;font-size:11px;margin-left:8px;display:none}
+#chat-header .online{color:#888;font-size:11px;margin-left:8px}
 .chat-user-bar{display:none;align-items:center;gap:4px}
 .chat-user-emoji{cursor:pointer;line-height:1;padding:0;border-radius:50%;width:32px;height:32px;flex-shrink:0;overflow:hidden}
 .chat-user-emoji:hover{opacity:0.8}
@@ -614,6 +649,17 @@ body.light #sub-modal .box .close-sub{background:rgba(0,0,0,0.06);color:#555}
   </div>
 </div>
 
+<div id="activate-screen">
+  <div class="box">
+    <h3>Activa Magic Kids TV</h3>
+    <p>Ingresá el código de activación que te envió el administrador.</p>
+    <input type="text" id="activate-code" placeholder="XXXX-XXXX" maxlength="9" autocomplete="off">
+    <button id="activate-btn">ACTIVAR</button>
+    <div id="activate-status"></div>
+    <button class="auth-link" id="activate-admin-link">¿Eres administrador? Ingresar</button>
+  </div>
+</div>
+
 <div id="name-modal">
   <div class="box">
     <h3 id="name-modal-title">Bienvenido a Magic Kids TV!</h3>
@@ -683,6 +729,69 @@ const ADMIN_EMAILS=["hgastonsanchez@gmail.com"];
 var deviceId="";
 try{deviceId=localStorage.getItem("mk_device_id")||"";}catch(e){}
 if(!deviceId){deviceId="dev_"+Math.random().toString(36).substr(2,9)+Date.now().toString(36);try{localStorage.setItem("mk_device_id",deviceId);}catch(e){}}
+
+var activateScreen=document.getElementById("activate-screen");
+var activateInput=document.getElementById("activate-code");
+var activateBtn=document.getElementById("activate-btn");
+var activateStatus=document.getElementById("activate-status");
+var activateAdminLink=document.getElementById("activate-admin-link");
+
+function showActivateScreen(){if(activateScreen)activateScreen.classList.add("show");}
+function hideActivateScreen(){if(activateScreen)activateScreen.classList.remove("show");}
+function setActivateStatus(msg,ok){if(!activateStatus)return;activateStatus.textContent=msg||"";activateStatus.className=msg?(ok?"ok":"err"):"";}
+function normalizeCode(s){return (s||"").toUpperCase().replace(/[^A-Z0-9]/g,"");}
+function markActivated(code){
+  try{localStorage.setItem("mk_activated","1");}catch(e){}
+  if(db)db.ref("activations/"+deviceId).set({code:code,activatedAt:firebase.database.ServerValue.TIMESTAMP});
+  hideActivateScreen();
+}
+function checkActivation(cb){
+  var done=false;
+  function finish(ok){if(done)return;done=true;cb(ok);}
+  var loc="";try{loc=localStorage.getItem("mk_activated")||"";}catch(e){}
+  if(loc){finish(true);return;}
+  if(!db){finish(false);return;}
+  db.ref("activations/"+deviceId).once("value",function(snap){
+    var v=snap.val();
+    if(v&&v.activatedAt){
+      try{localStorage.setItem("mk_activated","1");}catch(e){}
+      finish(true);
+    }else{finish(false);}
+  },function(){finish(false);});
+}
+function activateDevice(){
+  var code=normalizeCode(activateInput?activateInput.value:"");
+  if(!code){setActivateStatus("Ingresá tu código de activación");return;}
+  if(!db){setActivateStatus("Sin conexión. Intentá de nuevo.");return;}
+  setActivateStatus("Activando...");
+  db.ref("codes/"+code).transaction(function(cur){
+    if(cur===null)return;
+    if(cur.used===true||cur.revoked===true)return;
+    return {
+      createdAt:cur.createdAt||0,
+      createdBy:cur.createdBy||"",
+      used:true,
+      usedBy:deviceId,
+      usedAt:firebase.database.ServerValue.TIMESTAMP,
+      revoked:false
+    };
+  },function(err,committed,snap){
+    if(err){
+      if(err.code==="PERMISSION_DENIED"){setActivateStatus("Error de permisos. Avisale al administrador.");}
+      else{setActivateStatus("Error de conexión. Intentá de nuevo.");}
+      return;
+    }
+    var val=snap?snap.val():null;
+    if(!committed||!val||val.used!==true){setActivateStatus("Código inválido o ya utilizado");return;}
+    markActivated(code);
+    setActivateStatus("Dispositivo activado. Ingresá a tu cuenta.",true);
+    setTimeout(function(){showAuthModal();},600);
+  });
+}
+if(activateBtn)activateBtn.onclick=activateDevice;
+if(activateInput)activateInput.onkeydown=function(e){if(e.key==="Enter")activateDevice();};
+if(activateAdminLink)activateAdminLink.onclick=function(){setActivateStatus("");hideActivateScreen();showAuthModal();};
+
 var currentUid=deviceId;
 
 let userName=localStorage.getItem("mk_user")||"";
@@ -899,8 +1008,11 @@ firebase.auth().onAuthStateChanged(function(user){
     video.removeAttribute("src");
     video.load();
     videoStarted=false;
-    showAuthModal();
     hideBlockedScreen();
+    checkActivation(function(ok){
+      if(ok){hideActivateScreen();showAuthModal();}
+      else{hideAuthModal();showActivateScreen();}
+    });
     updateGreeting();
     return;
   }
@@ -922,19 +1034,38 @@ firebase.auth().onAuthStateChanged(function(user){
       showBlockedScreen();
       return;
     }
-    db.ref("users/"+uid+"/activeDevice").set(deviceId);
-    db.ref("users/"+uid+"/lastLogin").set(firebase.database.ServerValue.TIMESTAMP);
-    currentUid=uid;
-    var emailName=(user.email||"").split("@")[0];
-    userName=data.name||emailName||"Usuario";
-    try{localStorage.setItem("mk_user",userName);}catch(e){}
-    updateGreeting();
-    chatReady=true;
-    hideChatLogin();
-    showUserBar();
-    hideAuthModal();
-    hideBlockedScreen();
-    startVideoIfAuthed();
+    function proceedAuthed(){
+      db.ref("users/"+uid+"/activeDevice").set(deviceId);
+      db.ref("users/"+uid+"/lastLogin").set(firebase.database.ServerValue.TIMESTAMP);
+      currentUid=uid;
+      var emailName=(user.email||"").split("@")[0];
+      userName=data.name||emailName||"Usuario";
+      try{localStorage.setItem("mk_user",userName);}catch(e){}
+      updateGreeting();
+      chatReady=true;
+      hideActivateScreen();
+      hideChatLogin();
+      showUserBar();
+      hideAuthModal();
+      hideBlockedScreen();
+      bindChat();
+      startVideoIfAuthed();
+    }
+    if(data.isAdmin===true){
+      try{localStorage.setItem("mk_activated","1");}catch(e){}
+      db.ref("activations/"+deviceId).set({code:"ADMIN",activatedAt:firebase.database.ServerValue.TIMESTAMP});
+      proceedAuthed();
+      return;
+    }
+    checkActivation(function(ok){
+      if(!ok){
+        firebase.auth().signOut();
+        showActivateScreen();
+        setActivateStatus("Este dispositivo aún no está activado. Ingresá tu código.");
+        return;
+      }
+      proceedAuthed();
+    });
   });
   db.ref("users/"+uid+"/blocked").on("value",function(snap){
     if(snap.val()===true){
@@ -1308,13 +1439,43 @@ document.addEventListener("mousemove",function(e){
 });
 document.addEventListener("mouseup",function(){dragging=false;});
 
-chatBannedRef.child(currentUid).on("value",function(snap){
-  if(snap.exists()){
-    chatInput.disabled=true;
-    chatSend.disabled=true;
-    chatInput.placeholder="Has sido bloqueado del chat";
-  }
-});
+var chatBound=false;
+var lastChatKey="";
+function bindChat(){
+  if(chatBound)return;
+  chatBound=true;
+  chatBannedRef.child(currentUid).on("value",function(snap){
+    if(snap.exists()){
+      chatInput.disabled=true;
+      chatSend.disabled=true;
+      chatInput.placeholder="Has sido bloqueado del chat";
+    }
+  });
+  chatMessagesRef.on("value",function(snap){
+    chatMessages.innerHTML="";
+    var items=[];
+    snap.forEach(function(c){items.push(c);});
+    var msgs=items.slice(-50);
+    msgs.forEach(function(c){
+      var msg=c.val();
+      msg.id=c.key;
+      renderChatMsg(msg);
+    });
+    scrollChat();
+    var n=items.length?items[items.length-1].key:"";
+    if(n&&lastChatKey&&n>lastChatKey&&!chatOpen&&!msgs[msgs.length-1].val().system){
+      unreadCount++;
+      chatBadge.textContent=unreadCount;
+      chatBadge.style.display="inline";
+    }
+    lastChatKey=n;
+  });
+  db.ref("chat/online").on("value",function(snap){
+    chatOnlineEl.textContent=snap.numChildren()+" en linea";
+  });
+  chatOnlineRef.set(firebase.database.ServerValue.TIMESTAMP);
+  chatOnlineRef.onDisconnect().remove();
+}
 
 function scrollChat(){
   chatMessages.scrollTop=chatMessages.scrollHeight;
@@ -1366,7 +1527,7 @@ function renderChatMsg(msg){
     };
     div.querySelector(".msg-ban").onclick=function(){
       if(confirm("Banear a "+msg.user+" del chat?")){
-        chatBannedRef.child(msg.uid).set(true);
+        chatBannedRef.child(msg.uid).set({bannedAt:firebase.database.ServerValue.TIMESTAMP});
         chatMessagesRef.child(msg.id).remove();
         chatMessagesRef.push({system:true,text:"🚫 "+msg.user+" ha sido bloqueado del chat",timestamp:firebase.database.ServerValue.TIMESTAMP});
       }
@@ -1375,36 +1536,17 @@ function renderChatMsg(msg){
   chatMessages.appendChild(div);
 }
 
-chatMessagesRef.orderByChild("timestamp").limitToLast(50).on("child_added",function(snap){
-  var msg=snap.val();
-  msg.id=snap.key;
-  renderChatMsg(msg);
-  scrollChat();
-  if(!chatOpen&&!msg.system){
-    unreadCount++;
-    chatBadge.textContent=unreadCount;
-    chatBadge.style.display="inline";
-  }
-});
-
-chatMessagesRef.orderByChild("timestamp").limitToLast(50).on("child_removed",function(snap){
-  var el=chatMessages.querySelector('[data-id="'+snap.key+'"]');
-  if(el)el.remove();
-});
-
-db.ref("chat/online").on("value",function(snap){
-  chatOnlineEl.textContent=snap.numChildren()+" en linea";
-});
-
 var chatOnlineRef=db.ref("chat/online/"+chatSessionId);
-chatOnlineRef.set(firebase.database.ServerValue.TIMESTAMP);
-chatOnlineRef.onDisconnect().remove();
 setInterval(function(){chatOnlineRef.set(firebase.database.ServerValue.TIMESTAMP);},15000);
 
 function cleanStaleOnline(){
   var cutoff=Date.now()-30000;
-  db.ref("chat/online").orderByChild("timestamp").endAt(cutoff).once("value",function(snap){
-    snap.forEach(function(child){child.ref.remove();});
+  db.ref("chat/online").once("value",function(snap){
+    snap.forEach(function(child){
+      var v=child.val();
+      var ts=typeof v==="number"?v:(v&&typeof v.timestamp==="number"?v.timestamp:0);
+      if(ts&&ts<cutoff)child.ref.remove();
+    });
   });
 }
 cleanStaleOnline();

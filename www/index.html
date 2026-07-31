@@ -439,12 +439,53 @@ body.fs #video-wrap{position:fixed;top:0;bottom:0;left:0;right:0;padding-top:0;h
 #blocked-screen .box h3{color:#ff6b6b;font-size:18px;margin-bottom:10px}
 #blocked-screen .box p{color:#aaa;font-size:13px;margin-bottom:16px}
 #blocked-screen .box button{width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,68,68,0.2);color:#ff6b6b;font-size:14px;font-weight:700;cursor:pointer}
+#activate-screen{
+  position:fixed;inset:0;z-index:250;
+  background:rgba(0,0,0,0.92);
+  display:none;justify-content:center;align-items:center;
+}
+#activate-screen.show{display:flex}
+#activate-screen .box{
+  background:var(--card);border:1px solid #333;border-radius:16px;
+  padding:28px 24px;width:85%;max-width:340px;text-align:center;
+}
+#activate-screen .box h3{color:var(--accent);font-size:17px;margin-bottom:6px}
+#activate-screen .box p{color:#888;font-size:12px;margin-bottom:16px}
+#activate-screen .box input{
+  width:100%;padding:12px 14px;border-radius:10px;
+  border:1px solid #444;background:#1a1a2e;color:#fff;
+  font-size:18px;text-align:center;outline:none;margin-bottom:16px;
+  text-transform:uppercase;letter-spacing:2px;
+}
+#activate-screen .box input:focus{border-color:var(--accent)}
+#activate-screen .box button{
+  width:100%;padding:12px;border:none;border-radius:10px;
+  background:linear-gradient(135deg,#7c3aed,#5b21b6);
+  color:#fff;font-size:15px;font-weight:700;cursor:pointer;
+}
+#activate-screen .box button:active{opacity:0.8;transform:scale(0.98)}
+#activate-screen .box .auth-link{background:none;border:none;color:#00ccff;font-size:12px;cursor:pointer;margin-top:8px;width:100%;text-align:center;padding:6px}
+#activate-screen .box .auth-link:hover{text-decoration:underline}
+#activate-screen .box #activate-status{font-size:12px;margin-top:10px;min-height:16px;color:#ff6b6b}
+#activate-screen .box #activate-status.ok{color:#00ff66}
+#activate-screen .box #activate-status.err{color:#ff6b6b}
 </style>
 </head>
 <body>
 
 <div id="cast-top-btn" title="Cast">
   <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M1 18v3h3c0-1.66-1.34-3-3-3zm0-4v2c2.76 0 5 2.24 5 5h2c0-3.87-3.13-7-7-7zm0-4v2c4.97 0 9 4.03 9 9h2c0-6.08-4.93-11-11-11zm20 0C10.32 4 4 10.32 4 18h2c0-4.97 4.03-9 9-9v2zm-8-2c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6z" fill="currentColor"/></svg>
+</div>
+
+<div id="activate-screen">
+  <div class="box">
+    <h3>Activa Magic Kids TV</h3>
+    <p>Ingresa el codigo de activacion que te envio el administrador.</p>
+    <input type="text" id="activate-code" placeholder="XXXX-XXXX" maxlength="9" autocomplete="off">
+    <button id="activate-btn">ACTIVAR</button>
+    <div id="activate-status"></div>
+    <button class="auth-link" id="activate-admin-link">&#191;Eres administrador? Ingresar</button>
+  </div>
 </div>
 
 <div id="name-modal">
@@ -538,7 +579,7 @@ body.fs #video-wrap{position:fixed;top:0;bottom:0;left:0;right:0;padding-top:0;h
       </div>
       <div id="chat-header">
         <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0">
-          <h3>&#128172; Chat en Vivo</h3>
+          <h3>&#128172; Chat en Vivo</h3><span class="online" id="chat-online"></span>
         </div>
         <div style="display:flex;align-items:center;gap:6px">
           <span class="chat-user-bar" id="chat-user-bar">
@@ -641,6 +682,69 @@ try {
 
 var deviceId=localStorage.getItem("mk_device_id");
 if(!deviceId){deviceId="dev_"+Math.random().toString(36).substr(2,9)+Date.now().toString(36);localStorage.setItem("mk_device_id",deviceId);}
+
+var activateScreen=document.getElementById("activate-screen");
+var activateInput=document.getElementById("activate-code");
+var activateBtn=document.getElementById("activate-btn");
+var activateStatus=document.getElementById("activate-status");
+var activateAdminLink=document.getElementById("activate-admin-link");
+
+function showActivateScreen(){if(activateScreen)activateScreen.classList.add("show");}
+function hideActivateScreen(){if(activateScreen)activateScreen.classList.remove("show");}
+function setActivateStatus(m,ok){if(!activateStatus)return;activateStatus.textContent=m||"";activateStatus.className=m?(ok?"ok":"err"):"";}
+function normalizeCode(s){return (s||"").toUpperCase().replace(/[^A-Z0-9]/g,"");}
+function markActivated(code){
+  try{localStorage.setItem("mk_activated","1");}catch(e){}
+  if(db)db.ref("activations/"+deviceId).set({code:code,activatedAt:firebase.database.ServerValue.TIMESTAMP});
+  hideActivateScreen();
+}
+function checkActivation(cb){
+  var done=false;
+  function finish(ok){if(done)return;done=true;cb(ok);}
+  var loc="";try{loc=localStorage.getItem("mk_activated")||"";}catch(e){}
+  if(loc){finish(true);return;}
+  if(!db){finish(false);return;}
+  db.ref("activations/"+deviceId).once("value",function(snap){
+    var v=snap.val();
+    if(v&&v.activatedAt){
+      try{localStorage.setItem("mk_activated","1");}catch(e){}
+      finish(true);
+    }else{finish(false);}
+  },function(){finish(false);});
+}
+function activateDevice(){
+  var code=normalizeCode(activateInput?activateInput.value:"");
+  if(!code){setActivateStatus("Ingresa tu codigo de activacion");return;}
+  if(!db){setActivateStatus("Sin conexion. Intentá de nuevo.");return;}
+  setActivateStatus("Activando...");
+  db.ref("codes/"+code).transaction(function(cur){
+    if(cur===null)return;
+    if(cur.used===true||cur.revoked===true)return;
+    return {
+      createdAt:cur.createdAt||0,
+      createdBy:cur.createdBy||"",
+      used:true,
+      usedBy:deviceId,
+      usedAt:firebase.database.ServerValue.TIMESTAMP,
+      revoked:false
+    };
+  },function(err,committed,snap){
+    if(err){
+      if(err.code==="PERMISSION_DENIED"){setActivateStatus("Error de permisos. Avisale al administrador.");}
+      else{setActivateStatus("Error de conexion. Intentá de nuevo.");}
+      return;
+    }
+    var val=snap?snap.val():null;
+    if(!committed||!val||val.used!==true){setActivateStatus("Codigo invalido o ya utilizado");return;}
+    markActivated(code);
+    setActivateStatus("Dispositivo activado. Ingresa a tu cuenta.",true);
+    setTimeout(function(){showAuthModal();},600);
+  });
+}
+if(activateBtn)activateBtn.onclick=activateDevice;
+if(activateInput)activateInput.onkeydown=function(e){if(e.key==="Enter")activateDevice();};
+if(activateAdminLink)activateAdminLink.onclick=function(){setActivateStatus("");hideActivateScreen();showAuthModal();};
+
 
 
 var video=document.getElementById("video");
@@ -869,8 +973,11 @@ firebase.auth().onAuthStateChanged(function(user){
     chatReady="";
     videoStarted=false;
     if(video){video.removeAttribute("src");video.load();}
-    showAuthModal();
     hideBlockedScreen();
+    checkActivation(function(ok){
+      if(ok){hideActivateScreen();showAuthModal();}
+      else{hideAuthModal();showActivateScreen();}
+    });
     return;
   }
   if(user.isAnonymous){
@@ -891,19 +998,37 @@ firebase.auth().onAuthStateChanged(function(user){
       showBlockedScreen();
       return;
     }
-    db.ref("users/"+uid+"/activeDevice").set(deviceId);
-    db.ref("users/"+uid+"/lastLogin").set(firebase.database.ServerValue.TIMESTAMP);
-    currentUid=uid;
-    var emailName=(user.email||"").split("@")[0];
-    currentUser=data.name||emailName||"Usuario";
-    try{localStorage.setItem("mk_chat_name",currentUser);}catch(e){}
-    chatReady=true;
-    hideAuthModal();
-    hideBlockedScreen();
-    if(chatLogin)chatLogin.classList.add("hidden");
-    updateChatUserBar();
-    if(!chatStarted)startChat(currentUser);
-    startVideoIfAuthed();
+    function proceedAuthed(){
+      db.ref("users/"+uid+"/activeDevice").set(deviceId);
+      db.ref("users/"+uid+"/lastLogin").set(firebase.database.ServerValue.TIMESTAMP);
+      currentUid=uid;
+      var emailName=(user.email||"").split("@")[0];
+      currentUser=data.name||emailName||"Usuario";
+      try{localStorage.setItem("mk_chat_name",currentUser);}catch(e){}
+      chatReady=true;
+      hideActivateScreen();
+      hideAuthModal();
+      hideBlockedScreen();
+      if(chatLogin)chatLogin.classList.add("hidden");
+      updateChatUserBar();
+      if(!chatStarted)startChat(currentUser);
+      startVideoIfAuthed();
+    }
+    if(data.isAdmin===true){
+      try{localStorage.setItem("mk_activated","1");}catch(e){}
+      db.ref("activations/"+deviceId).set({code:"ADMIN",activatedAt:firebase.database.ServerValue.TIMESTAMP});
+      proceedAuthed();
+      return;
+    }
+    checkActivation(function(ok){
+      if(!ok){
+        firebase.auth().signOut();
+        showActivateScreen();
+        setActivateStatus("Este dispositivo aun no esta activado. Ingresa tu codigo.");
+        return;
+      }
+      proceedAuthed();
+    });
   });
   db.ref("users/"+uid+"/blocked").on("value",function(snap){
     if(snap.val()===true){showBlockedScreen();}else{hideBlockedScreen();}
@@ -1036,12 +1161,35 @@ function startChat(user){
   if(chatStarted)return;
   chatStarted=true;
   currentUser=user;
+  var chatSessionId="chat_"+Math.random().toString(36).substr(2,9);
+  var chatOnlineRef=db.ref("chat/online/"+chatSessionId);
+  var chatOnlineEl=document.getElementById("chat-online");
+  db.ref("chat/online").on("value",function(snap){
+    if(chatOnlineEl)chatOnlineEl.textContent=snap.numChildren()+" en linea";
+  });
+  chatOnlineRef.set(firebase.database.ServerValue.TIMESTAMP);
+  chatOnlineRef.onDisconnect().remove();
+  setInterval(function(){chatOnlineRef.set(firebase.database.ServerValue.TIMESTAMP);},15000);
+  function cleanStaleOnline(){
+    var cutoff=Date.now()-30000;
+    db.ref("chat/online").once("value",function(snap){
+      snap.forEach(function(child){
+        var v=child.val();
+        var ts=typeof v==="number"?v:(v&&typeof v.timestamp==="number"?v.timestamp:0);
+        if(ts&&ts<cutoff)child.ref.remove();
+      });
+    });
+  }
+  cleanStaleOnline();
+  setInterval(cleanStaleOnline,20000);
   var chatRef=db.ref("chat/messages");
   var bannedRef=db.ref("chat/banned");
   var likesRef=db.ref("chat/likes");
-  chatRef.orderByChild("timestamp").limitToLast(50).on("value",function(snap){
+  chatRef.on("value",function(snap){
     if(!chatMessagesEl)return;chatMessagesEl.innerHTML="";
-    snap.forEach(function(child){
+    var items=[];
+    snap.forEach(function(child){items.push(child);});
+    items.slice(-50).forEach(function(child){
       var msg=child.val();if(!msg)return;
       var div=document.createElement("div");div.className="chat-msg";if(msg.system)div.classList.add("system");
       var canDelete=msg.user===user||chatAdminMode;

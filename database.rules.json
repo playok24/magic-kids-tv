@@ -61,6 +61,18 @@
       "$uid": {
         ".validate": "newData.hasChildren(['email','active','activatedAt']) && newData.child('email').isString() && newData.child('active').isBoolean() && newData.child('activatedAt').isNumber()"
       }
+    },
+    "activations": {
+      "$deviceId": {
+        ".read": true,
+        ".write": true
+      }
+    },
+    "codes": {
+      "$code": {
+        ".read": true,
+        ".write": "(auth != null && root.child('users/'+auth.uid+'/isAdmin').val() === true) || (newData.child('used').val() === true && newData.hasChildren(['usedBy','usedAt','createdAt','createdBy']))"
+      }
     }
   }
 }
