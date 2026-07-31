@@ -416,6 +416,29 @@ body.fs #video-wrap{position:fixed;top:0;bottom:0;left:0;right:0;padding-top:0;h
 #name-modal .box input:focus{border-color:var(--accent)}
 #name-modal .box button{width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;font-size:15px;font-weight:700;cursor:pointer}
 #name-modal .box button:active{opacity:0.8;transform:scale(0.98)}
+#name-modal .box .auth-tabs{display:flex;gap:6px;margin-bottom:14px}
+#name-modal .box .auth-tabs button{flex:1;padding:10px;border:none;border-radius:8px;background:rgba(255,255,255,0.06);color:#888;font-size:12px;font-weight:700;cursor:pointer}
+#name-modal .box .auth-tabs button.active{background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff}
+#name-modal .box .auth-link{background:none;border:none;color:#00ccff;font-size:12px;cursor:pointer;margin-top:6px;width:100%;text-align:center;padding:6px}
+#name-modal .box .auth-link:hover{text-decoration:underline}
+#name-modal .box #auth-status{font-size:12px;margin-top:10px;min-height:16px;color:#ff6b6b}
+#name-modal .box #auth-status.ok{color:#00ff66}
+#name-modal .box #auth-status.err{color:#ff6b6b}
+#logout-btn{background:rgba(255,255,255,0.08);border:none;border-radius:4px;color:#aaa;font-size:11px;font-weight:700;padding:4px 8px;cursor:pointer}
+#logout-btn:hover{background:rgba(255,68,68,0.2);color:#ff6666}
+#blocked-screen{
+  position:fixed;inset:0;z-index:300;
+  background:rgba(0,0,0,0.92);
+  display:none;justify-content:center;align-items:center;
+}
+#blocked-screen.show{display:flex}
+#blocked-screen .box{
+  background:var(--card);border:1px solid #444;border-radius:16px;
+  padding:28px 24px;width:85%;max-width:340px;text-align:center;
+}
+#blocked-screen .box h3{color:#ff6b6b;font-size:18px;margin-bottom:10px}
+#blocked-screen .box p{color:#aaa;font-size:13px;margin-bottom:16px}
+#blocked-screen .box button{width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,68,68,0.2);color:#ff6b6b;font-size:14px;font-weight:700;cursor:pointer}
 </style>
 </head>
 <body>
@@ -428,11 +451,34 @@ body.fs #video-wrap{position:fixed;top:0;bottom:0;left:0;right:0;padding-top:0;h
   <div class="box">
     <h3>Bienvenido a Magic Kids TV!</h3>
     <div class="login-av" id="login-av" title="Elegir foto"><span class="mk-ai">?</span></div>
-    <p>Ingresa tu email y nombre</p>
-    <input type="email" id="email-input" placeholder="Tu email" autocomplete="off">
-    <input type="text" id="name-input" placeholder="Tu nombre" maxlength="20" autocomplete="off">
-    <button id="name-ok">ENTRAR</button>
+    <p>Inicia sesion o crea tu cuenta</p>
+    <div class="auth-tabs">
+      <button id="auth-tab-login" class="active">INGRESAR</button>
+      <button id="auth-tab-reg">CREAR CUENTA</button>
+    </div>
+    <div id="auth-login-view">
+      <input type="email" id="auth-email" placeholder="Tu email" autocomplete="off">
+      <input type="password" id="auth-pass" placeholder="Contrasena" autocomplete="off">
+      <button id="auth-login-btn">INGRESAR</button>
+      <button class="auth-link" id="auth-forgot-btn">&#191;Olvidaste tu contrasena?</button>
+    </div>
+    <div id="auth-reg-view" style="display:none">
+      <input type="email" id="reg-email" placeholder="Tu email" autocomplete="off">
+      <input type="password" id="reg-pass" placeholder="Contrasena (min. 6)" autocomplete="off">
+      <input type="text" id="reg-name" placeholder="Tu nombre" maxlength="20" autocomplete="off">
+      <button id="reg-btn">CREAR CUENTA</button>
+    </div>
+    <div id="auth-status"></div>
+    <button class="auth-link" id="auth-back-btn" style="display:none">&#8592; Volver</button>
     <input type="file" id="login-av-file" accept="image/*" hidden>
+  </div>
+</div>
+
+<div id="blocked-screen">
+  <div class="box">
+    <h3>Acceso revocado</h3>
+    <p>Tu acceso a Magic Kids TV fue revocado. Contactá al administrador si creés que es un error.</p>
+    <button id="blocked-signout">CERRAR SESION</button>
   </div>
 </div>
 
@@ -442,6 +488,7 @@ body.fs #video-wrap{position:fixed;top:0;bottom:0;left:0;right:0;padding-top:0;h
       <img class="logo" src="Magic Kids Logo.png" alt="Logo">
       <span class="name">Magic Kids TV v1.3.6</span>
       <span class="ver" id="view-counter">&#x1F441; <span id="view-count">0</span></span>
+      <button id="logout-btn" title="Salir">&#9210; SALIR</button>
     </div>
 
   </div>
@@ -483,7 +530,7 @@ body.fs #video-wrap{position:fixed;top:0;bottom:0;left:0;right:0;padding-top:0;h
     </div>
     <div id="prog-list-mobile"></div>
     <div id="chat-overlay">
-      <div id="chat-login">
+      <div id="chat-login" class="hidden">
         <h3>&#128172; Chat en Vivo</h3>
         <p>Ingresa tu nombre para chatear</p>
         <input type="text" id="chat-name-input" placeholder="Tu nombre" maxlength="20" autocomplete="off">
@@ -589,7 +636,6 @@ var APP_VER="1.3.6";
 
 try {
   if(!firebase.apps.length){firebase.initializeApp({apiKey:FW_API,databaseURL:FW_DB,authDomain:"contadores-magic.firebaseapp.com",projectId:"contadores-magic",storageBucket:"contadores-magic.firebasestorage.app",messagingSenderId:"58723817117",appId:"1:58723817117:web:f479abaeacf191364ae674"});}
-  firebase.auth().signInAnonymously().catch(function(e){console.log("auth err",e);});
   var db=firebase.database();
 } catch(e) { console.error("Firebase init failed",e); var db=null; }
 
@@ -600,6 +646,14 @@ if(!deviceId){deviceId="dev_"+Math.random().toString(36).substr(2,9)+Date.now().
 var video=document.getElementById("video");
 var loadingEl=document.getElementById("loading");
 var staticEl=document.getElementById("static");
+
+var videoStarted=false;
+function startVideoIfAuthed(){
+  if(videoStarted||!video)return;
+  videoStarted=true;
+  video.src=STREAM_URL;
+  video.load();
+}
 
 if(video){
   video.addEventListener("playing",function(){
@@ -617,8 +671,6 @@ if(video){
     if(staticEl)staticEl.style.display="none";
     setTimeout(function(){video.src=STREAM_URL;video.load();},5000);
   });
-  video.src=STREAM_URL;
-  video.load();
 }
 
 if(db){
@@ -677,25 +729,40 @@ if(chatClose)chatClose.addEventListener("click",toggleChat);
 
 var CHAT_PASSWORD="tiosam2026";
 var chatAdminMode=false;
-var currentUser=localStorage.getItem("mk_chat_name")||"";
+var ADMIN_EMAILS=["hgastonsanchez@gmail.com"];
+var currentUser="";
 var userAvatar=localStorage.getItem("mk_user_avatar")||null;
+var chatReady="";
+var chatStarted=false;
+var currentUid=deviceId;
 
 var nameModal=document.getElementById("name-modal");
-var nameInput=document.getElementById("name-input");
-var emailInput=document.getElementById("email-input");
-var nameOk=document.getElementById("name-ok");
 var loginAv=document.getElementById("login-av");
 var loginAvFile=document.getElementById("login-av-file");
+var authTabLogin=document.getElementById("auth-tab-login");
+var authTabReg=document.getElementById("auth-tab-reg");
+var authLoginView=document.getElementById("auth-login-view");
+var authRegView=document.getElementById("auth-reg-view");
+var authEmail=document.getElementById("auth-email");
+var authPass=document.getElementById("auth-pass");
+var regEmail=document.getElementById("reg-email");
+var regPass=document.getElementById("reg-pass");
+var regName=document.getElementById("reg-name");
+var authStatus=document.getElementById("auth-status");
+var authLoginBtn=document.getElementById("auth-login-btn");
+var regBtn=document.getElementById("reg-btn");
+var authForgotBtn=document.getElementById("auth-forgot-btn");
+var authBackBtn=document.getElementById("auth-back-btn");
+var blockedScreen=document.getElementById("blocked-screen");
+var blockedSignout=document.getElementById("blocked-signout");
+var logoutBtn=document.getElementById("logout-btn");
 
 function updateLoginPreview(){
   if(!loginAv)return;
   if(userAvatar){
     loginAv.innerHTML='<img src="'+userAvatar+'" alt="avatar">';
   }else{
-    var n=currentUser||"";
-    var initial=n?n.charAt(0).toUpperCase():"?";
-    var color=avatarColor(n);
-    loginAv.innerHTML='<span class="mk-ai" style="background:'+color+'">'+initial+'</span>';
+    loginAv.innerHTML='<span class="mk-ai">?</span>';
   }
 }
 
@@ -714,32 +781,129 @@ if(loginAvFile)loginAvFile.onchange=function(e){
   };reader.readAsDataURL(file);
 };
 
-if(nameOk)nameOk.addEventListener("click",function(){
-  var n=nameInput?nameInput.value.trim():"";
-  var e=emailInput?emailInput.value.trim():"";
-  if(!n)return;
-  localStorage.setItem("mk_chat_name",n);localStorage.setItem("mk_name",n);
-  if(e)localStorage.setItem("mk_user_email",e);
-  if(userAvatar)try{localStorage.setItem("mk_user_avatar",userAvatar);}catch(ex){}
-  currentUser=n;
-  if(nameModal)nameModal.classList.remove("show");
-  updateChatUserBar();
-  startChat(n);
-});
-if(nameInput)nameInput.addEventListener("keydown",function(e){if(e.key==="Enter"&&emailInput)emailInput.focus();});
-if(emailInput)emailInput.addEventListener("keydown",function(e){if(e.key==="Enter"&&nameInput)nameInput.focus();});
-
-if(!currentUser){
-  if(nameModal)nameModal.classList.add("show");
-  updateLoginPreview();
-  if(emailInput)emailInput.focus();
-}else{
-  if(nameModal)nameModal.classList.add("show");
-  if(nameInput)nameInput.value=currentUser;
-  if(emailInput)emailInput.value=localStorage.getItem("mk_user_email")||"";
-  updateLoginPreview();
-  if(emailInput)emailInput.focus();
+function showAuthModal(){if(nameModal)nameModal.classList.add("show");}
+function hideAuthModal(){if(nameModal)nameModal.classList.remove("show");}
+function setAuthStatus(m,ok){
+  if(!authStatus)return;
+  authStatus.textContent=m;
+  authStatus.className=m?(ok?"ok":"err"):"";
 }
+function showBlockedScreen(){if(blockedScreen)blockedScreen.classList.add("show");}
+function hideBlockedScreen(){if(blockedScreen)blockedScreen.classList.remove("show");}
+function showLoginTab(){
+  if(authTabLogin)authTabLogin.classList.add("active");
+  if(authTabReg)authTabReg.classList.remove("active");
+  if(authLoginView)authLoginView.style.display="";
+  if(authRegView)authRegView.style.display="none";
+  if(authBackBtn)authBackBtn.style.display="none";
+}
+function showRegTab(){
+  if(authTabReg)authTabReg.classList.add("active");
+  if(authTabLogin)authTabLogin.classList.remove("active");
+  if(authLoginView)authLoginView.style.display="none";
+  if(authRegView)authRegView.style.display="";
+  if(authBackBtn)authBackBtn.style.display="";
+}
+if(authTabLogin)authTabLogin.onclick=function(){setAuthStatus("");showLoginTab();};
+if(authTabReg)authTabReg.onclick=function(){setAuthStatus("");showRegTab();};
+if(authBackBtn)authBackBtn.onclick=function(){setAuthStatus("");showLoginTab();};
+if(authLoginBtn)authLoginBtn.onclick=loginWithEmail;
+if(authPass)authPass.onkeydown=function(e){if(e.key==="Enter")loginWithEmail();};
+if(authForgotBtn)authForgotBtn.onclick=sendPasswordReset;
+if(regBtn)regBtn.onclick=registerWithEmail;
+if(regPass)regPass.onkeydown=function(e){if(e.key==="Enter")registerWithEmail();};
+if(logoutBtn)logoutBtn.onclick=function(){firebase.auth().signOut();};
+if(blockedSignout)blockedSignout.onclick=function(){firebase.auth().signOut();};
+
+function loginWithEmail(){
+  var e=authEmail?authEmail.value.trim():"";
+  var p=authPass?authPass.value:"";
+  if(!e||!p){setAuthStatus("Completa todos los campos");return;}
+  setAuthStatus("");
+  firebase.auth().signInWithEmailAndPassword(e,p).catch(function(err){setAuthStatus(authErrorMessage(err));});
+}
+function registerWithEmail(){
+  var e=regEmail?regEmail.value.trim():"";
+  var p=regPass?regPass.value:"";
+  var n=regName?regName.value.trim():"";
+  if(!e||!p||!n){setAuthStatus("Completa todos los campos");return;}
+  if(p.length<6){setAuthStatus("La contrasena debe tener minimo 6 caracteres");return;}
+  setAuthStatus("Creando cuenta...");
+  firebase.auth().createUserWithEmailAndPassword(e,p).then(function(cr){
+    var u=cr.user;
+    var isAdmin=ADMIN_EMAILS.indexOf(e.toLowerCase())!==-1;
+    return db.ref("users/"+u.uid).set({
+      email:e.toLowerCase(),
+      name:n,
+      createdAt:firebase.database.ServerValue.TIMESTAMP,
+      lastLogin:firebase.database.ServerValue.TIMESTAMP,
+      activeDevice:deviceId,
+      blocked:false,
+      isAdmin:isAdmin
+    });
+  }).then(function(){
+    if(userAvatar)try{db.ref("users/"+firebase.auth().currentUser.uid+"/avatar").set(userAvatar);}catch(ex){}
+    setAuthStatus("Cuenta creada. Bienvenido!",true);
+  }).catch(function(err){setAuthStatus(authErrorMessage(err));});
+}
+function sendPasswordReset(){
+  var e=authEmail?authEmail.value.trim():"";
+  if(!e){setAuthStatus("Ingresa tu email primero");return;}
+  firebase.auth().sendPasswordResetEmail(e).then(function(){setAuthStatus("Te enviamos un link a tu email",true);}).catch(function(err){setAuthStatus(authErrorMessage(err));});
+}
+function authErrorMessage(e){
+  var m=e&&e.message?e.message:"";
+  if(m.indexOf("invalid-email")!==-1)return "Email invalido";
+  if(m.indexOf("user-not-found")!==-1)return "No existe cuenta con ese email";
+  if(m.indexOf("wrong-password")!==-1)return "Contrasena incorrecta";
+  if(m.indexOf("email-already-in-use")!==-1)return "Ese email ya tiene cuenta";
+  if(m.indexOf("weak-password")!==-1)return "Contrasena muy corta";
+  if(m.indexOf("network-request-failed")!==-1)return "Sin conexion. Revisa internet";
+  return m;
+}
+
+firebase.auth().onAuthStateChanged(function(user){
+  if(!user){
+    currentUid=deviceId;
+    currentUser="";
+    chatReady="";
+    videoStarted=false;
+    if(video){video.removeAttribute("src");video.load();}
+    showAuthModal();
+    hideBlockedScreen();
+    return;
+  }
+  var uid=user.uid;
+  db.ref("users/"+uid).once("value",function(snap){
+    var data=snap.val()||{};
+    if(data.activeDevice && data.activeDevice!==deviceId && !data.isAdmin){
+      firebase.auth().signOut().then(function(){
+        setAuthStatus("Esta cuenta ya esta en uso en otro dispositivo");
+        showLoginTab();
+      });
+      return;
+    }
+    if(data.blocked===true){
+      showBlockedScreen();
+      return;
+    }
+    db.ref("users/"+uid+"/activeDevice").set(deviceId);
+    db.ref("users/"+uid+"/lastLogin").set(firebase.database.ServerValue.TIMESTAMP);
+    currentUid=uid;
+    currentUser=data.name||user.email.split("@")[0];
+    try{localStorage.setItem("mk_chat_name",currentUser);}catch(e){}
+    chatReady=true;
+    hideAuthModal();
+    hideBlockedScreen();
+    if(chatLogin)chatLogin.classList.add("hidden");
+    updateChatUserBar();
+    if(!chatStarted)startChat(currentUser);
+    startVideoIfAuthed();
+  });
+  db.ref("users/"+uid+"/blocked").on("value",function(snap){
+    if(snap.val()===true){showBlockedScreen();}else{hideBlockedScreen();}
+  });
+});
 
 var chatNameInput=document.getElementById("chat-name-input");
 var chatNameOk=document.getElementById("chat-name-ok");
@@ -864,6 +1028,8 @@ if(adminDeactivateBtn)adminDeactivateBtn.addEventListener("click",function(){
 });
 
 function startChat(user){
+  if(chatStarted)return;
+  chatStarted=true;
   currentUser=user;
   var chatRef=db.ref("chat/messages");
   var bannedRef=db.ref("chat/banned");
@@ -884,7 +1050,7 @@ function startChat(user){
       }
       var initial=msg.user?msg.user.charAt(0).toUpperCase():"?";
       var color=avatarColor(msg.user||"");
-      var isOwn=msg.uid===deviceId;
+      var isOwn=msg.uid===currentUid||msg.uid===deviceId;
       var avHtml=isOwn&&userAvatar?'<img src="'+userAvatar+'" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0">':'<span class="msg-mav" style="background:'+color+'">'+initial+'</span>';
       div.innerHTML='<span class="msg-user">'+avHtml+(msg.user||"")+'</span>'
         +'<div class="msg-row"><span class="msg-text">'+(msg.text||"")+'</span>'
@@ -892,7 +1058,7 @@ function startChat(user){
         +'<button class="msg-heart" data-msg="'+child.key+'">&#9825;<span class="msg-hc">0</span></button></div>'
         +actionsHtml;
       var heartBtn=div.querySelector(".msg-heart");
-      likesRef.child(child.key).child(deviceId).once("value",function(ls){
+      likesRef.child(child.key).child(currentUid).once("value",function(ls){
         if(ls.exists()){heartBtn.classList.add("liked");heartBtn.innerHTML="&#9829;<span class='msg-hc'>0</span>";}
         likesRef.child(child.key).on("value",function(lc){
           var cnt=lc.numChildren()||0;
@@ -900,7 +1066,7 @@ function startChat(user){
         });
       });
       heartBtn.onclick=function(){
-        var ref=likesRef.child(child.key).child(deviceId);
+        var ref=likesRef.child(child.key).child(currentUid);
         ref.once("value",function(ls){
           if(ls.exists()){ref.remove();}else{ref.set(true);}
         });
@@ -928,7 +1094,7 @@ function startChat(user){
 function sendMessage(){
   if(!chatInputEl||!currentUser)return;
   var text=chatInputEl.value.trim();if(!text)return;
-  db.ref("chat/messages").push({user:currentUser,text:text,timestamp:firebase.database.ServerValue.TIMESTAMP,system:false,uid:deviceId});
+  db.ref("chat/messages").push({user:currentUser,text:text,timestamp:firebase.database.ServerValue.TIMESTAMP,system:false,uid:currentUid});
   chatInputEl.value="";
 }
 
@@ -1030,7 +1196,7 @@ function renderPoll(poll){
   if(poll.options)for(var i=0;i<poll.options.length;i++)totalVotes+=poll.options[i].votes||0;
   var voted=false;
   var myIdx=null;
-  pollRef.child("votes/"+deviceId).once("value",function(snap){
+  pollRef.child("votes/"+currentUid).once("value",function(snap){
     if(snap.exists()){
       voted=true;
       myIdx=snap.val();
@@ -1051,7 +1217,7 @@ function renderPoll(poll){
         if(!voted){
           btn.onclick=function(){
             if(chatAdminMode)return;
-            var vRef=pollRef.child("votes/"+deviceId);
+            var vRef=pollRef.child("votes/"+currentUid);
             vRef.set(idx);
             pollRef.child("options/"+idx+"/votes").transaction(function(cur){return(cur||0)+1;});
             try{localStorage.setItem("mk_poll_voted_"+poll.createdAt,""+idx);}catch(e){}

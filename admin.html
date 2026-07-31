@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magic Kids TV - Panel Admin</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial,sans-serif;background:#0b0b14;color:#eee;min-height:100vh}
+#login-view{display:flex;justify-content:center;align-items:center;min-height:100vh}
+#login-box{background:#13131f;border:1px solid #333;border-radius:16px;padding:28px 24px;width:85%;max-width:340px;text-align:center}
+#login-box h3{color:#c4a0ff;font-size:18px;margin-bottom:14px}
+#login-box input{width:100%;padding:12px 14px;border-radius:10px;border:1px solid #444;background:#1a1a2e;color:#fff;font-size:14px;text-align:center;outline:none;margin-bottom:12px}
+#login-box input:focus{border-color:#7c3aed}
+#login-box button{width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;font-size:14px;font-weight:700;cursor:pointer}
+#login-box button:active{opacity:0.8}
+#login-status{font-size:12px;margin-top:10px;min-height:16px;color:#ff6b6b}
+#login-status.ok{color:#00ff66}
+#login-status.err{color:#ff6b6b}
+#panel-view{display:none;max-width:960px;margin:0 auto;padding:20px}
+#topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+#topbar h1{font-size:20px;color:#c4a0ff}
+#topbar .actions{display:flex;gap:8px}
+#topbar button{padding:8px 14px;border:none;border-radius:8px;background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;font-size:12px;font-weight:700;cursor:pointer}
+#topbar button.logout{background:rgba(255,68,68,0.2);color:#ff6b6b}
+#admin-email{font-size:12px;color:#888}
+#user-list{display:flex;flex-direction:column;gap:10px}
+.user-card{background:#13131f;border:1px solid #333;border-radius:12px;padding:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.user-av{width:40px;height:40px;border-radius:50%;background:#7c3aed;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;color:#fff;flex-shrink:0}
+.user-info{flex:1;min-width:180px}
+.user-info .name{font-weight:700;font-size:14px}
+.user-info .email{font-size:12px;color:#888}
+.user-info .meta{font-size:11px;color:#666;margin-top:2px}
+.badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;margin-left:6px}
+.badge.admin{background:rgba(255,204,0,0.15);color:#ffcc00}
+.badge.blocked{background:rgba(255,68,68,0.15);color:#ff6b6b}
+.badge.active{background:rgba(0,255,102,0.12);color:#00ff66}
+.user-actions{display:flex;gap:6px;flex-wrap:wrap}
+.user-actions button{padding:8px 12px;border:none;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer}
+.btn-block{background:rgba(255,68,68,0.2);color:#ff6b6b}
+.btn-unblock{background:rgba(0,255,102,0.15);color:#00ff66}
+.btn-admin-off{background:rgba(255,204,0,0.15);color:#ffcc00}
+.btn-admin-on{background:rgba(255,204,0,0.3);color:#ffcc00}
+#empty{color:#666;text-align:center;padding:40px;font-size:14px}
+#denied{display:none;justify-content:center;align-items:center;min-height:100vh;text-align:center}
+#denied .box{background:#13131f;border:1px solid #333;border-radius:16px;padding:28px 24px;width:85%;max-width:340px}
+#denied h3{color:#ff6b6b;font-size:18px;margin-bottom:10px}
+#denied p{color:#aaa;font-size:13px;margin-bottom:16px}
+#denied button{width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,68,68,0.2);color:#ff6b6b;font-size:14px;font-weight:700;cursor:pointer}
+</style>
+</head>
+<body>
+
+<div id="login-view">
+  <div id="login-box">
+    <h3>Panel Admin - Magic Kids TV</h3>
+    <input type="email" id="admin-email-input" placeholder="Tu email" autocomplete="off">
+    <input type="password" id="admin-pass-input" placeholder="Contrasena" autocomplete="off">
+    <button id="admin-login-btn">INGRESAR</button>
+    <div id="login-status"></div>
+  </div>
+</div>
+
+<div id="denied">
+  <div class="box">
+    <h3>Acceso denegado</h3>
+    <p>Tu cuenta no tiene permisos de administrador.</p>
+    <button id="denied-logout-btn">CERRAR SESION</button>
+  </div>
+</div>
+
+<div id="panel-view">
+  <div id="topbar">
+    <div>
+      <h1>Panel Admin</h1>
+      <span id="admin-email"></span>
+    </div>
+    <div class="actions">
+      <button id="refresh-btn">ACTUALIZAR</button>
+      <button class="logout" id="panel-logout-btn">SALIR</button>
+    </div>
+  </div>
+  <div id="user-list"></div>
+  <div id="empty">No hay usuarios registrados todavia.</div>
+</div>
+
+<script>
+var ADMIN_EMAILS=["hgastonsanchez@gmail.com"];
+var firebaseConfig={apiKey:"AIzaSyDM7YiLoP5Q-jTB1BBbMluvWL1LIPqCtxI",authDomain:"contadores-magic.firebaseapp.com",databaseURL:"https://contadores-magic-default-rtdb.firebaseio.com",projectId:"contadores-magic",storageBucket:"contadores-magic.firebasestorage.app",messagingSenderId:"58723817117",appId:"1:58723817117:web:f479abaeacf191364ae674"};
+firebase.initializeApp(firebaseConfig);
+var db=firebase.database();
+var usersListening=false;
+
+var loginView=document.getElementById("login-view");
+var panelView=document.getElementById("panel-view");
+var deniedView=document.getElementById("denied");
+var loginStatus=document.getElementById("login-status");
+
+function setLoginStatus(m,ok){
+  loginStatus.textContent=m;
+  loginStatus.className=m?(ok?"ok":"err"):"";
+}
+function showView(view){
+  loginView.style.display=(view==="login")?"flex":"none";
+  panelView.style.display=(view==="panel")?"block":"none";
+  deniedView.style.display=(view==="denied")?"flex":"none";
+}
+
+document.getElementById("admin-login-btn").onclick=function(){
+  var e=document.getElementById("admin-email-input").value.trim();
+  var p=document.getElementById("admin-pass-input").value;
+  if(!e||!p){setLoginStatus("Completa email y contrasena");return;}
+  setLoginStatus("");
+  firebase.auth().signInWithEmailAndPassword(e,p).catch(function(err){
+    setLoginStatus(authErrorMessage(err));
+  });
+};
+document.getElementById("admin-pass-input").onkeydown=function(e){
+  if(e.key==="Enter")document.getElementById("admin-login-btn").onclick();
+};
+
+function logout(){
+  firebase.auth().signOut();
+}
+document.getElementById("denied-logout-btn").onclick=logout;
+document.getElementById("panel-logout-btn").onclick=logout;
+document.getElementById("refresh-btn").onclick=function(){
+  if(!usersListening)loadUsers();
+};
+
+function authErrorMessage(e){
+  var m=e&&e.message?e.message:"";
+  if(m.indexOf("invalid-email")!==-1)return "Email invalido";
+  if(m.indexOf("user-not-found")!==-1)return "No existe cuenta con ese email";
+  if(m.indexOf("wrong-password")!==-1)return "Contrasena incorrecta";
+  if(m.indexOf("network-request-failed")!==-1)return "Sin conexion. Revisa internet";
+  return m;
+}
+
+function loadUsers(){
+  usersListening=true;
+  var listEl=document.getElementById("user-list");
+  var emptyEl=document.getElementById("empty");
+  db.ref("users").on("value",function(snap){
+    var users=[];
+    snap.forEach(function(child){
+      var u=child.val()||{};
+      users.push({
+        uid:child.key,
+        email:u.email||"",
+        name:u.name||"",
+        blocked:u.blocked===true,
+        isAdmin:u.isAdmin===true,
+        activeDevice:u.activeDevice||"",
+        lastLogin:u.lastLogin||0,
+        createdAt:u.createdAt||0
+      });
+    });
+    users.sort(function(a,b){return (b.lastLogin||0)-(a.lastLogin||0);});
+    listEl.innerHTML="";
+    if(users.length===0){
+      emptyEl.style.display="block";
+    }else{
+      emptyEl.style.display="none";
+      users.forEach(function(u){listEl.appendChild(userCard(u));});
+    }
+  });
+}
+
+function userCard(u){
+  var card=document.createElement("div");
+  card.className="user-card";
+  var initial=(u.name||u.email||"?").charAt(0).toUpperCase();
+  var lastDate=u.lastLogin?new Date(u.lastLogin).toLocaleString():"-";
+  var createdDate=u.createdAt?new Date(u.createdAt).toLocaleDateString():"-";
+  var device=(u.activeDevice||"").substring(0,12);
+
+  var info=document.createElement("div");
+  info.className="user-info";
+  info.innerHTML='<span class="name">'+(u.name||"Sin nombre")+'</span>'
+    +(u.isAdmin?'<span class="badge admin">ADMIN</span>':'')
+    +(u.blocked?'<span class="badge blocked">BLOQUEADO</span>':'<span class="badge active">ACTIVO</span>')
+    +'<div class="email">'+(u.email||"-")+'</div>'
+    +'<div class="meta">Dispositivo: '+(device||"-")+' | Registro: '+createdDate+' | Ultimo acceso: '+lastDate+'</div>';
+
+  var av=document.createElement("div");
+  av.className="user-av";
+  av.textContent=initial;
+
+  var actions=document.createElement("div");
+  actions.className="user-actions";
+  if(!u.isAdmin){
+    var blockBtn=document.createElement("button");
+    blockBtn.className=u.blocked?"btn-unblock":"btn-block";
+    blockBtn.textContent=u.blocked?"DESBLOQUEAR":"BLOQUEAR";
+    blockBtn.onclick=function(){
+      db.ref("users/"+u.uid+"/blocked").set(!u.blocked);
+    };
+    actions.appendChild(blockBtn);
+  }
+  if(u.uid!==firebase.auth().currentUser.uid){
+    var adminBtn=document.createElement("button");
+    adminBtn.className=u.isAdmin?"btn-admin-off":"btn-admin-on";
+    adminBtn.textContent=u.isAdmin?"QUITAR ADMIN":"HACER ADMIN";
+    adminBtn.onclick=function(){
+      db.ref("users/"+u.uid+"/isAdmin").set(!u.isAdmin);
+    };
+    actions.appendChild(adminBtn);
+  }
+
+  card.appendChild(av);
+  card.appendChild(info);
+  card.appendChild(actions);
+  return card;
+}
+
+firebase.auth().onAuthStateChanged(function(user){
+  if(!user){
+    usersListening=false;
+    showView("login");
+    document.getElementById("admin-email").textContent="";
+    document.getElementById("user-list").innerHTML="";
+    document.getElementById("empty").style.display="none";
+    return;
+  }
+  document.getElementById("admin-email").textContent=user.email;
+  var uid=user.uid;
+  db.ref("users/"+uid).once("value",function(snap){
+    var data=snap.val()||{};
+    if(data.isAdmin===true){
+      showView("panel");
+      loadUsers();
+      return;
+    }
+    var email=user.email||"";
+    if(ADMIN_EMAILS.indexOf(email.toLowerCase())!==-1&&!snap.exists()){
+      db.ref("users/"+uid).set({
+        email:email.toLowerCase(),
+        name:"Admin",
+        createdAt:firebase.database.ServerValue.TIMESTAMP,
+        lastLogin:firebase.database.ServerValue.TIMESTAMP,
+        activeDevice:"admin_panel",
+        blocked:false,
+        isAdmin:true
+      }).then(function(){
+        showView("panel");
+        loadUsers();
+      }).catch(function(){
+        showView("denied");
+      });
+      return;
+    }
+    showView("denied");
+  });
+});
+</script>
+</body>
+</html>

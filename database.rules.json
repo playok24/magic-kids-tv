@@ -2,6 +2,19 @@
   "rules": {
     ".read": "auth !== null",
     ".write": "auth !== null",
+    "users": {
+      ".read": "auth != null && root.child('users/'+auth.uid+'/isAdmin').val() === true",
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || root.child('users/'+auth.uid+'/isAdmin').val() === true)",
+        ".write": "auth != null && (auth.uid === $uid || root.child('users/'+auth.uid+'/isAdmin').val() === true)",
+        "blocked": {
+          ".write": "(auth != null && auth.uid === $uid && !root.child('users/'+$uid).exists()) || (auth != null && root.child('users/'+auth.uid+'/isAdmin').val() === true)"
+        },
+        "isAdmin": {
+          ".write": "(auth != null && auth.uid === $uid && !root.child('users/'+$uid).exists()) || (auth != null && root.child('users/'+auth.uid+'/isAdmin').val() === true)"
+        }
+      }
+    },
     "sessions": {
       ".indexOn": "localTs",
       "$sid": {

@@ -148,6 +148,29 @@ body{
   color:#fff;font-size:14px;font-weight:700;cursor:pointer;
 }
 #name-modal .box button:active{opacity:0.8;transform:scale(0.98)}
+#name-modal .box .auth-tabs{display:flex;gap:6px;margin-bottom:14px}
+#name-modal .box .auth-tabs button{flex:1;padding:8px;border:none;border-radius:8px;background:rgba(255,255,255,0.06);color:#888;font-size:12px;font-weight:700;cursor:pointer}
+#name-modal .box .auth-tabs button.active{background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff}
+#name-modal .box .auth-link{background:none;border:none;color:#00ccff;font-size:12px;cursor:pointer;margin-top:6px;width:100%;text-align:center;padding:6px}
+#name-modal .box .auth-link:hover{text-decoration:underline}
+#name-modal .box #auth-status{font-size:12px;margin-top:10px;min-height:16px;color:#ff6b6b}
+#name-modal .box #auth-status.ok{color:#00ff66}
+#name-modal .box #auth-status.err{color:#ff6b6b}
+#logout-btn{background:rgba(255,255,255,0.08);border:none;border-radius:4px;color:#aaa;font-size:11px;font-weight:700;padding:4px 8px;cursor:pointer}
+#logout-btn:hover{background:rgba(255,68,68,0.2);color:#ff6666}
+#blocked-screen{
+  position:fixed;inset:0;z-index:300;
+  background:rgba(0,0,0,0.92);
+  display:none;justify-content:center;align-items:center;
+}
+#blocked-screen.show{display:flex}
+#blocked-screen .box{
+  background:#13131f;border:1px solid #444;border-radius:16px;
+  padding:28px 24px;width:85%;max-width:340px;text-align:center;
+}
+#blocked-screen .box h3{color:#ff6b6b;font-size:18px;margin-bottom:10px}
+#blocked-screen .box p{color:#aaa;font-size:13px;margin-bottom:16px}
+#blocked-screen .box button{width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,68,68,0.2);color:#ff6b6b;font-size:14px;font-weight:700;cursor:pointer}
 
 body.video-only #header-bar,body.video-only #remote,body.video-only #chat-overlay{display:none}
 body.video-only #container{flex:1}
@@ -397,6 +420,11 @@ body.light #name-modal .box h3{color:#6b3fa0}
 body.light #name-modal .box p{color:#555}
 body.light #name-modal .box input{background:#f0f0f5;border-color:#ddd;color:#222}
 body.light #name-modal .box input:focus{border-color:#6b3fa0}
+body.light #name-modal .box .auth-tabs button{background:rgba(0,0,0,0.06);color:#888}
+body.light #name-modal .box .auth-tabs button.active{background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff}
+body.light #name-modal .box .auth-link{color:#2563eb}
+body.light #blocked-screen .box{background:#fff;border-color:#ddd}
+body.light #blocked-screen .box p{color:#555}
 
 #cast-btn{
   width:100%;padding:10px;border:1px solid #7c3aed;border-radius:8px;
@@ -459,7 +487,7 @@ body.light #sub-modal .box .close-sub{background:rgba(0,0,0,0.06);color:#555}
   <span class="title">Magic Kids Television</span>
   <span class="version" id="version-label">v1.3.8</span>
   <button id="update-btn" onclick="window.electronAPI&&window.electronAPI.installUpdate()">ACTUALIZAR</button>
-  <span class="greeting" id="greeting"><span id="greeting-text"></span><button class="edit-name" onclick="showNameModal(true)">&#9998;</button><button id="theme-toggle" onclick="toggleTheme()">&#127769;</button></span>
+  <span class="greeting" id="greeting"><span id="greeting-text"></span><button id="theme-toggle" onclick="toggleTheme()">&#127769;</button><button id="logout-btn" title="Salir">&#9210; SALIR</button></span>
 </div>
 
 <div id="container">
@@ -589,13 +617,33 @@ body.light #sub-modal .box .close-sub{background:rgba(0,0,0,0.06);color:#555}
 <div id="name-modal">
   <div class="box">
     <h3 id="name-modal-title">Bienvenido a Magic Kids TV!</h3>
-    <div class="login-av" id="login-av" title="Elegir foto"><span class="mk-ai">?</span></div>
-    <p>Ingresa tu email y nombre</p>
-    <input type="email" id="email-input" placeholder="Tu email" autocomplete="off">
-    <input type="text" id="name-input" placeholder="Tu nombre" maxlength="20" autocomplete="off">
-    <button id="name-ok">ENTRAR</button>
-    <input type="file" id="login-av-file" accept="image/*" hidden>
-    <button id="name-cancel" style="display:none;margin-top:8px;width:100%;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,0.06);color:#888;font-size:13px;font-weight:700;cursor:pointer">Cancelar</button>
+    <div class="auth-tabs">
+      <button id="auth-tab-login" class="active">INGRESAR</button>
+      <button id="auth-tab-reg">CREAR CUENTA</button>
+    </div>
+    <div id="auth-view-login">
+      <input type="email" id="auth-email" placeholder="Tu email" autocomplete="off">
+      <input type="password" id="auth-pass" placeholder="Contraseña" autocomplete="off">
+      <button id="auth-login-btn">INGRESAR</button>
+      <button id="auth-forgot" class="auth-link">Olvidé mi contraseña</button>
+    </div>
+    <div id="auth-view-reg" style="display:none">
+      <div class="login-av" id="login-av" title="Elegir foto"><span class="mk-ai">?</span></div>
+      <input type="email" id="reg-email" placeholder="Tu email" autocomplete="off">
+      <input type="password" id="reg-pass" placeholder="Contraseña (mínimo 6)" autocomplete="off">
+      <input type="text" id="reg-name" placeholder="Tu nombre" maxlength="20" autocomplete="off">
+      <button id="reg-btn">CREAR CUENTA</button>
+      <input type="file" id="login-av-file" accept="image/*" hidden>
+    </div>
+    <div id="auth-status"></div>
+  </div>
+</div>
+
+<div id="blocked-screen">
+  <div class="box">
+    <h3 style="color:#ff6b6b">Acceso revocado</h3>
+    <p>Tu acceso a Magic Kids TV fue revocado. Contactá al administrador si creés que es un error.</p>
+    <button id="blocked-signout">CERRAR SESIÓN</button>
   </div>
 </div>
 
@@ -631,6 +679,12 @@ const greetingEl=document.getElementById("greeting-text");
 let hlsRetries=0;
 let volTimeout=null;
 
+const ADMIN_EMAILS=["hgastonsanchez@gmail.com"];
+var deviceId="";
+try{deviceId=localStorage.getItem("mk_device_id")||"";}catch(e){}
+if(!deviceId){deviceId="dev_"+Math.random().toString(36).substr(2,9)+Date.now().toString(36);try{localStorage.setItem("mk_device_id",deviceId);}catch(e){}}
+var currentUid=deviceId;
+
 let userName=localStorage.getItem("mk_user")||"";
 function updateGreeting(){
   const h=new Date().getHours();
@@ -641,42 +695,128 @@ function updateGreeting(){
   var cl=document.getElementById("chat-user-label");
   if(cl)cl.textContent=userName?" — "+userName:"";
 }
-function showNameModal(editing){
-  document.getElementById("name-modal").classList.add("show");
-  var title=document.getElementById("name-modal-title");
-  var cancel=document.getElementById("name-cancel");
-  if(editing){
-    title.textContent="Editar nombre";
-    cancel.style.display="block";
-    document.getElementById("name-input").value=userName;
-    document.getElementById("email-input").value=localStorage.getItem("mk_user_email")||"";
-  }else{
-    title.textContent="Bienvenido a Magic Kids TV!";
-    cancel.style.display="none";
-    document.getElementById("name-input").value="";
-    document.getElementById("email-input").value="";
-  }
-  updateLoginPreview("login-av");
-  document.getElementById("email-input").focus();
+
+var authEmail=document.getElementById("auth-email");
+var authPass=document.getElementById("auth-pass");
+var authLoginBtn=document.getElementById("auth-login-btn");
+var authForgot=document.getElementById("auth-forgot");
+var authViewLogin=document.getElementById("auth-view-login");
+var authViewReg=document.getElementById("auth-view-reg");
+var authTabLogin=document.getElementById("auth-tab-login");
+var authTabReg=document.getElementById("auth-tab-reg");
+var regEmail=document.getElementById("reg-email");
+var regPass=document.getElementById("reg-pass");
+var regName=document.getElementById("reg-name");
+var regBtn=document.getElementById("reg-btn");
+var authStatus=document.getElementById("auth-status");
+
+function setAuthStatus(msg,ok){
+  if(!authStatus)return;
+  authStatus.textContent=msg||"";
+  authStatus.className=ok?"ok":"err";
 }
-document.getElementById("name-cancel").onclick=function(){
-  document.getElementById("name-modal").classList.remove("show");
+function showAuthModal(){
+  var m=document.getElementById("name-modal");
+  if(m)m.classList.add("show");
+}
+function hideAuthModal(){
+  var m=document.getElementById("name-modal");
+  if(m)m.classList.remove("show");
+}
+function showBlockedScreen(){
+  var b=document.getElementById("blocked-screen");
+  if(b)b.classList.add("show");
+}
+function hideBlockedScreen(){
+  var b=document.getElementById("blocked-screen");
+  if(b)b.classList.remove("show");
+}
+
+function authErrorMessage(err){
+  var c=err&&err.code?err.code:"";
+  if(c==="auth/user-not-found"||c==="auth/wrong-password"||c==="auth/invalid-credential")return"Email o contraseña incorrectos";
+  if(c==="auth/email-already-in-use")return"Ese email ya tiene una cuenta. Usá INGRESAR.";
+  if(c==="auth/weak-password")return"La contraseña es muy corta (mínimo 6 caracteres)";
+  if(c==="auth/invalid-email")return"Email inválido";
+  if(c==="auth/user-disabled")return"Tu cuenta fue deshabilitada";
+  if(c==="auth/network-request-failed")return"Error de conexión. Intentá de nuevo.";
+  return (err&&err.message)||"Error desconocido";
+}
+
+authTabLogin.onclick=function(){
+  authViewLogin.style.display="block";
+  authViewReg.style.display="none";
+  authTabLogin.classList.add("active");
+  authTabReg.classList.remove("active");
+  setAuthStatus("");
 };
-document.getElementById("name-ok").onclick=function(){
-  var v=document.getElementById("name-input").value.trim();
-  var e=document.getElementById("email-input").value.trim();
-  if(v){
-    userName=v;
-    localStorage.setItem("mk_user",userName);
-    if(e)localStorage.setItem("mk_user_email",e);
-    if(userAvatar)try{localStorage.setItem("mk_user_avatar",userAvatar);}catch(e){}
-    document.getElementById("name-modal").classList.remove("show");
-    updateGreeting();
-    renderAvatar();
-  }
+authTabReg.onclick=function(){
+  authViewLogin.style.display="none";
+  authViewReg.style.display="block";
+  authTabLogin.classList.remove("active");
+  authTabReg.classList.add("active");
+  setAuthStatus("");
 };
-document.getElementById("name-input").onkeydown=function(e){if(e.key==="Enter")document.getElementById("name-ok").onclick();};
-document.getElementById("email-input").onkeydown=function(e){if(e.key==="Enter")document.getElementById("name-input").focus();};
+
+authLoginBtn.onclick=function(){
+  var e=authEmail.value.trim();
+  var p=authPass.value;
+  if(!e||!p){setAuthStatus("Ingresá email y contraseña");return;}
+  setAuthStatus("Ingresando...");
+  firebase.auth().signInWithEmailAndPassword(e,p).catch(function(err){
+    setAuthStatus(authErrorMessage(err));
+  });
+};
+
+authForgot.onclick=function(){
+  var e=authEmail.value.trim();
+  if(!e){setAuthStatus("Ingresá tu email primero");return;}
+  setAuthStatus("Enviando email de recuperación...");
+  firebase.auth().sendPasswordResetEmail(e).then(function(){
+    setAuthStatus("Email enviado. Revisá tu casilla.",true);
+  }).catch(function(err){
+    setAuthStatus(authErrorMessage(err));
+  });
+};
+
+regBtn.onclick=function(){
+  var e=regEmail.value.trim();
+  var p=regPass.value;
+  var n=regName.value.trim();
+  if(!e||!p||!n){setAuthStatus("Completá todos los campos");return;}
+  if(p.length<6){setAuthStatus("La contraseña debe tener al menos 6 caracteres");return;}
+  setAuthStatus("Creando cuenta...");
+  firebase.auth().createUserWithEmailAndPassword(e,p).then(function(cred){
+    var isAdmin=ADMIN_EMAILS.indexOf(e.toLowerCase())!==-1;
+    return db.ref("users/"+cred.user.uid).set({
+      email:e.toLowerCase(),
+      name:n,
+      createdAt:firebase.database.ServerValue.TIMESTAMP,
+      lastLogin:firebase.database.ServerValue.TIMESTAMP,
+      activeDevice:deviceId,
+      blocked:false,
+      isAdmin:isAdmin
+    });
+  }).then(function(){
+    setAuthStatus("Cuenta creada. Bienvenido!",true);
+  }).catch(function(err){
+    setAuthStatus(authErrorMessage(err));
+  });
+};
+
+document.getElementById("logout-btn").onclick=function(){
+  firebase.auth().signOut();
+};
+document.getElementById("blocked-signout").onclick=function(){
+  firebase.auth().signOut();
+};
+
+var videoStarted=false;
+function startVideoIfAuthed(){
+  if(videoStarted)return;
+  videoStarted=true;
+  initStream();
+}
 
 var userAvatar=localStorage.getItem("mk_user_avatar")||null;
 
@@ -730,7 +870,6 @@ function updateLoginPreview(avId){
 setupLoginAvatar("login-av","login-av-file");
 setupLoginAvatar("chat-login-av","chat-login-av-file");
 
-if(!userName){showNameModal();}else{showNameModal(true);}
 updateGreeting();
 setInterval(updateGreeting,60000);
 
@@ -748,8 +887,58 @@ function toggleTheme(){
 
 var firebaseConfig={apiKey:"AIzaSyDM7YiLoP5Q-jTB1BBbMluvWL1LIPqCtxI",authDomain:"contadores-magic.firebaseapp.com",databaseURL:"https://contadores-magic-default-rtdb.firebaseio.com",projectId:"contadores-magic",storageBucket:"contadores-magic.firebasestorage.app",messagingSenderId:"58723817117",appId:"1:58723817117:web:f479abaeacf191364ae674"};
 firebase.initializeApp(firebaseConfig);
-firebase.auth().signInAnonymously().catch(function(e){console.log("auth err",e);});
 var db=firebase.database();
+
+firebase.auth().onAuthStateChanged(function(user){
+  if(!user){
+    currentUid=deviceId;
+    userName="";
+    chatReady="";
+    if(hls){hls.destroy();hls=null;}
+    video.pause();
+    video.removeAttribute("src");
+    video.load();
+    videoStarted=false;
+    showAuthModal();
+    hideBlockedScreen();
+    updateGreeting();
+    return;
+  }
+  var uid=user.uid;
+  db.ref("users/"+uid).once("value",function(snap){
+    var data=snap.val()||{};
+    if(data.activeDevice && data.activeDevice!==deviceId && !data.isAdmin){
+      firebase.auth().signOut().then(function(){
+        setAuthStatus("Esta cuenta ya esta en uso en otro dispositivo");
+        authTabLogin.onclick();
+      });
+      return;
+    }
+    if(data.blocked===true){
+      showBlockedScreen();
+      return;
+    }
+    db.ref("users/"+uid+"/activeDevice").set(deviceId);
+    db.ref("users/"+uid+"/lastLogin").set(firebase.database.ServerValue.TIMESTAMP);
+    currentUid=uid;
+    userName=data.name||user.email.split("@")[0];
+    try{localStorage.setItem("mk_user",userName);}catch(e){}
+    updateGreeting();
+    chatReady=true;
+    hideChatLogin();
+    showUserBar();
+    hideAuthModal();
+    hideBlockedScreen();
+    startVideoIfAuthed();
+  });
+  db.ref("users/"+uid+"/blocked").on("value",function(snap){
+    if(snap.val()===true){
+      showBlockedScreen();
+    }else{
+      hideBlockedScreen();
+    }
+  });
+});
 var sessionId="mk_"+Math.random().toString(36).substr(2,9);
 var sessionRef=db.ref("sessions/"+sessionId);
 
@@ -953,7 +1142,6 @@ video.addEventListener("error",function(){
   loading.onclick=function(){loading.onclick=null;initStream();};
 });
 
-initStream();
 renderProgramacion();
 
 document.getElementById("mute").onclick=function(){video.muted=!video.muted;this.textContent=video.muted?"🔊 UNMUTE":"🔇 MUTE";};
@@ -1023,8 +1211,6 @@ var chatSessionId="chat_"+Math.random().toString(36).substr(2,9);
 var chatBannedRef=db.ref("chat/banned");
 var chatMessagesRef=db.ref("chat/messages");
 var chatLikesRef=db.ref("chat/likes");
-var deviceId=localStorage.getItem("mk_device_id");
-if(!deviceId){deviceId="dev_"+Math.random().toString(36).substr(2,9)+Date.now().toString(36);localStorage.setItem("mk_device_id",deviceId);}
 var chatBtn=document.getElementById("chat-btn");
 var chatOverlay=document.getElementById("chat-overlay");
 var chatMessages=document.getElementById("chat-messages");
@@ -1059,7 +1245,7 @@ function showUserBar(){
 if(chatReady&&userName){hideChatLogin();showUserBar();}else if(chatReady){hideChatLogin();}
 
 chatBtn.onclick=function(){
-  if(!userName){showNameModal(true);return;}
+  if(!userName)return;
   chatOpen=!chatOpen;
   chatOverlay.classList.toggle("open",chatOpen);
   if(chatOpen){
@@ -1117,7 +1303,7 @@ document.addEventListener("mousemove",function(e){
 });
 document.addEventListener("mouseup",function(){dragging=false;});
 
-chatBannedRef.child(deviceId).on("value",function(snap){
+chatBannedRef.child(currentUid).on("value",function(snap){
   if(snap.exists()){
     chatInput.disabled=true;
     chatSend.disabled=true;
@@ -1144,7 +1330,7 @@ function renderChatMsg(msg){
   if(msg.system){
     div.innerHTML='<span class="msg-text">'+msg.text+'</span>';
   }else{
-    var isOwn=msg.uid===deviceId;
+    var isOwn=msg.uid===currentUid||(deviceId&&msg.uid===deviceId);
     var initial=msg.user?msg.user.charAt(0).toUpperCase():"?";
     var color=avatarColor(msg.user||"");
     var avHtml=isOwn&&userAvatar?'<img src="'+userAvatar+'" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0">':'<span class="msg-mav" style="background:'+color+'">'+initial+'</span>';
@@ -1157,7 +1343,7 @@ function renderChatMsg(msg){
       +'<button class="msg-ban" title="Banear">&#128683;</button>'
       +'</div>';
     var heartBtn=div.querySelector(".msg-heart");
-    chatLikesRef.child(msg.id).child(deviceId).once("value",function(snap){
+    chatLikesRef.child(msg.id).child(currentUid).once("value",function(snap){
       if(snap.exists()){heartBtn.classList.add("liked");heartBtn.innerHTML="&#9829;<span class='msg-hc'>0</span>";}
       chatLikesRef.child(msg.id).on("value",function(ls){
         var c=ls.numChildren()||0;
@@ -1165,7 +1351,7 @@ function renderChatMsg(msg){
       });
     });
     heartBtn.onclick=function(){
-      var ref=chatLikesRef.child(msg.id).child(deviceId);
+      var ref=chatLikesRef.child(msg.id).child(currentUid);
       ref.once("value",function(snap){
         if(snap.exists()){ref.remove();}else{ref.set(true);}
       });
@@ -1231,8 +1417,8 @@ setInterval(cleanOldMessages,300000);
 function sendChatMessage(){
   var text=chatInput.value.trim();
   if(!text)return;
-  if(!userName){showNameModal(true);return;}
-  chatBannedRef.child(deviceId).once("value",function(snap){
+  if(!userName)return;
+  chatBannedRef.child(currentUid).once("value",function(snap){
     if(snap.exists()){
       chatInput.disabled=true;
       chatSend.disabled=true;
@@ -1242,7 +1428,7 @@ function sendChatMessage(){
     chatMessagesRef.push({
       user:userName,
       text:text,
-      uid:deviceId,
+      uid:currentUid,
       timestamp:firebase.database.ServerValue.TIMESTAMP
     });
     chatInput.value="";
@@ -1423,7 +1609,7 @@ function renderPoll(poll){
   if(poll.options)for(var i=0;i<poll.options.length;i++)totalVotes+=poll.options[i].votes||0;
   var voted=false;
   var myIdx=null;
-  pollRef.child("votes/"+deviceId).once("value",function(snap){
+  pollRef.child("votes/"+currentUid).once("value",function(snap){
     if(snap.exists()){
       voted=true;
       myIdx=snap.val();
@@ -1444,7 +1630,7 @@ function renderPoll(poll){
         if(!voted){
           btn.onclick=function(){
             if(chatAdmin)return;
-            var vRef=pollRef.child("votes/"+deviceId);
+            var vRef=pollRef.child("votes/"+currentUid);
             vRef.set(idx);
             pollRef.child("options/"+idx+"/votes").transaction(function(cur){return(cur||0)+1;});
             try{localStorage.setItem("mk_poll_voted_"+poll.createdAt,""+idx);}catch(e){}
@@ -1483,7 +1669,6 @@ pollRef.child("active").on("value",function(snap){
 
 var SUB_SERVER="https://magic-kids-tv.vercel.app";
 var CAST_CHECKOUT_URL="https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=bf79a3ff88fb416d82052b8429521eda";
-var ADMIN_EMAILS=["hgastonsanchez@gmail.com"];
 var castActive=false;
 
 function updateCastUI(){
@@ -1498,7 +1683,7 @@ function updateCastUI(){
   }
 }
 
-db.ref("subscriptions/"+deviceId).on("value",function(snap){
+db.ref("subscriptions/"+currentUid).on("value",function(snap){
   var val=snap.val();
   castActive=!!(val&&val.active);
   updateCastUI();
@@ -1546,7 +1731,7 @@ function verifySubscription(){
   }
   if(ADMIN_EMAILS.indexOf(email)!==-1){
     localStorage.setItem("mk_sub_email",email);
-    db.ref("subscriptions/"+deviceId).set({email:email,active:true,activatedAt:firebase.database.ServerValue.TIMESTAMP,planId:"bf79a3ff88fb416d82052b8429521eda"});
+    db.ref("subscriptions/"+currentUid).set({email:email,active:true,activatedAt:firebase.database.ServerValue.TIMESTAMP,planId:"bf79a3ff88fb416d82052b8429521eda"});
     document.getElementById("sub-status").textContent="Acceso admin activado!";
     document.getElementById("sub-status").className="sub-status ok";
     setTimeout(function(){document.getElementById("sub-modal").classList.remove("show");},1000);
@@ -1567,7 +1752,7 @@ function verifySubscription(){
     btn.textContent="VERIFICAR PAGO";
     if(data.active){
       localStorage.setItem("mk_sub_email",email);
-      db.ref("subscriptions/"+deviceId).set({
+      db.ref("subscriptions/"+currentUid).set({
         email:email,
         active:true,
         activatedAt:firebase.database.ServerValue.TIMESTAMP,
