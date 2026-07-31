@@ -1086,7 +1086,7 @@ sessionRef.onDisconnect().remove();
 setInterval(function(){sessionRef.update({localTs: Date.now()});},10000);
 
 db.ref("sessions").on("value",function(snap){
-  var c=0,n=Date.now()-60000;
+  var c=0,n=Date.now()-120000;
   snap.forEach(function(x){var v=x.val();if(v&&v.localTs&&v.localTs>n)c++;});
   viewCountEl.textContent=c;
 });

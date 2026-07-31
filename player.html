@@ -107,19 +107,21 @@ var pb=document.getElementById("pb");
 var tz=document.getElementById("tz");
 
 var hls=null,re=0,vt=null,prog=[];
-var tzo=parseInt(localStorage.getItem("mk_tzo")||"-3");
-tz.value=localStorage.getItem("mk_tzo")||"-3";
+var tzo=-3;try{tzo=parseInt(localStorage.getItem("mk_tzo")||"-3");}catch(e){}
+try{tz.value=localStorage.getItem("mk_tzo")||"-3";}catch(e){}
 
 try {
   var fc={apiKey:"AIzaSyDM7YiLoP5Q-jTB1BBbMluvWL1LIPqCtxI",authDomain:"contadores-magic.firebaseapp.com",databaseURL:"https://contadores-magic-default-rtdb.firebaseio.com",projectId:"contadores-magic",storageBucket:"contadores-magic.firebasestorage.app",messagingSenderId:"58723817117",appId:"1:58723817117:web:f479abaeacf191364ae674"};
   if(!firebase.apps.length)firebase.initializeApp(fc);
   firebase.auth().signInAnonymously().catch(function(e){console.log("auth err",e);});
   var db=firebase.database();
-  var sid="mkpw_"+Math.random().toString(36).substr(2,9);
-  var sr=db.ref("sessions/"+sid);
+  var pid="";try{pid=localStorage.getItem("mk_device_id")||"";}catch(e){}
+  if(!pid){pid="dev_"+Math.random().toString(36).substr(2,9)+Date.now().toString(36);try{localStorage.setItem("mk_device_id",pid);}catch(e){}}
+  var sr=db.ref("sessions/"+pid);
   sr.set({localTs:Date.now()});
+  sr.onDisconnect().remove();
   setInterval(function(){sr.update({localTs:Date.now()});},10000);
-  db.ref("sessions").on("value",function(s){var c=0,n=Date.now()-60000;s.forEach(function(x){var v=x.val();if(v&&v.localTs&&v.localTs>n)c++;});vc.textContent=c;});
+  db.ref("sessions").on("value",function(s){var c=0,n=Date.now()-120000;s.forEach(function(x){var v=x.val();if(v&&v.localTs&&v.localTs>n)c++;});vc.textContent=c;});
   window.addEventListener("beforeunload",function(){sr.remove();});
   window.addEventListener("pagehide",function(){sr.remove();});
 } catch(e) { console.error("Firebase init failed",e); }
