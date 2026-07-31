@@ -71,7 +71,7 @@
     "codes": {
       "$code": {
         ".read": true,
-        ".write": "(auth != null && root.child('users/'+auth.uid+'/isAdmin').val() === true) || (newData.child('used').val() === true && newData.hasChildren(['usedBy','usedAt','createdAt','createdBy']))"
+        ".write": "(auth != null && root.child('users/'+auth.uid+'/isAdmin').val() === true) || (data.exists() && newData.child('used').val() === true && newData.hasChildren(['usedBy','usedAt','createdAt','createdBy']))"
       }
     }
   }

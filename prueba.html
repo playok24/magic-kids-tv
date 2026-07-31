@@ -739,7 +739,7 @@ var activateAdminLink=document.getElementById("activate-admin-link");
 function showActivateScreen(){if(activateScreen)activateScreen.classList.add("show");}
 function hideActivateScreen(){if(activateScreen)activateScreen.classList.remove("show");}
 function setActivateStatus(msg,ok){if(!activateStatus)return;activateStatus.textContent=msg||"";activateStatus.className=msg?(ok?"ok":"err"):"";}
-function normalizeCode(s){return (s||"").toUpperCase().replace(/[^A-Z0-9]/g,"");}
+function normalizeCode(s){var c=(s||"").toUpperCase().replace(/[^A-Z0-9]/g,"");return c.length>4?c.slice(0,4)+"-"+c.slice(4,8):c;}
 function markActivated(code){
   try{localStorage.setItem("mk_activated","1");}catch(e){}
   if(db)db.ref("activations/"+deviceId).set({code:code,activatedAt:firebase.database.ServerValue.TIMESTAMP});
@@ -764,28 +764,32 @@ function activateDevice(){
   if(!code){setActivateStatus("Ingresá tu código de activación");return;}
   if(!db){setActivateStatus("Sin conexión. Intentá de nuevo.");return;}
   setActivateStatus("Activando...");
-  db.ref("codes/"+code).transaction(function(cur){
-    if(cur===null)return;
-    if(cur.used===true||cur.revoked===true)return;
-    return {
-      createdAt:cur.createdAt||0,
-      createdBy:cur.createdBy||"",
-      used:true,
-      usedBy:deviceId,
-      usedAt:firebase.database.ServerValue.TIMESTAMP,
-      revoked:false
-    };
-  },function(err,committed,snap){
-    if(err){
-      if(err.code==="PERMISSION_DENIED"){setActivateStatus("Error de permisos. Avisale al administrador.");}
-      else{setActivateStatus("Error de conexión. Intentá de nuevo.");}
-      return;
-    }
-    var val=snap?snap.val():null;
-    if(!committed||!val||val.used!==true){setActivateStatus("Código inválido o ya utilizado");return;}
-    markActivated(code);
-    setActivateStatus("Dispositivo activado. Ingresá a tu cuenta.",true);
-    setTimeout(function(){showAuthModal();},600);
+  db.ref("codes/"+code).once("value",function(pre){
+    var pv=pre?pre.val():null;
+    if(!pv||pv.used===true||pv.revoked===true){setActivateStatus("Código inválido o ya utilizado");return;}
+    db.ref("codes/"+code).transaction(function(cur){
+      var base=cur||{};
+      if(cur&&(cur.used===true||cur.revoked===true))return;
+      return {
+        createdAt:base.createdAt||0,
+        createdBy:base.createdBy||"",
+        used:true,
+        usedBy:deviceId,
+        usedAt:firebase.database.ServerValue.TIMESTAMP,
+        revoked:false
+      };
+    },function(err,committed,snap){
+      if(err){
+        if(err.code==="PERMISSION_DENIED"){setActivateStatus("Error de permisos. Avisale al administrador.");}
+        else{setActivateStatus("Error de conexión. Intentá de nuevo.");}
+        return;
+      }
+      var val=snap?snap.val():null;
+      if(!committed||!val||val.used!==true){setActivateStatus("Código inválido o ya utilizado");return;}
+      markActivated(code);
+      setActivateStatus("Dispositivo activado. Ingresá a tu cuenta.",true);
+      setTimeout(function(){showAuthModal();},600);
+    });
   });
 }
 if(activateBtn)activateBtn.onclick=activateDevice;
