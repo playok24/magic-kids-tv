@@ -791,9 +791,9 @@ if(video){
 }
 
 if(db){
-  var sessionId="mk_"+Math.random().toString(36).substr(2,9);
-  var sessionRef=db.ref("sessions/"+sessionId);
+  var sessionRef=db.ref("sessions/"+deviceId);
   sessionRef.set({localTs:Date.now()});
+  sessionRef.onDisconnect().remove();
   setInterval(function(){sessionRef.update({localTs:Date.now()});},10000);
 
   db.ref("sessions").on("value",function(snap){
