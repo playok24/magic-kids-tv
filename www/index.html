@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -525,7 +525,7 @@ body.fs #video-wrap{position:fixed;top:0;bottom:0;left:0;right:0;padding-top:0;h
 <div id="blocked-screen">
   <div class="box">
     <h3>Acceso revocado</h3>
-    <p>Tu acceso a Magic Kids TV fue revocado. Contactá al administrador si creés que es un error.</p>
+    <p>Tu acceso a Magic Kids TV fue revocado. ContactÃ¡ al administrador si creÃ©s que es un error.</p>
     <button id="blocked-signout">CERRAR SESION</button>
   </div>
 </div>
@@ -536,7 +536,7 @@ body.fs #video-wrap{position:fixed;top:0;bottom:0;left:0;right:0;padding-top:0;h
   <div id="top-bar">
     <div id="top-row">
       <img class="logo" src="Magic Kids Logo.png" alt="Logo">
-      <span class="name">Magic Kids TV v<span id="app-version-label">1.3.9</span></span>
+      <span class="name">Magic Kids TV v<span id="app-version-label">1.3.10</span></span>
       <span class="ver" id="view-counter">&#x1F441; <span id="view-count">0</span></span>
       <button id="logout-btn" title="Salir">&#9210; SALIR</button>
     </div>
@@ -682,7 +682,7 @@ var FW_API="AIzaSyDM7YiLoP5Q-jTB1BBbMluvWL1LIPqCtxI";
 var FW_DB="https://contadores-magic-default-rtdb.firebaseio.com";
 var PROG_URL="https://playok24.github.io/magic-kids-tv/programacion.json";
 var STREAM_URL="https://183.bozztv.com/giatv/giatv-magicplus/magicplus/chunks.m3u8";
-var APP_VER="1.3.9";
+var APP_VER="1.3.10";
 
 try {
   if(!firebase.apps.length){firebase.initializeApp({apiKey:FW_API,databaseURL:FW_DB,authDomain:"contadores-magic.firebaseapp.com",projectId:"contadores-magic",storageBucket:"contadores-magic.firebasestorage.app",messagingSenderId:"58723817117",appId:"1:58723817117:web:f479abaeacf191364ae674"});}
@@ -724,7 +724,7 @@ function checkActivation(cb){
 function activateDevice(){
   var code=normalizeCode(activateInput?activateInput.value:"");
   if(!code){setActivateStatus("Ingresa tu codigo de activacion");return;}
-  if(!db){setActivateStatus("Sin conexion. Intentá de nuevo.");return;}
+  if(!db){setActivateStatus("Sin conexion. IntentÃ¡ de nuevo.");return;}
   setActivateStatus("Activando...");
   db.ref("codes/"+code).once("value",function(pre){
     var pv=pre?pre.val():null;
@@ -743,7 +743,7 @@ function activateDevice(){
     },function(err,committed,snap){
       if(err){
         if(err.code==="PERMISSION_DENIED"){setActivateStatus("Error de permisos. Avisale al administrador.");}
-        else{setActivateStatus("Error de conexion. Intentá de nuevo.");}
+        else{setActivateStatus("Error de conexion. IntentÃ¡ de nuevo.");}
         return;
       }
       var val=snap?snap.val():null;
@@ -793,11 +793,10 @@ if(video){
 if(db){
   var sessionRef=db.ref("sessions/"+deviceId);
   sessionRef.set({localTs:Date.now()});
-  sessionRef.onDisconnect().remove();
   setInterval(function(){sessionRef.update({localTs:Date.now()});},10000);
 
   db.ref("sessions").on("value",function(snap){
-    var c=0,n=Date.now()-120000;
+    var c=0,n=Date.now()-300000;
     snap.forEach(function(x){var v=x.val();if(v&&v.localTs&&v.localTs>n)c++;});
     var el=document.getElementById("view-count");if(el)el.textContent=c;
   });
@@ -1437,7 +1436,7 @@ if(fullscreenBtn)fullscreenBtn.addEventListener("click",function(){
 })();
 
 </script>
-<script>APP_VERSION="1.3.9"</script>
+<script>APP_VERSION="1.3.10"</script>
 <script>
 (function(){
   var SUB_SERVER="https://magic-kids-tv.vercel.app";

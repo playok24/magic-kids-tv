@@ -20,7 +20,7 @@
       ".indexOn": "localTs",
       "$sid": {
         ".write": true,
-        ".validate": "newData.hasChildren(['localTs']) && newData.child('localTs').isNumber() && newData.child('localTs').val() <= now"
+        ".validate": "newData.hasChildren(['localTs']) && newData.child('localTs').isNumber() && newData.child('localTs').val() <= now + 300000"
       }
     },
     "chat": {

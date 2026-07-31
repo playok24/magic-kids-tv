@@ -119,9 +119,8 @@ try {
   if(!pid){pid="dev_"+Math.random().toString(36).substr(2,9)+Date.now().toString(36);try{localStorage.setItem("mk_device_id",pid);}catch(e){}}
   var sr=db.ref("sessions/"+pid);
   sr.set({localTs:Date.now()});
-  sr.onDisconnect().remove();
   setInterval(function(){sr.update({localTs:Date.now()});},10000);
-  db.ref("sessions").on("value",function(s){var c=0,n=Date.now()-120000;s.forEach(function(x){var v=x.val();if(v&&v.localTs&&v.localTs>n)c++;});vc.textContent=c;});
+  db.ref("sessions").on("value",function(s){var c=0,n=Date.now()-300000;s.forEach(function(x){var v=x.val();if(v&&v.localTs&&v.localTs>n)c++;});vc.textContent=c;});
   window.addEventListener("beforeunload",function(){sr.remove();});
   window.addEventListener("pagehide",function(){sr.remove();});
 } catch(e) { console.error("Firebase init failed",e); }
