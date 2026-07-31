@@ -44,11 +44,13 @@ body{font-family:Arial,sans-serif;background:#0b0b14;color:#eee;min-height:100vh
 .btn-unblock{background:rgba(0,255,102,0.15);color:#00ff66}
 .btn-admin-off{background:rgba(255,204,0,0.15);color:#ffcc00}
 .btn-admin-on{background:rgba(255,204,0,0.3);color:#ffcc00}
+.btn-code{background:rgba(0,204,255,0.15);color:#00ccff}
 #codes-section{background:#13131f;border:1px solid #333;border-radius:12px;padding:16px;margin-bottom:20px}
 #codes-header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap}
 #codes-header h2{font-size:15px;color:#c4a0ff}
 #codes-header button{padding:8px 14px;border:none;border-radius:8px;background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;font-size:12px;font-weight:700;cursor:pointer}
 #new-code-box{background:#1a1a2e;border:1px solid #333;border-radius:8px;padding:12px;display:none;align-items:center;gap:10px;margin-bottom:12px}
+#new-code-info{font-size:12px;color:#00ccff;margin-bottom:12px;display:none}
 #new-code-value{flex:1;font-size:20px;font-weight:700;color:#00ff66;letter-spacing:3px;font-family:monospace;word-break:break-all}
 #copy-code-btn{padding:8px 12px;border:none;border-radius:8px;background:rgba(0,255,102,0.15);color:#00ff66;font-size:12px;font-weight:700;cursor:pointer}
 #codes-list{display:flex;flex-direction:column;gap:8px}
@@ -106,6 +108,7 @@ body{font-family:Arial,sans-serif;background:#0b0b14;color:#eee;min-height:100vh
       <span id="new-code-value"></span>
       <button id="copy-code-btn">COPIAR</button>
     </div>
+    <div id="new-code-info"></div>
     <div id="codes-list"></div>
   </div>
   <div id="user-list"></div>
@@ -226,6 +229,14 @@ function userCard(u){
     };
     actions.appendChild(blockBtn);
   }
+  var codeBtn=document.createElement("button");
+  codeBtn.className="btn-code";
+  codeBtn.textContent="GENERAR CLAVE";
+  codeBtn.title="Genera una clave de ingreso para este usuario (futuras versiones)";
+  codeBtn.onclick=function(){
+    genUserCode(u);
+  };
+  actions.appendChild(codeBtn);
   if(u.uid!==firebase.auth().currentUser.uid){
     var adminBtn=document.createElement("button");
     adminBtn.className=u.isAdmin?"btn-admin-off":"btn-admin-on";
@@ -255,11 +266,33 @@ function genCode(){
   return s;
 }
 function fmtDate(t){return t?new Date(t).toLocaleString():"-";}
+function genUserCode(u){
+  var code=genCode();
+  var box=document.getElementById("new-code-box");
+  var infoEl=document.getElementById("new-code-info");
+  var valueEl=document.getElementById("new-code-value");
+  valueEl.textContent=code;
+  if(infoEl){
+    infoEl.style.display="block";
+    infoEl.textContent="Clave para "+(u.name||"sin nombre")+" ("+(u.email||"-")+")";
+  }
+  box.style.display="flex";
+  db.ref("codes/"+code).set({
+    createdAt:firebase.database.ServerValue.TIMESTAMP,
+    createdBy:firebase.auth().currentUser.uid,
+    createdFor:u.uid,
+    forEmail:u.email||"",
+    used:false,
+    revoked:false
+  }).catch(function(e){
+    valueEl.textContent="Error: "+((e&&e.message)||"no se pudo crear");
+  });
+}
 function codeCard(c){
   var card=document.createElement("div");
   card.className="code-card";
   var status=c.revoked?'<span class="badge blocked">REVOCADO</span>':(c.used?'<span class="badge blocked">USADO</span>':'<span class="badge active">SIN USAR</span>');
-  var meta=c.used?("Dispositivo: "+(c.usedBy||"-")+" | Usado: "+fmtDate(c.usedAt)):"Creado: "+fmtDate(c.createdAt);
+  var meta=(c.forEmail?"Para: "+c.forEmail+" | ":"")+(c.used?("Dispositivo: "+(c.usedBy||"-")+" | Usado: "+fmtDate(c.usedAt)):"Creado: "+fmtDate(c.createdAt));
   card.innerHTML='<span class="code">'+c.code+'</span>'
     +status
     +'<span class="meta">'+meta+'</span>';
@@ -292,7 +325,7 @@ function loadCodes(){
     var codes=[];
     snap.forEach(function(child){
       var v=child.val()||{};
-      codes.push({code:child.key,createdAt:v.createdAt||0,createdBy:v.createdBy||"",used:v.used===true,usedBy:v.usedBy||"",usedAt:v.usedAt||0,revoked:v.revoked===true});
+      codes.push({code:child.key,createdAt:v.createdAt||0,createdBy:v.createdBy||"",createdFor:v.createdFor||"",forEmail:v.forEmail||"",used:v.used===true,usedBy:v.usedBy||"",usedAt:v.usedAt||0,revoked:v.revoked===true});
     });
     codes.sort(function(a,b){return (b.createdAt||0)-(a.createdAt||0);});
     if(codes.length===0){
@@ -307,6 +340,11 @@ document.getElementById("gen-code-btn").onclick=function(){
   var box=document.getElementById("new-code-box");
   document.getElementById("new-code-value").textContent=code;
   box.style.display="flex";
+  var infoEl=document.getElementById("new-code-info");
+  if(infoEl){
+    infoEl.style.display="block";
+    infoEl.textContent="Codigo general (sin usuario asignado)";
+  }
   db.ref("codes/"+code).set({
     createdAt:firebase.database.ServerValue.TIMESTAMP,
     createdBy:firebase.auth().currentUser.uid,
