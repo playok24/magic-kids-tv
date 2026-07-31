@@ -359,7 +359,7 @@ function renderChatMsg(msg){
     };
     div.querySelector(".mk-mba").onclick=function(){
       if(confirm("Banear a "+msg.user+" del chat?")){
-        chatBannedRef.child(msg.uid).set(true);
+        chatBannedRef.child(msg.uid).set({bannedAt:firebase.database.ServerValue.TIMESTAMP});
         chatMessagesRef.child(msg.id).remove();
         chatMessagesRef.push({system:true,text:"\uD83D\uDEAB "+msg.user+" ha sido bloqueado del chat",timestamp:firebase.database.ServerValue.TIMESTAMP});
       }
@@ -368,16 +368,16 @@ function renderChatMsg(msg){
   ml.appendChild(div);
 }
 
-chatMessagesRef.orderByChild("timestamp").limitToLast(50).on("child_added",function(snap){
-  var msg=snap.val();
-  msg.id=snap.key;
-  renderChatMsg(msg);
+chatMessagesRef.on("value",function(snap){
+  ml.innerHTML="";
+  var msgs=[];
+  snap.forEach(function(c){
+    var v=c.val();
+    v.id=c.key;
+    msgs.push(v);
+  });
+  msgs.slice(-50).forEach(renderChatMsg);
   scrollChat();
-});
-
-chatMessagesRef.orderByChild("timestamp").limitToLast(50).on("child_removed",function(snap){
-  var el=ml.querySelector('[data-id="'+snap.key+'"]');
-  if(el)el.remove();
 });
 
 db.ref("chat/online").on("value",function(snap){

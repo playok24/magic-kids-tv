@@ -904,6 +904,10 @@ firebase.auth().onAuthStateChanged(function(user){
     updateGreeting();
     return;
   }
+  if(user.isAnonymous){
+    firebase.auth().signOut();
+    return;
+  }
   var uid=user.uid;
   db.ref("users/"+uid).once("value",function(snap){
     var data=snap.val()||{};
@@ -921,7 +925,8 @@ firebase.auth().onAuthStateChanged(function(user){
     db.ref("users/"+uid+"/activeDevice").set(deviceId);
     db.ref("users/"+uid+"/lastLogin").set(firebase.database.ServerValue.TIMESTAMP);
     currentUid=uid;
-    userName=data.name||user.email.split("@")[0];
+    var emailName=(user.email||"").split("@")[0];
+    userName=data.name||emailName||"Usuario";
     try{localStorage.setItem("mk_user",userName);}catch(e){}
     updateGreeting();
     chatReady=true;

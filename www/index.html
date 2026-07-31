@@ -873,6 +873,10 @@ firebase.auth().onAuthStateChanged(function(user){
     hideBlockedScreen();
     return;
   }
+  if(user.isAnonymous){
+    firebase.auth().signOut();
+    return;
+  }
   var uid=user.uid;
   db.ref("users/"+uid).once("value",function(snap){
     var data=snap.val()||{};
@@ -890,7 +894,8 @@ firebase.auth().onAuthStateChanged(function(user){
     db.ref("users/"+uid+"/activeDevice").set(deviceId);
     db.ref("users/"+uid+"/lastLogin").set(firebase.database.ServerValue.TIMESTAMP);
     currentUid=uid;
-    currentUser=data.name||user.email.split("@")[0];
+    var emailName=(user.email||"").split("@")[0];
+    currentUser=data.name||emailName||"Usuario";
     try{localStorage.setItem("mk_chat_name",currentUser);}catch(e){}
     chatReady=true;
     hideAuthModal();

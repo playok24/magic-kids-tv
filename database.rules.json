@@ -23,8 +23,9 @@
     },
     "chat": {
       "messages": {
+        ".indexOn": "timestamp",
         "$mid": {
-          ".validate": "newData.hasChildren(['user','text','timestamp']) && newData.child('user').isString() && newData.child('text').isString() && newData.child('timestamp').isNumber()"
+          ".validate": "newData.hasChildren(['text','timestamp']) && newData.child('text').isString() && newData.child('timestamp').isNumber()"
         }
       },
       "likes": {
@@ -40,6 +41,7 @@
         }
       },
       "online": {
+        ".indexOn": "timestamp",
         "$sid": {
           ".validate": "newData.isNumber() && newData.val() <= now"
         }
