@@ -536,7 +536,7 @@ body.fs #video-wrap{position:fixed;top:0;bottom:0;left:0;right:0;padding-top:0;h
   <div id="top-bar">
     <div id="top-row">
       <img class="logo" src="Magic Kids Logo.png" alt="Logo">
-      <span class="name">Magic Kids TV v<span id="app-version-label">1.3.12</span></span>
+      <span class="name">Magic Kids TV v<span id="app-version-label">1.3.13</span></span>
       <span class="ver" id="view-counter">&#x1F441; <span id="view-count">0</span></span>
       <button id="logout-btn" title="Salir">&#9210; SALIR</button>
     </div>
@@ -682,7 +682,7 @@ var FW_API="AIzaSyDM7YiLoP5Q-jTB1BBbMluvWL1LIPqCtxI";
 var FW_DB="https://contadores-magic-default-rtdb.firebaseio.com";
 var PROG_URL="https://playok24.github.io/magic-kids-tv/programacion.json";
 var STREAM_URL="https://183.bozztv.com/giatv/giatv-magicplus/magicplus/chunks.m3u8";
-var APP_VER="1.3.12";
+var APP_VER="1.3.13";
 
 try {
   if(!firebase.apps.length){firebase.initializeApp({apiKey:FW_API,databaseURL:FW_DB,authDomain:"contadores-magic.firebaseapp.com",projectId:"contadores-magic",storageBucket:"contadores-magic.firebasestorage.app",messagingSenderId:"58723817117",appId:"1:58723817117:web:f479abaeacf191364ae674"});}
@@ -804,9 +804,12 @@ if(db){
 
 var tzSelect=document.getElementById("tz-select");
 var progList=document.getElementById("prog-list-mobile");
+function isWk(){var tz=parseInt(tzSelect?tzSelect.value:"-3");var n=new Date(Date.now()+tz*3600000).getUTCDay();return n===0||n===6;}
 function loadProgramacion(){
   if(!progList)return;
-  fetch(PROG_URL+"?t="+Date.now()).then(function(r){return r.json();}).then(function(data){
+  fetch(PROG_URL+"?t="+Date.now()).then(function(r){return r.json();}).then(function(x){
+    var data=Array.isArray(x)?x:(isWk()?x.finde:x.semana);
+    if(!data)return;
     progList.innerHTML="";
     var tz=parseInt(tzSelect?tzSelect.value:"-3");
     var now=new Date();
@@ -815,11 +818,13 @@ function loadProgramacion(){
     var argH=utcH-3;if(argH<0)argH+=24;
     var curH=argH+(tz+3);if(curH<0)curH+=24;if(curH>=24)curH-=24;
     var curMin=curH*60+utcM;
-    data.forEach(function(item){
+    data.forEach(function(item,idx){
       var parts=item.hora.split(":");
       var h=parseInt(parts[0]);var m=parseInt(parts[1]);
       var itemMin=h*60+m;
-      var isNow=curMin>=itemMin&&curMin<itemMin+30;
+      var nxt=data[idx+1];
+      var nextMin=nxt?(parseInt(nxt.hora.split(":")[0])*60+parseInt(nxt.hora.split(":")[1])):1440;
+      var isNow=curMin>=itemMin&&curMin<nextMin;
       var div=document.createElement("div");
       div.className="prog-item"+(isNow?" now":"");
       div.innerHTML="<span class='hora'>"+item.hora+"</span><span class='nombre'>"+item.programa+"</span>";
@@ -1452,7 +1457,7 @@ if(fullscreenBtn)fullscreenBtn.addEventListener("click",function(){
 })();
 
 </script>
-<script>APP_VERSION="1.3.12"</script>
+<script>APP_VERSION="1.3.13"</script>
 <script>
 (function(){
   var SUB_SERVER="https://magic-kids-tv.vercel.app";

@@ -100,7 +100,8 @@ try {
 
 // Programacion
 tz.onchange=function(){tzo=parseInt(this.value);localStorage.setItem("mc_tzo",this.value);renderP();};
-fetch(PROG_URL).then(function(r){return r.json();}).then(function(d){prog=d;renderP();}).catch(function(){});
+function isWk(){var n=new Date(Date.now()+tzo*3600000).getUTCDay();return n===0||n===6;}
+fetch(PROG_URL).then(function(r){return r.json();}).then(function(x){var d=Array.isArray(x)?x:(isWk()?x.finde:x.semana);prog=d||[];renderP();}).catch(function(){});
 function tM(h){var p=h.split(":");return parseInt(p[0])*60+parseInt(p[1]);}
 function gN(){var n=new Date(),u=n.getTime(),l=u+tzo*3600000,h=Math.floor((((l%86400000)+86400000)%86400000)/3600000),m=Math.floor(((((l%86400000)+86400000)%86400000)%3600000)/60000),a=h*60+m;for(var i=0;i<prog.length;i++){var ac=tM(prog[i].hora),sg=i+1<prog.length?tM(prog[i+1].hora):1440;if(a>=ac&&a<sg)return{i:i,p:prog[i].programa};}return{i:-1,p:"---"};}
 function renderP(){
