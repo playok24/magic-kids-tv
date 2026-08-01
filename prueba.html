@@ -111,6 +111,7 @@ body{
 .prog-item.now{background:rgba(196,160,255,0.15);border-left:3px solid #c4a0ff}
 .prog-item .h{color:#00ccff;font-weight:700;min-width:40px}
 .prog-item .n{color:#ccc}
+.prog-day{display:flex;align-items:center;gap:8px;padding:6px 8px;margin:4px 0 2px;border-radius:6px;font-size:11px;font-weight:800;color:#00ccff;background:rgba(0,204,255,0.08);border:1px solid rgba(0,204,255,0.2)}
 .vol-row{display:flex;align-items:center;gap:6px}
 .vol-row input[type=range]{
   flex:1;-webkit-appearance:none;appearance:none;
@@ -445,6 +446,7 @@ body.light #remote{background:rgba(255,255,255,0.98);border-left-color:#ddd}
 body.light #remote button{background:rgba(0,0,0,0.04);border-color:#ddd;color:#333}
 body.light #remote button:hover{background:rgba(107,63,160,0.1);border-color:#6b3fa0;color:#222}
 body.light .prog-item .n{color:#333}
+body.light .prog-day{color:#6b3fa0;background:rgba(107,63,160,0.06);border-color:rgba(107,63,160,0.3)}
 body.light .prog-item .h{color:#6b3fa0}
 body.light #prog-section h3{color:#6b3fa0}
 body.light #tz-select{background:#f0f0f5;border-color:#ddd;color:#6b3fa0}
@@ -1093,7 +1095,7 @@ db.ref("sessions").on("value",function(snap){
 window.addEventListener("beforeunload",function(){sessionRef.remove();});
 window.addEventListener("pagehide",function(){sessionRef.remove();});
 
-let programacion=[];
+let programacion=[],progDay=[],semLen=0;
 const tzSelect=document.getElementById("tz-select");
 let tzOffset=-3;
 tzSelect.value=localStorage.getItem("mk_tz")||"-3";
@@ -1103,7 +1105,20 @@ tzSelect.onchange=function(){
   localStorage.setItem("mk_tz",this.value);
   renderProgramacion();
 };
-fetch(PROG_JSON_URL).then(r=>r.json()).then(d=>{programacion=d;renderProgramacion()}).catch(()=>{});
+function isWeekend(){
+  const n=new Date(Date.now()+tzOffset*3600000).getUTCDay();
+  return n===0||n===6;
+}
+fetch(PROG_JSON_URL).then(r=>r.json()).then(x=>{
+  const isArr=Array.isArray(x);
+  const s=isArr?x:(x.semana||[]);
+  const f=isArr?x:(x.finde||[]);
+  const hasF=!isArr&&Array.isArray(x.finde);
+  semLen=hasF?s.length:0;
+  programacion=hasF?s.concat(f):s;
+  progDay=hasF?(isWeekend()?f:s):s;
+  renderProgramacion();
+}).catch(()=>{});
 
 function toMin(h){
   const p=h.split(':');
@@ -1117,10 +1132,10 @@ function getNow(){
   const h=Math.floor(((localMs%86400000)+86400000)%86400000/3600000);
   const m=Math.floor(((localMs%86400000)+86400000)%86400000%3600000/60000);
   const minActual=h*60+m;
-  for(let i=0;i<programacion.length;i++){
-    const actual=toMin(programacion[i].hora);
-    const sig=i+1<programacion.length?toMin(programacion[i+1].hora):1440;
-    if(minActual>=actual&&minActual<sig)return{i:i,programa:programacion[i].programa};
+  for(let i=0;i<progDay.length;i++){
+    const actual=toMin(progDay[i].hora);
+    const sig=i+1<progDay.length?toMin(progDay[i+1].hora):1440;
+    if(minActual>=actual&&minActual<sig)return{i:i,programa:progDay[i].programa};
   }
   return{i:-1,programa:'---'};
 }
@@ -1128,14 +1143,21 @@ function getNow(){
 function renderProgramacion(){
   const list=document.getElementById("prog-list");
   const now=getNow();
+  const nowIdx=isWeekend()&&semLen>0?semLen+now.i:now.i;
   list.innerHTML='';
   let nowItem=null;
   programacion.forEach((p,i)=>{
+    if(i===semLen&&semLen>0){
+      const dv=document.createElement("div");
+      dv.className="prog-day";
+      dv.textContent="SABADO Y DOMINGO";
+      list.appendChild(dv);
+    }
     const item=document.createElement("div");
-    item.className="prog-item"+(i===now.i?" now":"");
+    item.className="prog-item"+(i===nowIdx?" now":"");
     item.innerHTML=`<span class="h">${p.hora}</span><span class="n">${p.programa}</span>`;
     list.appendChild(item);
-    if(i===now.i)nowItem=item;
+    if(i===nowIdx)nowItem=item;
   });
   if(nowItem){
     nowItem.scrollIntoView({behavior:"smooth",block:"center"});
