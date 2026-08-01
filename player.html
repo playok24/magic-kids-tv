@@ -107,7 +107,7 @@ var vc=document.getElementById("vc");
 var pb=document.getElementById("pb");
 var tz=document.getElementById("tz");
 
-var hls=null,re=0,vt=null,prog=[],progF=[],semL=0;
+var hls=null,re=0,vt=null;
 var tzo=-3;try{tzo=parseInt(localStorage.getItem("mk_tzo")||"-3");}catch(e){}
 try{tz.value=localStorage.getItem("mk_tzo")||"-3";}catch(e){}
 
@@ -126,18 +126,19 @@ try {
   window.addEventListener("pagehide",function(){sr.remove();});
 } catch(e) { console.error("Firebase init failed",e); }
 
-tz.onchange=function(){tzo=parseInt(this.value);localStorage.setItem("mk_tzo",this.value);renderP();};
+tz.onchange=function(){tzo=parseInt(this.value);localStorage.setItem("mk_tzo",this.value);applyProg();};
 function isWk(){var n=new Date(Date.now()+tzo*3600000).getUTCDay();return n===0||n===6;}
+var _P={semana:[{"hora":"00:00","programa":"Dragon Ball Gt."},{"hora":"00:30","programa":"Las Guerreras Magicas"},{"hora":"01:00","programa":"X-Men"},{"hora":"01:30","programa":"El Mundo de Beakman"},{"hora":"02:00","programa":"La Noche Magic"},{"hora":"06:30","programa":"Sailor Moon"},{"hora":"07:00","programa":"Detective Conan"},{"hora":"07:30","programa":"Voltron"},{"hora":"08:00","programa":"Dragon Ball Gt."},{"hora":"08:30","programa":"Las Guerreras Magicas"},{"hora":"09:00","programa":"X-Men"},{"hora":"09:30","programa":"El Mundo de Beakman"},{"hora":"10:00","programa":"Pokemon"},{"hora":"10:30","programa":"El Autobus Magico"},{"hora":"11:00","programa":"Zona Virtual"},{"hora":"11:30","programa":"Caballeros del Zodiaco"},{"hora":"12:00","programa":"Ranma 1/2"},{"hora":"12:30","programa":"El Chavo"},{"hora":"13:00","programa":"Cazador X"},{"hora":"13:30","programa":"Samurai Warrior"},{"hora":"14:00","programa":"Alf"},{"hora":"14:30","programa":"Sailor Moon"},{"hora":"15:00","programa":"Detective Conan"},{"hora":"15:30","programa":"Voltron"},{"hora":"16:00","programa":"Dragon Ball Gt."},{"hora":"16:30","programa":"Las Guerreras Magicas"},{"hora":"17:00","programa":"X-Men"},{"hora":"17:30","programa":"Beakman"},{"hora":"18:00","programa":"Pokemon"},{"hora":"18:30","programa":"El Autobus Magico"},{"hora":"19:00","programa":"Zona Virtual"},{"hora":"19:30","programa":"Caballeros del Zodiaco"},{"hora":"20:00","programa":"Ranma 1/2"},{"hora":"20:30","programa":"El Chavo"},{"hora":"21:00","programa":"Cazador X"},{"hora":"21:30","programa":"Samurai Warrior"},{"hora":"22:00","programa":"Alf"},{"hora":"22:30","programa":"Sailor Moon"},{"hora":"23:00","programa":"Detective Conan"},{"hora":"23:30","programa":"Voltron"}],finde:[{"hora":"00:00","programa":"Weekend Magic"}]};
+var semL=_P.semana.length;var progF=_P.semana.concat(_P.finde),prog=isWk()?_P.finde:_P.semana;
+function applyProg(){progF=_P.semana.concat(_P.finde);prog=isWk()?_P.finde:_P.semana;renderP();}
 fetch(PROG_URL).then(function(r){return r.json();}).then(function(x){
   var isArr=Array.isArray(x);
-  var s=isArr?x:(x.semana||[]);
-  var f=isArr?x:(x.finde||[]);
-  var hasF=!isArr&&Array.isArray(x.finde);
-  semL=hasF?s.length:0;
-  prog=hasF?(isWk()?f:s):s;
-  progF=hasF?s.concat(f):s;
-  renderP();
+  if(!isArr&&x.semana)_P.semana=x.semana;
+  if(!isArr&&x.finde)_P.finde=x.finde;
+  if(isArr)_P.semana=x;
+  applyProg();
 }).catch(function(){});
+applyProg();
 function tM(h){var p=h.split(":");return parseInt(p[0])*60+parseInt(p[1]);}
 function gN(){var n=new Date(),u=n.getTime(),l=u+tzo*3600000,h=Math.floor((((l%86400000)+86400000)%86400000)/3600000),m=Math.floor(((((l%86400000)+86400000)%86400000)%3600000)/60000),a=h*60+m;for(var i=0;i<prog.length;i++){var ac=tM(prog[i].hora),sg=i+1<prog.length?tM(prog[i+1].hora):1440;if(a>=ac&&a<sg)return{i:i,p:prog[i].programa};}return{i:-1,p:"---"};}
 function renderP(){
@@ -158,7 +159,7 @@ function renderP(){
   });
   if(ne)ne.scrollIntoView({behavior:"smooth",block:"nearest",inline:"center"});
 }
-setInterval(renderP,60000);
+setInterval(applyProg,60000);
 
 function sV(){ld.style.display="none";no.style.display="none";video.classList.add("mk-on");sW();}
 function sE(m){ld.innerHTML='<div class="mk-logo-lg">MK</div><div style="color:#ff6b6b;font-size:11px;text-align:center;padding:0 16px">'+m+'</div>';ld.style.display="flex";ld.style.cursor="pointer";tW();}
