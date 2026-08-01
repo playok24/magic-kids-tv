@@ -536,7 +536,7 @@ body.fs #video-wrap{position:fixed;top:0;bottom:0;left:0;right:0;padding-top:0;h
   <div id="top-bar">
     <div id="top-row">
       <img class="logo" src="Magic Kids Logo.png" alt="Logo">
-      <span class="name">Magic Kids TV v<span id="app-version-label">1.3.11</span></span>
+      <span class="name">Magic Kids TV v<span id="app-version-label">1.3.12</span></span>
       <span class="ver" id="view-counter">&#x1F441; <span id="view-count">0</span></span>
       <button id="logout-btn" title="Salir">&#9210; SALIR</button>
     </div>
@@ -682,7 +682,7 @@ var FW_API="AIzaSyDM7YiLoP5Q-jTB1BBbMluvWL1LIPqCtxI";
 var FW_DB="https://contadores-magic-default-rtdb.firebaseio.com";
 var PROG_URL="https://playok24.github.io/magic-kids-tv/programacion.json";
 var STREAM_URL="https://183.bozztv.com/giatv/giatv-magicplus/magicplus/chunks.m3u8";
-var APP_VER="1.3.11";
+var APP_VER="1.3.12";
 
 try {
   if(!firebase.apps.length){firebase.initializeApp({apiKey:FW_API,databaseURL:FW_DB,authDomain:"contadores-magic.firebaseapp.com",projectId:"contadores-magic",storageBucket:"contadores-magic.firebasestorage.app",messagingSenderId:"58723817117",appId:"1:58723817117:web:f479abaeacf191364ae674"});}
@@ -945,6 +945,7 @@ function registerWithEmail(){
   if(!e||!p||!n){setAuthStatus("Completa todos los campos");return;}
   if(p.length<6){setAuthStatus("La contrasena debe tener minimo 6 caracteres");return;}
   setAuthStatus("Creando cuenta...");
+  try{sessionStorage.setItem("mk_just_registered","1");}catch(e){}
   firebase.auth().createUserWithEmailAndPassword(e,p).then(function(cr){
     var u=cr.user;
     var isAdmin=ADMIN_EMAILS.indexOf(e.toLowerCase())!==-1;
@@ -958,9 +959,13 @@ function registerWithEmail(){
       isAdmin:isAdmin
     });
   }).then(function(){
+    try{sessionStorage.removeItem("mk_just_registered");}catch(e){}
     if(userAvatar)try{db.ref("users/"+firebase.auth().currentUser.uid+"/avatar").set(userAvatar);}catch(ex){}
     setAuthStatus("Cuenta creada. Bienvenido!",true);
-  }).catch(function(err){setAuthStatus(authErrorMessage(err));});
+  }).catch(function(err){
+    try{sessionStorage.removeItem("mk_just_registered");}catch(e){}
+    setAuthStatus(authErrorMessage(err));
+  });
 }
 function sendPasswordReset(){
   var e=authEmail?authEmail.value.trim():"";
@@ -995,45 +1000,66 @@ firebase.auth().onAuthStateChanged(function(user){
     return;
   }
   var uid=user.uid;
-  db.ref("users/"+uid).once("value",function(snap){
-    var data=snap.val()||{};
-    if(data.activeDevice && data.activeDevice!==deviceId && !data.isAdmin){
-      firebase.auth().signOut().then(function(){
-        setAuthStatus("Esta cuenta ya esta en uso en otro dispositivo");
+  var justReg=false;
+  try{justReg=sessionStorage.getItem("mk_just_registered")==="1";}catch(e){}
+  function readUserRecord(triesLeft){
+    db.ref("users/"+uid).once("value",function(snap){
+      var data=snap.val()||{};
+      if(!snap.exists()&&justReg&&triesLeft>0){
+        setTimeout(function(){readUserRecord(triesLeft-1);},500);
+        return;
+      }
+      if(!snap.exists()){
+        firebase.auth().signOut();
+        setAuthStatus("Tu cuenta fue eliminada por el administrador");
         showLoginTab();
-      });
-      return;
-    }
-    if(data.blocked===true){
-      showBlockedScreen();
-      return;
-    }
-    function proceedAuthed(){
-      db.ref("users/"+uid+"/activeDevice").set(deviceId);
-      db.ref("users/"+uid+"/lastLogin").set(firebase.database.ServerValue.TIMESTAMP);
-      currentUid=uid;
-      var emailName=(user.email||"").split("@")[0];
-      currentUser=data.name||emailName||"Usuario";
-      try{localStorage.setItem("mk_chat_name",currentUser);}catch(e){}
-      chatReady=true;
-      hideActivateScreen();
-      hideAuthModal();
-      hideBlockedScreen();
-      if(chatLogin)chatLogin.classList.add("hidden");
-      updateChatUserBar();
-      if(!chatStarted)startChat(currentUser);
-      startVideoIfAuthed();
-    }
-    if(data.isAdmin===true){
-      try{localStorage.setItem("mk_activated","1");}catch(e){}
-      db.ref("activations/"+deviceId).set({code:"ADMIN",activatedAt:firebase.database.ServerValue.TIMESTAMP});
+        return;
+      }
+      if(data.activeDevice && data.activeDevice!==deviceId && !data.isAdmin){
+        firebase.auth().signOut().then(function(){
+          setAuthStatus("Esta cuenta ya esta en uso en otro dispositivo");
+          showLoginTab();
+        });
+        return;
+      }
+      if(data.blocked===true){
+        showBlockedScreen();
+        return;
+      }
+      function proceedAuthed(){
+        db.ref("users/"+uid+"/activeDevice").set(deviceId);
+        db.ref("users/"+uid+"/lastLogin").set(firebase.database.ServerValue.TIMESTAMP);
+        currentUid=uid;
+        var emailName=(user.email||"").split("@")[0];
+        currentUser=data.name||emailName||"Usuario";
+        try{localStorage.setItem("mk_chat_name",currentUser);}catch(e){}
+        chatReady=true;
+        hideActivateScreen();
+        hideAuthModal();
+        hideBlockedScreen();
+        if(chatLogin)chatLogin.classList.add("hidden");
+        updateChatUserBar();
+        if(!chatStarted)startChat(currentUser);
+        startVideoIfAuthed();
+      }
+      if(data.isAdmin===true){
+        try{localStorage.setItem("mk_activated","1");}catch(e){}
+        db.ref("activations/"+deviceId).set({code:"ADMIN",activatedAt:firebase.database.ServerValue.TIMESTAMP});
+        proceedAuthed();
+        return;
+      }
       proceedAuthed();
+    });
+  }
+  readUserRecord(6);
+  db.ref("users/"+uid).on("value",function(snap){
+    if(!snap.exists()&&justReg)return;
+    if(!snap.exists()){
+      firebase.auth().signOut();
       return;
     }
-    proceedAuthed();
-  });
-  db.ref("users/"+uid+"/blocked").on("value",function(snap){
-    if(snap.val()===true){showBlockedScreen();}else{hideBlockedScreen();}
+    var data=snap.val()||{};
+    if(data.blocked===true){showBlockedScreen();}else{hideBlockedScreen();}
   });
 });
 
@@ -1426,7 +1452,7 @@ if(fullscreenBtn)fullscreenBtn.addEventListener("click",function(){
 })();
 
 </script>
-<script>APP_VERSION="1.3.11"</script>
+<script>APP_VERSION="1.3.12"</script>
 <script>
 (function(){
   var SUB_SERVER="https://magic-kids-tv.vercel.app";
