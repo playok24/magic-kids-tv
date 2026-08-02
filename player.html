@@ -177,14 +177,14 @@ function iH(){
   }
   if(hls){hls.destroy();hls=null;}
   hls=new Hls({
-    enableWorker:true,liveSyncDuration:25,liveMaxLatencyDuration:50,
-    maxBufferLength:30,maxMaxBufferLength:60,backBufferLength:10,
-    liveDurationInfinity:true,maxBufferHole:2,maxStarvationDelay:5,
+    enableWorker:true,liveSyncDuration:15,liveSyncDurationCount:2,liveMaxLatencyDuration:60,
+    maxBufferLength:60,maxMaxBufferLength:120,backBufferLength:10,
+    liveDurationInfinity:true,maxBufferHole:3,maxStarvationDelay:8,
     manifestLoadingTimeOut:20000,manifestLoadingMaxRetry:20,manifestLoadingRetryDelay:1000,
     levelLoadingTimeOut:20000,levelLoadingMaxRetry:20,
-    fragLoadingTimeOut:20000,fragLoadingMaxRetry:20,fragLoadingRetryDelay:1000,
+    fragLoadingTimeOut:20000,fragLoadingMaxRetry:30,fragLoadingRetryDelay:1000,
     startFragPrefetch:true,stretchShortVideoSegment:true,lowLatencyMode:false,
-    nudgeOffset:1,nudgeMaxRetry:8,enableSoftwareAES:true,
+    nudgeOffset:0.5,nudgeMaxRetry:12,enableSoftwareAES:true,appendErrorMaxRetry:5,
     abrEwmaDefaultEstimate:3000000,abrEwmaFastLive:6,abrEwmaSlowLive:15
   });
   hls.loadSource(STREAM);
@@ -194,13 +194,20 @@ function iH(){
   hls.on(Hls.Events.ERROR,function(e,d){
     if(!d.fatal)return;
     if(d.type===Hls.ErrorTypes.NETWORK_ERROR){
-      sE("Sin conexion... Reintentando...");re++;
-      if(re<15){setTimeout(function(){if(hls)hls.startLoad();},2000*Math.min(re,5));}
-      else{sE("No se pudo conectar.<br>Haz clic para reintentar.");ld.onclick=function(){ld.onclick=null;re=0;iH();};}
+      re++;
+      if(re<12){
+        ld.innerHTML='<div class="mk-logo-lg">MK</div><div class="mk-lt">Sintonizando...</div>';
+        ld.style.display="flex";ld.style.cursor="default";
+        setTimeout(function(){if(hls)hls.startLoad();},1500*Math.min(re,4));
+      }else{
+        sE("Sin conexion.<br>Haz clic para reintentar.");ld.onclick=function(){ld.onclick=null;re=0;iH();};
+      }
     }else if(d.type===Hls.ErrorTypes.MEDIA_ERROR){
-      sE("Error de media. Recuperando...");if(hls)hls.recoverMediaError();
+      ld.innerHTML='<div class="mk-logo-lg">MK</div><div class="mk-lt">Sintonizando...</div>';
+      ld.style.display="flex";ld.style.cursor="default";
+      if(hls)hls.recoverMediaError();
     }else{
-      re++;if(re<10){sE("Reiniciando... ("+re+"/10)");setTimeout(function(){iH();},3000*Math.min(re,4));}
+      re++;if(re<8){setTimeout(function(){iH();},3000*Math.min(re,4));}
       else{sE("Error persistente.<br>Haz clic para reintentar.");ld.onclick=function(){ld.onclick=null;re=0;iH();};}
     }
   });
