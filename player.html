@@ -177,7 +177,7 @@ function iH(){
   }
   if(hls){hls.destroy();hls=null;}
   hls=new Hls({
-    enableWorker:true,liveSyncDuration:15,liveSyncDurationCount:2,liveMaxLatencyDuration:60,
+    enableWorker:true,liveSyncDuration:15,liveMaxLatencyDuration:60,
     maxBufferLength:60,maxMaxBufferLength:120,backBufferLength:10,
     liveDurationInfinity:true,maxBufferHole:3,maxStarvationDelay:8,
     manifestLoadingTimeOut:20000,manifestLoadingMaxRetry:20,manifestLoadingRetryDelay:1000,
