@@ -536,7 +536,7 @@ body.fs #video-wrap{position:fixed;top:0;bottom:0;left:0;right:0;padding-top:0;h
   <div id="top-bar">
     <div id="top-row">
       <img class="logo" src="Magic Kids Logo.png" alt="Logo">
-      <span class="name">Magic Kids TV v<span id="app-version-label">1.3.13</span></span>
+      <span class="name">Magic Kids TV v<span id="app-version-label">1.4.0</span></span>
       <span class="ver" id="view-counter">&#x1F441; <span id="view-count">0</span></span>
       <button id="logout-btn" title="Salir">&#9210; SALIR</button>
     </div>
@@ -682,7 +682,7 @@ var FW_API="AIzaSyDM7YiLoP5Q-jTB1BBbMluvWL1LIPqCtxI";
 var FW_DB="https://contadores-magic-default-rtdb.firebaseio.com";
 var PROG_URL="https://playok24.github.io/magic-kids-tv/programacion.json";
 var STREAM_URL="https://183.bozztv.com/giatv/giatv-magicplus/magicplus/chunks.m3u8";
-var APP_VER="1.3.13";
+var APP_VER="1.4.0";
 
 try {
   if(!firebase.apps.length){firebase.initializeApp({apiKey:FW_API,databaseURL:FW_DB,authDomain:"contadores-magic.firebaseapp.com",projectId:"contadores-magic",storageBucket:"contadores-magic.firebasestorage.app",messagingSenderId:"58723817117",appId:"1:58723817117:web:f479abaeacf191364ae674"});}
@@ -1218,49 +1218,87 @@ function startChat(user){
   var chatRef=db.ref("chat/messages");
   var bannedRef=db.ref("chat/banned");
   var likesRef=db.ref("chat/likes");
-  chatRef.on("value",function(snap){
-    if(!chatMessagesEl)return;chatMessagesEl.innerHTML="";
-    var items=[];
-    snap.forEach(function(child){items.push(child);});
-    items.slice(-50).forEach(function(child){
-      var msg=child.val();if(!msg)return;
-      var div=document.createElement("div");div.className="chat-msg";if(msg.system)div.classList.add("system");
-      var canDelete=msg.user===user||chatAdminMode;
-      var canBan=chatAdminMode&&msg.user!==user&&msg.user!=="system";
-      var actionsHtml="";
-      if(canDelete||canBan){
-        actionsHtml='<div class="msg-actions">';
-        actionsHtml+='<button class="msg-delete" data-id="'+child.key+'">Eliminar</button>';
-        if(canBan)actionsHtml+='<button class="msg-ban" data-user="'+msg.user+'">Ban</button>';
-        actionsHtml+='</div>';
-      }
-      var initial=msg.user?msg.user.charAt(0).toUpperCase():"?";
-      var color=avatarColor(msg.user||"");
-      var isOwn=msg.uid===currentUid||msg.uid===deviceId;
-      var avHtml=isOwn&&userAvatar?'<img src="'+userAvatar+'" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0">':'<span class="msg-mav" style="background:'+color+'">'+initial+'</span>';
-      div.innerHTML='<span class="msg-user">'+avHtml+(msg.user||"")+'</span>'
-        +'<div class="msg-row"><span class="msg-text">'+(msg.text||"")+'</span>'
-        +'<span class="msg-time">'+formatTime(msg.timestamp||msg.time)+'</span>'
-        +'<button class="msg-heart" data-msg="'+child.key+'">&#9825;<span class="msg-hc">0</span></button></div>'
-        +actionsHtml;
-      var heartBtn=div.querySelector(".msg-heart");
-      likesRef.child(child.key).child(currentUid).once("value",function(ls){
-        if(ls.exists()){heartBtn.classList.add("liked");heartBtn.innerHTML="&#9829;<span class='msg-hc'>0</span>";}
-        likesRef.child(child.key).on("value",function(lc){
-          var cnt=lc.numChildren()||0;
-          heartBtn.innerHTML=(heartBtn.classList.contains("liked")?"&#9829;":"&#9825;")+"<span class='msg-hc'>"+cnt+"</span>";
-        });
+  var chatListenersAttached=false;
+  var chatLikesBound={};
+  function renderChatMsg(id,msg){
+    if(!msg||!chatMessagesEl)return;
+    var div=document.createElement("div");div.className="chat-msg";if(msg.system)div.classList.add("system");
+    div.dataset.id=id;
+    var canDelete=msg.user===currentUser||chatAdminMode;
+    var canBan=chatAdminMode&&msg.user!==currentUser&&msg.user!=="system";
+    var actionsHtml="";
+    if(canDelete||canBan){
+      actionsHtml='<div class="msg-actions">';
+      actionsHtml+='<button class="msg-delete" data-id="'+id+'">Eliminar</button>';
+      if(canBan)actionsHtml+='<button class="msg-ban" data-user="'+msg.user+'">Ban</button>';
+      actionsHtml+='</div>';
+    }
+    var initial=msg.user?msg.user.charAt(0).toUpperCase():"?";
+    var color=avatarColor(msg.user||"");
+    var isOwn=msg.uid===currentUid||msg.uid===deviceId;
+    var avHtml=isOwn&&userAvatar?'<img src="'+userAvatar+'" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0">':'<span class="msg-mav" style="background:'+color+'">'+initial+'</span>';
+    div.innerHTML='<span class="msg-user">'+avHtml+(msg.user||"")+'</span>'
+      +'<div class="msg-row"><span class="msg-text">'+(msg.text||"")+'</span>'
+      +'<span class="msg-time">'+formatTime(msg.timestamp||msg.time)+'</span>'
+      +'<button class="msg-heart" data-msg="'+id+'">&#9825;<span class="msg-hc">0</span></button></div>'
+      +actionsHtml;
+    var heartBtn=div.querySelector(".msg-heart");
+    if(!chatLikesBound[id]){
+      chatLikesBound[id]=true;
+      likesRef.child(id).on("value",function(lc){
+        var btn=chatMessagesEl.querySelector('[data-msg="'+id+'"]');
+        if(!btn)return;
+        var cnt=lc.numChildren()||0;
+        btn.innerHTML=(btn.classList.contains("liked")?"&#9829;":"&#9825;")+"<span class='msg-hc'>"+cnt+"</span>";
       });
-      heartBtn.onclick=function(){
-        var ref=likesRef.child(child.key).child(currentUid);
-        ref.once("value",function(ls){
-          if(ls.exists()){ref.remove();}else{ref.set(true);}
-        });
-      };
-      chatMessagesEl.appendChild(div);
+    }
+    likesRef.child(id).child(currentUid).once("value",function(ls){
+      if(!ls.exists())return;
+      var btn=chatMessagesEl.querySelector('[data-msg="'+id+'"]');
+      if(btn){btn.classList.add("liked");btn.innerHTML="&#9829;<span class='msg-hc'>0</span>";}
     });
-    chatMessagesEl.scrollTop=chatMessagesEl.scrollHeight;
-    if(chatBadge){var c=snap.numChildren()||0;chatBadge.textContent=c>99?"99+":c;}
+    heartBtn.onclick=function(){
+      var ref=likesRef.child(id).child(currentUid);
+      ref.once("value",function(ls){
+        if(ls.exists()){ref.remove();}else{ref.set(true);}
+      });
+    };
+    chatMessagesEl.appendChild(div);
+  }
+  function updateChatBadge(){
+    if(!chatBadge||!chatMessagesEl)return;
+    var c=chatMessagesEl.querySelectorAll(".chat-msg").length;
+    chatBadge.textContent=c>99?"99+":c;
+  }
+  function attachChatListeners(){
+    if(chatListenersAttached)return;
+    chatListenersAttached=true;
+    chatRef.orderByChild("timestamp").limitToLast(50).on("child_added",function(snap){
+      renderChatMsg(snap.key,snap.val());
+      chatMessagesEl.scrollTop=chatMessagesEl.scrollHeight;
+      updateChatBadge();
+    });
+    chatRef.orderByChild("timestamp").limitToLast(50).on("child_removed",function(snap){
+      if(!chatMessagesEl)return;
+      var el=chatMessagesEl.querySelector('[data-id="'+snap.key+'"]');
+      if(el)el.remove();
+      updateChatBadge();
+    });
+  }
+  function detachChatListeners(){
+    if(!chatListenersAttached)return;
+    chatListenersAttached=false;
+    chatRef.off("child_added");
+    chatRef.off("child_removed");
+    if(chatMessagesEl)chatMessagesEl.innerHTML="";
+  }
+  attachChatListeners();
+  setInterval(function(){detachChatListeners();attachChatListeners();},60000);
+  firebase.database().ref(".info/connected").on("value",function(snap){
+    if(snap.val()===true)attachChatListeners();
+  });
+  document.addEventListener("visibilitychange",function(){
+    if(!document.hidden){detachChatListeners();attachChatListeners();}
   });
 
   if(chatSendBtn)chatSendBtn.addEventListener("click",sendMessage);
@@ -1457,7 +1495,7 @@ if(fullscreenBtn)fullscreenBtn.addEventListener("click",function(){
 })();
 
 </script>
-<script>APP_VERSION="1.3.13"</script>
+<script>APP_VERSION="1.4.0"</script>
 <script>
 (function(){
   var SUB_SERVER="https://magic-kids-tv.vercel.app";
