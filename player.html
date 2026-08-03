@@ -252,6 +252,14 @@ fsB.onclick=function(){var e=document.getElementById("mk");if(e.classList.contai
 document.addEventListener("fullscreenchange",function(){if(!document.fullscreenElement)mkFsIcon(false);else mkFsIcon(true);});
 document.addEventListener("webkitfullscreenchange",function(){if(!document.webkitFullscreenElement)mkFsIcon(false);else mkFsIcon(true);});
 
+if(window.opener){
+  var mh=document.createElement("div");
+  mh.style.cssText="position:absolute;inset:0;z-index:98;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);cursor:pointer";
+  mh.innerHTML='<div style="padding:16px 30px;font-size:18px;font-weight:800;border-radius:8px;background:linear-gradient(135deg,#7c3aed,#00ccff);color:#fff;box-shadow:0 6px 20px rgba(0,0,0,0.5)">AMPLIAR A PANTALLA COMPLETA</div>';
+  document.querySelector(".mk-vid").appendChild(mh);
+  mh.addEventListener("click",function(){mh.remove();fsB.onclick();});
+}
+
 document.addEventListener("keydown",function(e){
   if(e.key==="ArrowUp"){volS.value=Math.min(100,parseInt(volS.value)+5);volS.oninput();}
   if(e.key==="ArrowDown"){volS.value=Math.max(0,parseInt(volS.value)-5);volS.oninput();}
