@@ -857,6 +857,22 @@ var chatReady="";
 var chatStarted=false;
 var currentUid=deviceId;
 
+var avatarMap={};
+var avatarFetched={};
+try{db.ref("chat/users").on("value",function(snap){
+  snap.forEach(function(c){
+    var v=c.val();
+    if(v&&v.avatar)avatarMap[c.key]=v.avatar;
+  });
+});}catch(e){}
+
+function syncUserProfile(){
+  try{
+    if(!currentUser||!currentUid)return;
+    db.ref("chat/users/"+currentUid).set({user:currentUser,avatar:userAvatar||"",updatedAt:firebase.database.ServerValue.TIMESTAMP});
+  }catch(e){}
+}
+
 var nameModal=document.getElementById("name-modal");
 var loginAv=document.getElementById("login-av");
 var loginAvFile=document.getElementById("login-av-file");
@@ -1044,6 +1060,7 @@ firebase.auth().onAuthStateChanged(function(user){
         hideBlockedScreen();
         if(chatLogin)chatLogin.classList.add("hidden");
         updateChatUserBar();
+        syncUserProfile();
         if(!chatStarted)startChat(currentUser);
         startVideoIfAuthed();
       }
@@ -1131,6 +1148,7 @@ if(chatAvatarFile)chatAvatarFile.onchange=function(e){
       var dataUrl=canvas.toDataURL("image/jpeg",0.7);
       try{localStorage.setItem("mk_user_avatar",dataUrl);}catch(e){}
       renderAvatar();
+      syncUserProfile();
     };
     img.src=ev.target.result;
   };
@@ -1148,6 +1166,7 @@ if(chatNameOk)chatNameOk.addEventListener("click",function(){
   currentUser=n;
   if(chatLogin)chatLogin.classList.add("hidden");
   updateChatUserBar();
+  syncUserProfile();
   startChat(n);
 });
 if(chatNameInput)chatNameInput.addEventListener("keydown",function(e){if(e.key==="Enter"&&chatNameOk)chatNameOk.click();});
@@ -1159,6 +1178,7 @@ if(chatRenameOk)chatRenameOk.addEventListener("click",function(){
   if(!chatRenameInput)return;var n=chatRenameInput.value.trim();if(!n)return;
   localStorage.setItem("mk_chat_name",n);localStorage.setItem("mk_name",n);
   currentUser=n;updateChatUserBar();
+  syncUserProfile();
   if(chatNameEditPopup)chatNameEditPopup.classList.remove("show");
 });
 if(chatRenameInput)chatRenameInput.addEventListener("keydown",function(e){if(e.key==="Enter"&&chatRenameOk)chatRenameOk.click();});
@@ -1194,6 +1214,7 @@ function startChat(user){
   if(chatStarted)return;
   chatStarted=true;
   currentUser=user;
+  syncUserProfile();
   var chatSessionId="chat_"+Math.random().toString(36).substr(2,9);
   var chatOnlineRef=db.ref("chat/online/"+chatSessionId);
   var chatOnlineEl=document.getElementById("chat-online");
@@ -1236,7 +1257,10 @@ function startChat(user){
     var initial=msg.user?msg.user.charAt(0).toUpperCase():"?";
     var color=avatarColor(msg.user||"");
     var isOwn=msg.uid===currentUid||msg.uid===deviceId;
-    var avHtml=isOwn&&userAvatar?'<img src="'+userAvatar+'" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0">':'<span class="msg-mav" style="background:'+color+'">'+initial+'</span>';
+    var avHtml;
+    if(isOwn&&userAvatar){avHtml='<img src="'+userAvatar+'" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0">';}
+    else if(avatarMap[msg.uid]){avHtml='<img src="'+avatarMap[msg.uid]+'" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0">';}
+    else{avHtml='<span class="msg-mav" style="background:'+color+'">'+initial+'</span>';}
     div.innerHTML='<span class="msg-user">'+avHtml+(msg.user||"")+'</span>'
       +'<div class="msg-row"><span class="msg-text">'+(msg.text||"")+'</span>'
       +'<span class="msg-time">'+formatTime(msg.timestamp||msg.time)+'</span>'
@@ -1264,6 +1288,17 @@ function startChat(user){
       });
     };
     chatMessagesEl.appendChild(div);
+    if(!isOwn&&msg.uid&&!avatarMap[msg.uid]&&!avatarFetched[msg.uid]){
+      avatarFetched[msg.uid]=1;
+      db.ref("chat/users/"+msg.uid+"/avatar").once("value",function(s){
+        var a=s.val();
+        if(a){
+          avatarMap[msg.uid]=a;
+          var el=chatMessagesEl.querySelector('[data-id="'+id+'"] .msg-user');
+          if(el)el.innerHTML='<img src="'+a+'" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0">'+(msg.user||"");
+        }
+      });
+    }
   }
   function updateChatBadge(){
     if(!chatBadge||!chatMessagesEl)return;
@@ -1318,7 +1353,8 @@ function startChat(user){
 function sendMessage(){
   if(!chatInputEl||!currentUser)return;
   var text=chatInputEl.value.trim();if(!text)return;
-  db.ref("chat/messages").push({user:currentUser,text:text,timestamp:firebase.database.ServerValue.TIMESTAMP,system:false,uid:currentUid});
+  db.ref("chat/messages").push({user:currentUser,text:text,timestamp:firebase.database.ServerValue.TIMESTAMP,system:false,uid:currentUid,avatar:userAvatar||""});
+  syncUserProfile();
   chatInputEl.value="";
 }
 
