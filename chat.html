@@ -291,6 +291,7 @@ document.getElementById("mk-nok").onclick=function(){
   if(userAvatar)try{localStorage.setItem("mk_user_avatar",userAvatar);}catch(e){}
   chatReady=true;
   try{localStorage.setItem("mk_chat_ready","1");}catch(e){}
+  syncUserProfile();
   loginEl.classList.add("hidden");
   showUserBar();
   ci.focus();
@@ -313,6 +314,23 @@ var deviceId="";
 try{deviceId=localStorage.getItem("mk_device_id")||"";}catch(e){}
 if(!deviceId){deviceId="dev_"+Math.random().toString(36).substr(2,9)+Date.now().toString(36);try{localStorage.setItem("mk_device_id",deviceId);}catch(e){}}
 
+var avatarMap={};
+var avatarFetched={};
+try{db.ref("chat/users").on("value",function(snap){
+  snap.forEach(function(c){
+    var v=c.val();
+    if(v&&v.avatar)avatarMap[c.key]=v.avatar;
+  });
+});}catch(e){}
+
+function syncUserProfile(){
+  try{
+    if(!userName||!deviceId)return;
+    db.ref("chat/users/"+deviceId).set({user:userName,avatar:userAvatar||"",updatedAt:firebase.database.ServerValue.TIMESTAMP});
+  }catch(e){}
+}
+if(chatReady&&userName)syncUserProfile();
+
 chatBannedRef.child(deviceId).on("value",function(snap){
   if(snap.exists()){ci.disabled=true;cs.disabled=true;ci.placeholder="Has sido bloqueado del chat";}
 });
@@ -331,7 +349,10 @@ function renderChatMsg(msg){
     var isOwn=msg.uid===deviceId;
     var initial=msg.user?msg.user.charAt(0).toUpperCase():"?";
     var color=avatarColor(msg.user||"");
-    var avHtml=isOwn&&userAvatar?'<img src="'+userAvatar+'" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0">':'<span class="mk-mav" style="background:'+color+'">'+initial+'</span>';
+    var avHtml;
+    if(isOwn&&userAvatar){avHtml='<img src="'+userAvatar+'" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0">';}
+    else if(avatarMap[msg.uid]){avHtml='<img src="'+avatarMap[msg.uid]+'" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0">';}
+    else{avHtml='<span class="mk-mav" style="background:'+color+'">'+initial+'</span>';}
     div.innerHTML='<span class="mk-mu">'+avHtml+msg.user+'</span>'
       +'<div class="mk-row"><span class="mk-mt">'+msg.text+'</span>'
       +'<span class="mk-mti">'+formatChatTime(msg.timestamp)+'</span>'
@@ -365,7 +386,19 @@ function renderChatMsg(msg){
       }
     };
   }
+  if(!isOwn&&msg.uid&&!avatarMap[msg.uid]&&!avatarFetched[msg.uid]){
+    avatarFetched[msg.uid]=1;
+    db.ref("chat/users/"+msg.uid+"/avatar").once("value",function(s){
+      var a=s.val();
+      if(a){avatarMap[msg.uid]=a;applyAvatarToMsg(msg.id,a,msg.user);}
+    });
+  }
   ml.appendChild(div);
+}
+
+function applyAvatarToMsg(id,avatar,user){
+  var el=ml.querySelector('.mk-msg[data-id="'+id+'"] .mk-mu');
+  if(el)el.innerHTML='<img src="'+avatar+'" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0">'+(user||"");
 }
 
 chatMessagesRef.on("value",function(snap){
@@ -425,8 +458,10 @@ function sendChatMessage(){
       user:userName,
       text:text,
       uid:deviceId,
+      avatar:userAvatar||"",
       timestamp:firebase.database.ServerValue.TIMESTAMP
     });
+    syncUserProfile();
     ci.value="";
   });
 }
@@ -450,6 +485,7 @@ document.getElementById("mk-af").onchange=function(e){
       userAvatar=canvas.toDataURL("image/jpeg",0.7);
       try{localStorage.setItem("mk_user_avatar",userAvatar);}catch(e){}
       renderAvatar();
+      syncUserProfile();
     };
     img.src=ev.target.result;
   };
@@ -464,6 +500,7 @@ document.getElementById("mk-neok").onclick=function(){
   userName=v;
   try{localStorage.setItem("mk_user",userName);}catch(e){}
   renderAvatar();
+  syncUserProfile();
   document.getElementById("mk-un").textContent=userName;
   document.getElementById("mk-ne").classList.remove("show");
 };
