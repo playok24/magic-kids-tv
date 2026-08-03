@@ -92,10 +92,20 @@ try {
   var pid="";try{pid=localStorage.getItem("mk_device_id")||"";}catch(e){}
   if(!pid){pid="dev_"+Math.random().toString(36).substr(2,9)+Date.now().toString(36);try{localStorage.setItem("mk_device_id",pid);}catch(e){}}
   var sr=db.ref("sessions/"+pid);
-  sr.set({localTs:Date.now()});
-  setInterval(function(){sr.update({localTs:Date.now()});},10000);
-  db.ref("sessions").on("value",function(s){var c=0,n=Date.now()-300000;s.forEach(function(x){var v=x.val();if(v&&v.localTs&&v.localTs>n)c++;});vc.textContent=c;});
-  window.addEventListener("beforeunload",function(){sr.remove();});
+  var conn=db.ref(".info/connected");
+  conn.on("value",function(s){
+    if(s.val()===true){
+      sr.set({localTs:firebase.database.ServerValue.TIMESTAMP});
+      sr.onDisconnect().remove();
+    }else{
+      sr.remove();
+    }
+  });
+  setInterval(function(){sr.update({localTs:firebase.database.ServerValue.TIMESTAMP});},30000);
+  document.addEventListener("visibilitychange",function(){
+    if(!document.hidden)sr.update({localTs:firebase.database.ServerValue.TIMESTAMP});
+  });
+  db.ref("sessions").on("value",function(s){var c=0,n=Date.now()-600000;s.forEach(function(x){var v=x.val();if(v&&v.localTs&&v.localTs>n)c++;});vc.textContent=c;});
   window.addEventListener("pagehide",function(){sr.remove();});
 } catch(e) { console.error("Firebase init failed",e); }
 
