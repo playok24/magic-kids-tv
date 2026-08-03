@@ -11,7 +11,12 @@ function build(){
   var st=document.createElement("style");st.textContent=CSS;document.head.appendChild(st);
   var mk=document.createElement("div");mk.id="mkapp";mk.className="mkapp";
   mk.innerHTML='<div class="mk-top"><div class="mk-views">&#x1F441; <span id="vc">0</span> viendo</div></div><div class="mk-vid"><div class="mk-ld" id="ld"><div class="mk-logo-lg">MK</div><div class="mk-lt">Sintonizando...</div></div><div class="mk-no" id="no"></div><video id="video" autoplay muted playsinline preload="auto"></video><div class="mk-vi" id="vi"></div><div class="mk-ct"><button id="playB">&#9654;</button><button id="muteB">&#128266;</button><div class="mk-vw"><input type="range" id="volS" min="0" max="100" value="50"></div></div><button class="mk-fs" id="fsB">&#9974;</button></div><div class="mk-pg"><div class="mk-ph"><span>PROGRAMACION</span><select id="tz"><option value="-3">ARG</option><option value="-5">COL</option><option value="-6">MEX</option></select></div><div class="mk-pb" id="pb"></div></div>';
-  if(MKSCRIPT&&MKSCRIPT.parentNode){MKSCRIPT.insertAdjacentElement("beforebegin",mk);}
+  var anchor=null;
+  var pi=document.querySelector('iframe[src*="player.html"]');
+  if(pi)anchor=pi;
+  if(!anchor){var ci=document.querySelector('iframe[src*="chat.html"]');if(ci)anchor=ci;}
+  if(anchor){anchor.parentNode.insertBefore(mk,anchor);}
+  else if(MKSCRIPT&&MKSCRIPT.parentNode){MKSCRIPT.insertAdjacentElement("beforebegin",mk);}
   else{document.body.appendChild(mk);}
 
   var video=document.getElementById("video");
