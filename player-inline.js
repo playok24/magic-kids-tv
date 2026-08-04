@@ -30,7 +30,7 @@ function build(){
   var vc=document.getElementById("vc");
   var pb=document.getElementById("pb");
   var tz=document.getElementById("tz");
-  var hls=null,re=0,vt=null,tzo=-3;
+  var hls=null,re=0,mediaErr=0,vt=null,tzo=-3;
   try{tzo=parseInt(localStorage.getItem("mk_tzo")||"-3");}catch(e){}
   try{tz.value=localStorage.getItem("mk_tzo")||"-3";}catch(e){}
 
@@ -83,7 +83,7 @@ function build(){
   function sV(){ld.style.display="none";no.style.display="none";video.classList.add("mk-on");sW();}
   function sE(m){ld.innerHTML='<div class="mk-logo-lg">MK</div><div style="color:#ff6b6b;font-size:11px;text-align:center;padding:0 16px">'+m+'</div>';ld.style.display="flex";ld.style.cursor="pointer";tW();}
   function iH(){
-    re=0;
+    re=0;mediaErr=0;
     ld.innerHTML='<div class="mk-logo-lg">MK</div><div class="mk-lt">Sintonizando...</div>';
     ld.style.display="flex";ld.style.cursor="default";
     no.style.display="none";
@@ -99,7 +99,6 @@ function build(){
     hls.loadSource(STREAM);
     hls.attachMedia(video);
     hls.on(Hls.Events.MANIFEST_PARSED,function(){video.play()["catch"](function(){});});
-    video.addEventListener("playing",sV);
     hls.on(Hls.Events.ERROR,function(e,d){
       if(!d.fatal)return;
       if(d.type===Hls.ErrorTypes.NETWORK_ERROR){
@@ -114,7 +113,9 @@ function build(){
       }else if(d.type===Hls.ErrorTypes.MEDIA_ERROR){
         ld.innerHTML='<div class="mk-logo-lg">MK</div><div class="mk-lt">Sintonizando...</div>';
         ld.style.display="flex";ld.style.cursor="default";
-        if(hls)hls.recoverMediaError();
+        mediaErr++;
+        if(mediaErr<3&&hls){hls.recoverMediaError();}
+        else{mediaErr=0;re=0;setTimeout(function(){iH();},1000);}
       }else{
         re++;if(re<8){setTimeout(function(){iH();},3000*Math.min(re,4));}
         else{sE("Error persistente.<br>Haz clic para reintentar.");ld.onclick=function(){ld.onclick=null;re=0;iH();};}
@@ -125,13 +126,13 @@ function build(){
     hls.startLoad();
   }
   var wd=null,lt=0,frz=0,gr=0;
-  function sW(){lt=video.currentTime||0;frz=0;gr=0;wd=setInterval(function(){
+  function sW(){if(wd)clearInterval(wd);lt=video.currentTime||0;frz=0;gr=0;wd=setInterval(function(){
     if(video.paused||video.ended||ld.style.display!="none")return;var ct=video.currentTime||0;
     if(Math.abs(ct-lt)<0.3){frz++;if(frz>=30){frz=0;gr++;if(gr>=3){gr=0;re=0;iH();}}}
     else{frz=Math.max(0,frz-1);}lt=ct;
   },5000);}
   function tW(){clearInterval(wd);wd=null;}
-  video.addEventListener("playing",function(){sW();});
+  video.addEventListener("playing",function(){sV();});
   video.addEventListener("pause",function(){tW();});
 
   renderP();
