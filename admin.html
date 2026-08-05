@@ -61,6 +61,14 @@ body{font-family:Arial,sans-serif;background:#0b0b14;color:#eee;min-height:100vh
 .code-card button{padding:6px 10px;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer}
 .code-revoke{background:rgba(255,204,0,0.15);color:#ffcc00}
 .code-del{background:rgba(255,68,68,0.2);color:#ff6b6b}
+.user-code-box{flex-basis:100%;display:flex;flex-direction:column;gap:6px;margin-top:8px;padding-top:10px;border-top:1px solid #222}
+.user-code-empty{font-size:11px;color:#666}
+.user-code-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#0f0f1a;border:1px solid #333;border-radius:8px;padding:8px 10px}
+.user-code-line.just-generated{border-color:#00ff66;box-shadow:0 0 8px rgba(0,255,102,0.25)}
+.user-code-value{font-family:monospace;font-weight:700;font-size:15px;letter-spacing:2px;color:#00ff66}
+.user-code-meta{font-size:10px;color:#666;flex:1;min-width:110px}
+.user-code-line button{padding:5px 8px;border:none;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer}
+.user-code-copy{background:rgba(0,255,102,0.15);color:#00ff66}
 #empty{color:#666;text-align:center;padding:40px;font-size:14px}
 #denied{display:none;justify-content:center;align-items:center;min-height:100vh;text-align:center}
 #denied .box{background:#13131f;border:1px solid #333;border-radius:16px;padding:28px 24px;width:85%;max-width:340px}
@@ -169,15 +177,14 @@ function authErrorMessage(e){
   return m;
 }
 
+var cachedUsers=[];
 function loadUsers(){
   usersListening=true;
-  var listEl=document.getElementById("user-list");
-  var emptyEl=document.getElementById("empty");
   db.ref("users").on("value",function(snap){
-    var users=[];
+    cachedUsers=[];
     snap.forEach(function(child){
       var u=child.val()||{};
-      users.push({
+      cachedUsers.push({
         uid:child.key,
         email:u.email||"",
         name:u.name||"",
@@ -188,15 +195,20 @@ function loadUsers(){
         createdAt:u.createdAt||0
       });
     });
-    users.sort(function(a,b){return (b.lastLogin||0)-(a.lastLogin||0);});
-    listEl.innerHTML="";
-    if(users.length===0){
-      emptyEl.style.display="block";
-    }else{
-      emptyEl.style.display="none";
-      users.forEach(function(u){listEl.appendChild(userCard(u));});
-    }
+    renderUserList();
   });
+}
+function renderUserList(){
+  var listEl=document.getElementById("user-list");
+  var emptyEl=document.getElementById("empty");
+  cachedUsers.sort(function(a,b){return (b.lastLogin||0)-(a.lastLogin||0);});
+  listEl.innerHTML="";
+  if(cachedUsers.length===0){
+    emptyEl.style.display="block";
+  }else{
+    emptyEl.style.display="none";
+    cachedUsers.forEach(function(u){listEl.appendChild(userCard(u));});
+  }
 }
 
 function userCard(u){
@@ -233,7 +245,7 @@ function userCard(u){
   var codeBtn=document.createElement("button");
   codeBtn.className="btn-code";
   codeBtn.textContent="GENERAR CLAVE";
-  codeBtn.title="Genera una clave de ingreso para este usuario (futuras versiones)";
+  codeBtn.title="Genera una clave de ingreso para este usuario";
   codeBtn.onclick=function(){
     genUserCode(u);
   };
@@ -260,9 +272,19 @@ function userCard(u){
     actions.appendChild(adminBtn);
   }
 
+  var keysBox=document.createElement("div");
+  keysBox.className="user-code-box";
+  var userCodes=allCodes.filter(function(c){return c.createdFor===u.uid;});
+  if(userCodes.length===0){
+    keysBox.innerHTML='<div class="user-code-empty">Sin claves asignadas.</div>';
+  }else{
+    userCodes.forEach(function(c){keysBox.appendChild(userCodeRow(c,u));});
+  }
+
   card.appendChild(av);
   card.appendChild(info);
   card.appendChild(actions);
+  card.appendChild(keysBox);
   return card;
 }
 
@@ -279,17 +301,11 @@ function genCode(){
   return s;
 }
 function fmtDate(t){return t?new Date(t).toLocaleString():"-";}
+var lastGenUid="",lastGenCode="";
 function genUserCode(u){
   var code=genCode();
-  var box=document.getElementById("new-code-box");
-  var infoEl=document.getElementById("new-code-info");
-  var valueEl=document.getElementById("new-code-value");
-  valueEl.textContent=code;
-  if(infoEl){
-    infoEl.style.display="block";
-    infoEl.textContent="Clave para "+(u.name||"sin nombre")+" ("+(u.email||"-")+")";
-  }
-  box.style.display="flex";
+  lastGenUid=u.uid;
+  lastGenCode=code;
   db.ref("codes/"+code).set({
     createdAt:firebase.database.ServerValue.TIMESTAMP,
     createdBy:firebase.auth().currentUser.uid,
@@ -298,7 +314,54 @@ function genUserCode(u){
     used:false,
     revoked:false
   }).catch(function(e){
-    valueEl.textContent="Error: "+((e&&e.message)||"no se pudo crear");
+    alert("Error al generar la clave: "+((e&&e.message)||"no se pudo crear"));
+  });
+  setTimeout(function(){
+    lastGenUid="";
+    lastGenCode="";
+    renderUserList();
+  },6000);
+}
+function userCodeRow(c,u){
+  var row=document.createElement("div");
+  row.className="user-code-line"+(c.code===lastGenCode&&c.createdFor===lastGenUid?" just-generated":"");
+  var status=c.revoked?'<span class="badge blocked">REVOCADO</span>':(c.used?'<span class="badge blocked">USADO</span>':'<span class="badge active">SIN USAR</span>');
+  var meta=c.used?("Usado: "+fmtDate(c.usedAt)+(c.usedBy?" ("+c.usedBy.substring(0,12)+")":"")):"Creado: "+fmtDate(c.createdAt);
+  row.innerHTML='<span class="user-code-value">'+c.code+'</span>'+status+'<span class="user-code-meta">'+meta+'</span>';
+  var copy=document.createElement("button");
+  copy.className="user-code-copy";
+  copy.textContent="COPIAR";
+  copy.onclick=function(){
+    if(navigator.clipboard){
+      navigator.clipboard.writeText(c.code).then(function(){
+        copy.textContent="COPIADO!";
+        setTimeout(function(){copy.textContent="COPIAR";},1500);
+      });
+    }
+  };
+  var del=document.createElement("button");
+  del.className="code-del";
+  del.textContent="ELIMINAR CLAVE";
+  del.title="Borra la clave, quita la activacion del dispositivo y bloquea el ingreso del usuario";
+  del.onclick=function(){
+    deleteUserCode(c,u);
+  };
+  row.appendChild(copy);
+  row.appendChild(del);
+  return row;
+}
+function deleteUserCode(c,u){
+  if(!confirm("¿Eliminar la clave "+c.code+" de "+(u.name||u.email||u.uid)+"?\nSe quita la activacion del dispositivo y el usuario no podra ingresar de nuevo."))return;
+  var device=u.activeDevice||c.usedBy||"";
+  var ops=[];
+  if(device){
+    ops.push(db.ref("activations/"+device).remove());
+    ops.push(db.ref("users/"+u.uid+"/activeDevice").set(""));
+  }
+  ops.push(db.ref("codes/"+c.code).remove());
+  ops.push(db.ref("users/"+u.uid+"/blocked").set(true));
+  Promise.all(ops).catch(function(e){
+    alert("Error: "+((e&&e.message)||"no se pudo eliminar"));
   });
 }
 function codeCard(c){
@@ -330,22 +393,28 @@ function codeCard(c){
   card.appendChild(actions);
   return card;
 }
+var allCodes=[];
 function loadCodes(){
   codesListening=true;
   db.ref("codes").on("value",function(snap){
-    var listEl=document.getElementById("codes-list");
-    listEl.innerHTML="";
-    var codes=[];
+    allCodes=[];
     snap.forEach(function(child){
       var v=child.val()||{};
-      codes.push({code:child.key,createdAt:v.createdAt||0,createdBy:v.createdBy||"",createdFor:v.createdFor||"",forEmail:v.forEmail||"",used:v.used===true,usedBy:v.usedBy||"",usedAt:v.usedAt||0,revoked:v.revoked===true});
+      allCodes.push({code:child.key,createdAt:v.createdAt||0,createdBy:v.createdBy||"",createdFor:v.createdFor||"",forEmail:v.forEmail||"",used:v.used===true,usedBy:v.usedBy||"",usedAt:v.usedAt||0,revoked:v.revoked===true});
     });
-    codes.sort(function(a,b){return (b.createdAt||0)-(a.createdAt||0);});
-    if(codes.length===0){
-      listEl.innerHTML='<div style="color:#666;font-size:12px">Todavia no generaste codigos.</div>';
-    }
-    codes.forEach(function(c){listEl.appendChild(codeCard(c));});
+    allCodes.sort(function(a,b){return (b.createdAt||0)-(a.createdAt||0);});
+    renderGlobalCodes();
+    renderUserList();
   });
+}
+function renderGlobalCodes(){
+  var listEl=document.getElementById("codes-list");
+  listEl.innerHTML="";
+  var general=allCodes.filter(function(c){return !c.createdFor;});
+  if(general.length===0){
+    listEl.innerHTML='<div style="color:#666;font-size:12px">No hay codigos generales. Las claves por usuario se administran en cada tarjeta.</div>';
+  }
+  general.forEach(function(c){listEl.appendChild(codeCard(c));});
 }
 
 document.getElementById("gen-code-btn").onclick=function(){
