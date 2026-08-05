@@ -69,6 +69,19 @@ body{font-family:Arial,sans-serif;background:#0b0b14;color:#eee;min-height:100vh
 .user-code-meta{font-size:10px;color:#666;flex:1;min-width:110px}
 .user-code-line button{padding:5px 8px;border:none;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer}
 .user-code-copy{background:rgba(0,255,102,0.15);color:#00ff66}
+.send-box{flex-basis:100%;display:none;flex-direction:column;gap:8px;margin-top:8px;padding-top:10px;border-top:1px solid #222}
+.send-box.show{display:flex}
+.send-box textarea{width:100%;min-height:70px;padding:10px;border-radius:8px;border:1px solid #444;background:#1a1a2e;color:#fff;font-size:13px;resize:vertical;outline:none}
+.send-box textarea:focus{border-color:#7c3aed}
+.send-actions{display:flex;gap:8px;flex-wrap:wrap}
+.send-actions button{padding:8px 12px;border:none;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer}
+.btn-send{background:rgba(0,255,102,0.15);color:#00ff66}
+.btn-send-only{background:rgba(0,204,255,0.15);color:#00ccff}
+.btn-cancel{background:rgba(255,68,68,0.2);color:#ff6b6b}
+.send-noemail{font-size:11px;color:#ffcc00}
+#action-status{display:none;background:#13131f;border:1px solid #333;border-radius:8px;padding:10px 12px;font-size:12px;color:#00ff66;margin-bottom:16px}
+#action-status.show{display:block}
+#action-status.err{color:#ff6b6b;border-color:rgba(255,68,68,0.4)}
 #empty{color:#666;text-align:center;padding:40px;font-size:14px}
 #denied{display:none;justify-content:center;align-items:center;min-height:100vh;text-align:center}
 #denied .box{background:#13131f;border:1px solid #333;border-radius:16px;padding:28px 24px;width:85%;max-width:340px}
@@ -120,6 +133,7 @@ body{font-family:Arial,sans-serif;background:#0b0b14;color:#eee;min-height:100vh
     <div id="new-code-info"></div>
     <div id="codes-list"></div>
   </div>
+  <div id="action-status"></div>
   <div id="user-list"></div>
   <div id="empty">No hay usuarios registrados todavia.</div>
 </div>
@@ -245,9 +259,9 @@ function userCard(u){
   var codeBtn=document.createElement("button");
   codeBtn.className="btn-code";
   codeBtn.textContent="GENERAR CLAVE";
-  codeBtn.title="Genera una clave de ingreso para este usuario";
+  codeBtn.title="Genera una clave de ingreso para este usuario y la envia por mail";
   codeBtn.onclick=function(){
-    genUserCode(u);
+    toggleSendBox(sendBox);
   };
   actions.appendChild(codeBtn);
   if(u.uid!==firebase.auth().currentUser.uid){
@@ -281,10 +295,36 @@ function userCard(u){
     userCodes.forEach(function(c){keysBox.appendChild(userCodeRow(c,u));});
   }
 
+  var sendBox=document.createElement("div");
+  sendBox.className="send-box";
+  var hasEmail=!!u.email;
+  sendBox.innerHTML='<textarea placeholder="Mensaje personalizado (opcional)"></textarea>'
+    +'<div class="send-actions">'
+    +(hasEmail?'<button class="btn-send">GENERAR Y ENVIAR</button>':'')
+    +'<button class="btn-send-only">SOLO GENERAR</button>'
+    +'<button class="btn-cancel">CANCELAR</button>'
+    +'</div>'
+    +(hasEmail?'':'<div class="send-noemail">Este usuario no tiene email registrado. Solo se puede generar la clave.</div>');
+  var ta=sendBox.querySelector("textarea");
+  ta.value="Hola!\n\nTu clave de acceso a Magic Kids TV es: {CODE}";
+  var sendBtn=sendBox.querySelector(".btn-send");
+  if(sendBtn)sendBtn.onclick=function(){
+    genUserCode(u,ta.value,true);
+  };
+  var onlyBtn=sendBox.querySelector(".btn-send-only");
+  if(onlyBtn)onlyBtn.onclick=function(){
+    genUserCode(u,ta.value,false);
+  };
+  var cancelBtn=sendBox.querySelector(".btn-cancel");
+  cancelBtn.onclick=function(){
+    closeSendBox(sendBox);
+  };
+
   card.appendChild(av);
   card.appendChild(info);
   card.appendChild(actions);
   card.appendChild(keysBox);
+  card.appendChild(sendBox);
   return card;
 }
 
@@ -302,10 +342,11 @@ function genCode(){
 }
 function fmtDate(t){return t?new Date(t).toLocaleString():"-";}
 var lastGenUid="",lastGenCode="";
-function genUserCode(u){
+function genUserCode(u,message,send){
   var code=genCode();
   lastGenUid=u.uid;
   lastGenCode=code;
+  var msg=(message||"").replace("{CODE}",code);
   db.ref("codes/"+code).set({
     createdAt:firebase.database.ServerValue.TIMESTAMP,
     createdBy:firebase.auth().currentUser.uid,
@@ -313,14 +354,61 @@ function genUserCode(u){
     forEmail:u.email||"",
     used:false,
     revoked:false
+  }).then(function(){
+    if(send&&u.email){
+      setSendStatus("Enviando clave a "+u.email+"...");
+      sendCodeEmail(u.email,code,msg).then(function(){
+        setSendStatus("Clave generada y enviada a "+u.email);
+      }).catch(function(e){
+        setSendStatus("Clave generada, pero no se pudo enviar el mail: "+((e&&e.message)||"error"),false);
+      });
+    }else{
+      setSendStatus(u.email?"Clave generada (no enviada)":"Clave generada");
+    }
   }).catch(function(e){
-    alert("Error al generar la clave: "+((e&&e.message)||"no se pudo crear"));
+    setSendStatus("Error al generar la clave: "+((e&&e.message)||"no se pudo crear"),false);
   });
   setTimeout(function(){
     lastGenUid="";
     lastGenCode="";
     renderUserList();
   },6000);
+}
+function setSendStatus(msg,ok){
+  var el=document.getElementById("action-status");
+  if(!el)return;
+  if(!msg){
+    el.className="";
+    el.style.display="none";
+    return;
+  }
+  el.textContent=msg;
+  el.className="show"+(ok?"":" err");
+  el.style.display="block";
+}
+function toggleSendBox(box){
+  if(box.classList.contains("show")){
+    box.classList.remove("show");
+  }else{
+    box.classList.add("show");
+  }
+}
+function closeSendBox(box){
+  box.classList.remove("show");
+}
+function sendCodeEmail(to,code,message){
+  return firebase.auth().currentUser.getIdToken().then(function(idToken){
+    return fetch("https://magic-kids-tv.vercel.app/api/send-code",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({to:to,code:code,message:message,idToken:idToken})
+    }).then(function(r){
+      return r.json().then(function(d){
+        if(!d.ok)throw new Error(d.error||"No se pudo enviar");
+        return d;
+      }).catch(function(){throw new Error("Respuesta invalida del servidor");});
+    });
+  });
 }
 function userCodeRow(c,u){
   var row=document.createElement("div");
@@ -456,6 +544,7 @@ firebase.auth().onAuthStateChanged(function(user){
     document.getElementById("codes-list").innerHTML="";
     document.getElementById("new-code-box").style.display="none";
     document.getElementById("empty").style.display="none";
+    setSendStatus("");
     return;
   }
   document.getElementById("admin-email").textContent=user.email;
