@@ -140,6 +140,9 @@ body{font-family:Arial,sans-serif;background:#0b0b14;color:#eee;min-height:100vh
 
 <script>
 var ADMIN_EMAILS=["hgastonsanchez@gmail.com"];
+var EMAILJS_SERVICE_ID="";
+var EMAILJS_TEMPLATE_ID="";
+var EMAILJS_PUBLIC_KEY="";
 var firebaseConfig={apiKey:"AIzaSyDM7YiLoP5Q-jTB1BBbMluvWL1LIPqCtxI",authDomain:"contadores-magic.firebaseapp.com",databaseURL:"https://contadores-magic-default-rtdb.firebaseio.com",projectId:"contadores-magic",storageBucket:"contadores-magic.firebasestorage.app",messagingSenderId:"58723817117",appId:"1:58723817117:web:f479abaeacf191364ae674"};
 firebase.initializeApp(firebaseConfig);
 var db=firebase.database();
@@ -397,16 +400,22 @@ function closeSendBox(box){
   box.classList.remove("show");
 }
 function sendCodeEmail(to,code,message){
-  return firebase.auth().currentUser.getIdToken().then(function(idToken){
-    return fetch("https://magic-kids-tv.vercel.app/api/send-code",{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({to:to,code:code,message:message,idToken:idToken})
-    }).then(function(r){
-      return r.json().then(function(d){
-        if(!d.ok)throw new Error(d.error||"No se pudo enviar");
-        return d;
-      }).catch(function(){throw new Error("Respuesta invalida del servidor");});
+  if(!EMAILJS_SERVICE_ID||!EMAILJS_TEMPLATE_ID||!EMAILJS_PUBLIC_KEY){
+    return Promise.reject(new Error("Email no configurado. Falta el ID de EmailJS."));
+  }
+  return fetch("https://api.emailjs.com/api/v1.0/email/send",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      service_id:EMAILJS_SERVICE_ID,
+      template_id:EMAILJS_TEMPLATE_ID,
+      user_id:EMAILJS_PUBLIC_KEY,
+      template_params:{to_email:to,code:code,message:message}
+    })
+  }).then(function(r){
+    return r.text().then(function(txt){
+      if(r.ok)return {ok:true};
+      throw new Error(txt||("Error al enviar el email (HTTP "+r.status+")"));
     });
   });
 }
