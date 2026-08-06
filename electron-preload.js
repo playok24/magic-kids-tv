@@ -8,3 +8,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onUpdateDownloaded: function(cb){ ipcRenderer.on("update-downloaded", function(){ cb(); }); },
   installUpdate: function(){ ipcRenderer.send("install-update"); }
 });
+
+contextBridge.exposeInMainWorld("castAPI", {
+  discover: function(){ return ipcRenderer.invoke("cast:discover"); },
+  getStreamUrl: function(){ return ipcRenderer.invoke("cast:get-stream-url"); },
+  play: function(url, contentType, deviceId){ return ipcRenderer.invoke("cast:play", url, contentType, deviceId); },
+  stop: function(){ return ipcRenderer.invoke("cast:stop"); },
+  onStatus: function(cb){ ipcRenderer.on("cast-status", function(e, status){ cb(status); }); }
+});
