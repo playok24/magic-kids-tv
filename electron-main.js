@@ -226,6 +226,10 @@ ipcMain.on("install-update", function(){
   autoUpdater.quitAndInstall();
 });
 
+ipcMain.handle("app:get-version", function(){
+  return app.getVersion();
+});
+
 autoUpdater.on("update-available", function(){
   if(mainWindow) mainWindow.webContents.send("update-available");
 });

@@ -1,6 +1,7 @@
 const {contextBridge, ipcRenderer} = require("electron");
 
 contextBridge.exposeInMainWorld("electronAPI", {
+  getVersion: function(){ return ipcRenderer.invoke("app:get-version"); },
   fullscreenToggle: function(){ ipcRenderer.send("fullscreen-toggle"); },
   fullscreenExit: function(){ ipcRenderer.send("fullscreen-exit"); },
   onFullscreenChange: function(cb){ ipcRenderer.on("fullscreen-change", function(e, isFs){ cb(isFs); }); },

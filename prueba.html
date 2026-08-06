@@ -549,7 +549,7 @@ body.light #cast-modal .box .close-sub{background:rgba(0,0,0,0.06);color:#555}
 <div id="header-bar">
   <img class="logo" src="www/Magic Kids Logo.png" alt="Logo">
   <span class="title">Magic Kids Television</span>
-  <span class="version" id="version-label">v1.4.0</span>
+  <span class="version" id="version-label">v1.4.1</span>
   <button id="update-btn" onclick="window.electronAPI&&window.electronAPI.installUpdate()">ACTUALIZAR</button>
   <span class="greeting" id="greeting"><span id="greeting-text"></span><button id="theme-toggle" onclick="toggleTheme()">&#127769;</button><button id="logout-btn" title="Salir">&#9210; SALIR</button></span>
 </div>
@@ -748,7 +748,13 @@ const STREAM="http://127.0.0.1:12345/stream";
 const HLS_FALLBACK="https://183.bozztv.com/giatv/giatv-magicplus/magicplus/chunks.m3u8";
 const PROG_JSON_URL="https://playok24.github.io/magic-kids-tv/programacion.json?t="+Date.now();
 const VERSION_JSON_URL="https://playok24.github.io/magic-kids-tv/version.json?t="+Date.now();
- const APP_VERSION="1.4.0";
+ const APP_VERSION="1.4.1";
+
+if(window.electronAPI&&window.electronAPI.getVersion&&document.getElementById("version-label")){
+  window.electronAPI.getVersion().then(function(v){
+    if(v){var el=document.getElementById("version-label");if(el)el.textContent="v"+v;}
+  }).catch(function(){});
+}
 
 const video=document.getElementById("video");
 const loading=document.getElementById("loading");
