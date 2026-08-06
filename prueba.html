@@ -10,7 +10,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
-<script src="https://www.gstatic.com/cv2/sender/cast_sender.js?loadCastFramework=1"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{
@@ -515,6 +514,34 @@ body.light #sub-modal .box p{color:#555}
 body.light #sub-modal .box input{background:#f0f0f5;border-color:#ddd;color:#222}
 body.light #sub-modal .box input:focus{border-color:#6b3fa0}
 body.light #sub-modal .box .close-sub{background:rgba(0,0,0,0.06);color:#555}
+
+#cast-modal{
+  position:fixed;inset:0;z-index:200;
+  background:rgba(0,0,0,0.85);
+  display:none;justify-content:center;align-items:center;
+}
+#cast-modal.show{display:flex}
+#cast-modal .box{
+  background:#13131f;border:1px solid #333;border-radius:16px;
+  padding:28px 24px;width:85%;max-width:380px;text-align:center;
+}
+#cast-modal .box h3{color:#c4a0ff;font-size:17px;margin-bottom:14px}
+#cast-modal .box #cast-device-list{display:flex;flex-direction:column;gap:8px;margin-bottom:6px}
+#cast-modal .box #cast-device-list button{
+  width:100%;padding:12px;border:none;border-radius:10px;
+  background:linear-gradient(135deg,#7c3aed,#5b21b6);
+  color:#fff;font-size:14px;font-weight:700;cursor:pointer;text-align:left;
+}
+#cast-modal .box #cast-device-list button:hover{opacity:0.9}
+#cast-modal .box #cast-device-list button:active{opacity:0.8;transform:scale(0.98)}
+#cast-modal .box .close-sub{
+  margin-top:12px;width:100%;padding:10px;border:none;border-radius:10px;
+  background:rgba(255,255,255,0.06);color:#888;font-size:13px;font-weight:700;cursor:pointer;
+}
+#cast-modal .box .close-sub:hover{background:rgba(255,255,255,0.1);color:#fff}
+body.light #cast-modal .box{background:#fff;border-color:#ddd}
+body.light #cast-modal .box h3{color:#6b3fa0}
+body.light #cast-modal .box .close-sub{background:rgba(0,0,0,0.06);color:#555}
 </style>
 </head>
 <body>
@@ -522,7 +549,7 @@ body.light #sub-modal .box .close-sub{background:rgba(0,0,0,0.06);color:#555}
 <div id="header-bar">
   <img class="logo" src="www/Magic Kids Logo.png" alt="Logo">
   <span class="title">Magic Kids Television</span>
-  <span class="version" id="version-label">v1.3.9</span>
+  <span class="version" id="version-label">v1.4.0</span>
   <button id="update-btn" onclick="window.electronAPI&&window.electronAPI.installUpdate()">ACTUALIZAR</button>
   <span class="greeting" id="greeting"><span id="greeting-text"></span><button id="theme-toggle" onclick="toggleTheme()">&#127769;</button><button id="logout-btn" title="Salir">&#9210; SALIR</button></span>
 </div>
@@ -707,6 +734,13 @@ body.light #sub-modal .box .close-sub{background:rgba(0,0,0,0.06);color:#555}
     <button class="close-sub" onclick="document.getElementById('sub-modal').classList.remove('show')">CERRAR</button>
   </div>
 </div>
+<div id="cast-modal">
+  <div class="box">
+    <h3>&#128252; Elegi donde transmitir</h3>
+    <div id="cast-device-list"></div>
+    <button class="close-sub" onclick="document.getElementById('cast-modal').classList.remove('show')">CANCELAR</button>
+  </div>
+</div>
 <button id="exit-video">&#10005;</button>
 
 <script>
@@ -714,7 +748,7 @@ const STREAM="http://127.0.0.1:12345/stream";
 const HLS_FALLBACK="https://183.bozztv.com/giatv/giatv-magicplus/magicplus/chunks.m3u8";
 const PROG_JSON_URL="https://playok24.github.io/magic-kids-tv/programacion.json?t="+Date.now();
 const VERSION_JSON_URL="https://playok24.github.io/magic-kids-tv/version.json?t="+Date.now();
-const APP_VERSION="1.3.9";
+ const APP_VERSION="1.4.0";
 
 const video=document.getElementById("video");
 const loading=document.getElementById("loading");
@@ -790,7 +824,16 @@ function activateDevice(){
       if(!committed||!val||val.used!==true){setActivateStatus("Código inválido o ya utilizado");return;}
       markActivated(code);
       setActivateStatus("Dispositivo activado. Ingresá a tu cuenta.",true);
-      setTimeout(function(){showAuthModal();},600);
+      setTimeout(function(){
+        var cu=firebase.auth().currentUser;
+        if(cu&&!cu.isAnonymous){
+          db.ref("users/"+cu.uid).once("value",function(snap){
+            proceedWithUser(cu.uid,snap.val());
+          });
+        }else{
+          showAuthModal();
+        }
+      },600);
     });
   });
 }
@@ -933,6 +976,27 @@ function startVideoIfAuthed(){
   initStream();
 }
 
+function proceedWithUser(uid,data){
+  data=data||{};
+  db.ref("users/"+uid+"/activeDevice").set(deviceId);
+  db.ref("users/"+uid+"/lastLogin").set(firebase.database.ServerValue.TIMESTAMP);
+  currentUid=uid;
+  var cu=firebase.auth().currentUser;
+  var emailName=((cu&&cu.email)||"").split("@")[0];
+  userName=data.name||emailName||"Usuario";
+  try{localStorage.setItem("mk_user",userName);}catch(e){}
+  updateGreeting();
+  chatReady=true;
+  hideActivateScreen();
+  hideChatLogin();
+  showUserBar();
+  syncUserProfile();
+  hideAuthModal();
+  hideBlockedScreen();
+  bindChat();
+  startVideoIfAuthed();
+}
+
 var userAvatar=localStorage.getItem("mk_user_avatar")||null;
 
 function renderAvatar(){
@@ -1007,7 +1071,7 @@ var db=firebase.database();
 firebase.auth().onAuthStateChanged(function(user){
   if(!user){
     currentUid=deviceId;
-    userName="";
+    castAdmin=false;
     chatReady="";
     if(hls){hls.destroy();hls=null;}
     video.pause();
@@ -1015,18 +1079,24 @@ firebase.auth().onAuthStateChanged(function(user){
     video.load();
     videoStarted=false;
     hideBlockedScreen();
-    checkActivation(function(ok){
-      if(ok){hideActivateScreen();showAuthModal();}
-      else{hideAuthModal();showActivateScreen();}
-    });
     updateGreeting();
+    firebase.auth().signInAnonymously().catch(function(){});
     return;
   }
   if(user.isAnonymous){
-    firebase.auth().signOut();
+    currentUid=deviceId;
+    castAdmin=false;
+    userName=localStorage.getItem("mk_user")||"";
+    updateGreeting();
+    bindChat();
+    hideBlockedScreen();
+    if(userName){hideChatLogin();showUserBar();}
+    hideActivateScreen();
+    showAuthModal();
     return;
   }
   var uid=user.uid;
+  castAdmin=!!(user.email&&ADMIN_EMAILS.indexOf(user.email.toLowerCase())!==-1);
   db.ref("users/"+uid).once("value",function(snap){
     var data=snap.val()||{};
     if(data.activeDevice && data.activeDevice!==deviceId && !data.isAdmin){
@@ -1041,23 +1111,10 @@ firebase.auth().onAuthStateChanged(function(user){
       return;
     }
     function proceedAuthed(){
-      db.ref("users/"+uid+"/activeDevice").set(deviceId);
-      db.ref("users/"+uid+"/lastLogin").set(firebase.database.ServerValue.TIMESTAMP);
-      currentUid=uid;
-      var emailName=(user.email||"").split("@")[0];
-      userName=data.name||emailName||"Usuario";
-      try{localStorage.setItem("mk_user",userName);}catch(e){}
-      updateGreeting();
-      chatReady=true;
-      hideActivateScreen();
-      hideChatLogin();
-      showUserBar();
-      hideAuthModal();
-      hideBlockedScreen();
-      bindChat();
-      startVideoIfAuthed();
+      proceedWithUser(uid,data);
     }
     if(data.isAdmin===true){
+      castAdmin=true;
       try{localStorage.setItem("mk_activated","1");}catch(e){}
       db.ref("activations/"+deviceId).set({code:"ADMIN",activatedAt:firebase.database.ServerValue.TIMESTAMP});
       proceedAuthed();
@@ -1065,7 +1122,7 @@ firebase.auth().onAuthStateChanged(function(user){
     }
     checkActivation(function(ok){
       if(!ok){
-        firebase.auth().signOut();
+        hideAuthModal();
         showActivateScreen();
         setActivateStatus("Este dispositivo aún no está activado. Ingresá tu código.");
         return;
@@ -1244,15 +1301,19 @@ function initHls(url){
   }
 
   hls=new Hls({
-    enableWorker:true,liveSyncDuration:25,liveMaxLatencyDuration:50,
-    maxBufferLength:30,maxMaxBufferLength:60,backBufferLength:10,
-    liveDurationInfinity:true,maxBufferHole:2,maxStarvationDelay:5,
-    manifestLoadingTimeOut:20000,manifestLoadingMaxRetry:20,manifestLoadingRetryDelay:1000,
-    levelLoadingTimeOut:20000,levelLoadingMaxRetry:20,
-    fragLoadingTimeOut:20000,fragLoadingMaxRetry:20,fragLoadingRetryDelay:1000,
+    enableWorker:true,
+    liveSyncDurationCount:2,liveMaxLatencyDurationCount:8,
+    liveSyncOnStallUpdate:true,
+    maxBufferLength:60,maxMaxBufferLength:180,backBufferLength:30,
+    liveDurationInfinity:true,maxBufferHole:5,maxStarvationDelay:10,
+    maxBufferSize:100*1024*1024,
+    manifestLoadingTimeOut:15000,manifestLoadingMaxRetry:10,manifestLoadingRetryDelay:500,
+    levelLoadingTimeOut:15000,levelLoadingMaxRetry:10,levelLoadingRetryDelay:500,
+    fragLoadingTimeOut:15000,fragLoadingMaxRetry:25,fragLoadingRetryDelay:500,
     startFragPrefetch:true,stretchShortVideoSegment:true,lowLatencyMode:false,
-    nudgeOffset:1,nudgeMaxRetry:8,enableSoftwareAES:true,
-    abrEwmaDefaultEstimate:3000000,abrEwmaFastLive:6,abrEwmaSlowLive:15
+    nudgeOffset:0.5,nudgeMaxRetry:10,nudgeOnVideoStall:true,
+    enableSoftwareAES:true,appendErrorMaxRetry:6,
+    abrEwmaDefaultEstimate:3000000,abrEwmaFastLive:3,abrEwmaSlowLive:9
   });
   hls.loadSource(url);
   hls.attachMedia(video);
@@ -1262,14 +1323,16 @@ function initHls(url){
     if(d.type===Hls.ErrorTypes.NETWORK_ERROR){
       showError("Sin conexion... Reintentando...");
       hlsRetries++;
-      if(hlsRetries<15){setTimeout(function(){if(hls)hls.startLoad();},2000*Math.min(hlsRetries,5));}
+      if(hlsRetries<6){setTimeout(function(){if(hls)hls.startLoad();},1500*Math.min(hlsRetries,4));}
       else{showError("No se pudo conectar.<br>Haz clic para reintentar.");loading.onclick=function(){loading.onclick=null;initHls(url);};}
     }else if(d.type===Hls.ErrorTypes.MEDIA_ERROR){
       showError("Error de media. Recuperando...");
-      if(hls)hls.recoverMediaError();
+      hlsRetries++;
+      if(hlsRetries<3&&hls){hls.recoverMediaError();}
+      else{hlsRetries=0;setTimeout(function(){initHls(url);},1000);}
     }else{
       hlsRetries++;
-      if(hlsRetries<10){showError("Reiniciando... ("+hlsRetries+"/10)");setTimeout(function(){initHls(url);},3000*Math.min(hlsRetries,4));}
+      if(hlsRetries<5){showError("Reiniciando... ("+hlsRetries+"/5)");setTimeout(function(){initHls(url);},3000*Math.min(hlsRetries,4));}
       else{showError("Error persistente.<br>Haz clic para reintentar.");loading.onclick=function(){loading.onclick=null;initHls(url);};}
     }
   });
@@ -1280,24 +1343,35 @@ function initHls(url){
 
 function scheduleFreezeCheck() {
   var last = 0;
+  var froze = 0;
   var timer = setInterval(function() {
     if (video.paused || video.ended) return;
     var ct = video.currentTime || 0;
     if (ct > 0 && Math.abs(ct - last) < 0.3) {
-      clearInterval(timer);
-      if(hls){initHls(HLS_FALLBACK);}else{initStream();}
+      froze++;
+      try{
+        if (froze === 2 && hls) { hls.nudgeMedia(); }
+        else if (froze >= 3 && froze < 7 && hls) { hls.startLoad(); }
+        else if (froze >= 7) {
+          clearInterval(timer); _ef = null;
+          if (hls) { initHls(HLS_FALLBACK); } else { initStream(); }
+          return;
+        }
+      }catch(e){}
       return;
     }
+    froze = 0;
     last = ct;
-  }, 10000);
+  }, 4000);
   _ef = timer;
 }
 
 video.addEventListener("playing",function(){clearEvTimers();showVideo();});
-video.addEventListener("waiting",function(){clearEvTimers();_wto=setTimeout(function(){if(video.readyState<3){if(hls){initHls(HLS_FALLBACK);}else{initStream();}}},5000);});
-video.addEventListener("stalled",function(){clearEvTimers();_sto=setTimeout(function(){if(hls){initHls(HLS_FALLBACK);}else{initStream();}},3000);});
+video.addEventListener("waiting",function(){clearEvTimers();_wto=setTimeout(function(){if(video.readyState<3){try{if(hls){hls.nudgeMedia();hls.startLoad();}else{initStream();}}catch(e){}}},4000);});
+video.addEventListener("stalled",function(){clearEvTimers();_sto=setTimeout(function(){try{if(hls){hls.nudgeMedia();hls.startLoad();}else{initStream();}}catch(e){}},3000);});
 video.addEventListener("ended",function(){clearEvTimers();_eto=setTimeout(function(){initStream();},1000);});
 video.addEventListener("error",function(){
+  if(hls)return;
   showError("Sin conexion.<br>Haz clic para reintentar.");
   loading.onclick=function(){loading.onclick=null;initStream();};
 });
@@ -1383,6 +1457,22 @@ var chatOpen=false;
 var unreadCount=0;
 var chatReady=localStorage.getItem("mk_chat_ready")||"";
 
+var avatarMap={};
+var avatarFetched={};
+try{db.ref("chat/users").on("value",function(snap){
+  snap.forEach(function(c){
+    var v=c.val();
+    if(v&&v.avatar)avatarMap[c.key]=v.avatar;
+  });
+});}catch(e){}
+
+function syncUserProfile(){
+  try{
+    if(!userName||!currentUid)return;
+    db.ref("chat/users/"+currentUid).set({user:userName,avatar:userAvatar||"",updatedAt:firebase.database.ServerValue.TIMESTAMP});
+  }catch(e){}
+}
+
 function showChatLogin(){
   chatLogin.classList.remove("hidden");
   updateLoginPreview("chat-login-av");
@@ -1433,6 +1523,7 @@ document.getElementById("chat-name-ok").onclick=function(){
     hideChatLogin();
     showUserBar();
     chatInput.focus();
+    syncUserProfile();
   }
 };
 document.getElementById("chat-name-input").onkeydown=function(e){
@@ -1442,7 +1533,7 @@ document.getElementById("chat-name-input").onkeydown=function(e){
 var chatHeaderEl=document.getElementById("chat-header");
 var dragOffsetX=0,dragOffsetY=0,dragging=false;
 chatHeaderEl.addEventListener("mousedown",function(e){
-  if(e.target.id==="chat-close")return;
+  if(e.target.closest&&e.target.closest("button,input,select,textarea,.chat-name-edit,.chat-user-bar"))return;
   dragging=true;
   var rect=chatOverlay.getBoundingClientRect();
   dragOffsetX=e.clientX-rect.left;
@@ -1523,7 +1614,10 @@ function renderChatMsg(msg){
     var isOwn=msg.uid===currentUid||(deviceId&&msg.uid===deviceId);
     var initial=msg.user?msg.user.charAt(0).toUpperCase():"?";
     var color=avatarColor(msg.user||"");
-    var avHtml=isOwn&&userAvatar?'<img src="'+userAvatar+'" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0">':'<span class="msg-mav" style="background:'+color+'">'+initial+'</span>';
+    var avHtml;
+    if(isOwn&&userAvatar){avHtml='<img src="'+userAvatar+'" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0">';}
+    else if(avatarMap[msg.uid]){avHtml='<img src="'+avatarMap[msg.uid]+'" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0">';}
+    else{avHtml='<span class="msg-mav" style="background:'+color+'">'+initial+'</span>';}
     div.innerHTML='<span class="msg-user">'+avHtml+msg.user+'</span>'
       +'<div class="msg-row"><span class="msg-text">'+msg.text+'</span>'
       +'<span class="msg-time">'+formatChatTime(msg.timestamp)+'</span>'
@@ -1558,6 +1652,17 @@ function renderChatMsg(msg){
     };
   }
   chatMessages.appendChild(div);
+  if(!isOwn&&msg.uid&&!avatarMap[msg.uid]&&!avatarFetched[msg.uid]){
+    avatarFetched[msg.uid]=1;
+    db.ref("chat/users/"+msg.uid+"/avatar").once("value",function(s){
+      var a=s.val();
+      if(a){
+        avatarMap[msg.uid]=a;
+        var el=chatMessages.querySelector('[data-id="'+msg.id+'"] .msg-user');
+        if(el)el.innerHTML='<img src="'+a+'" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0">'+msg.user;
+      }
+    });
+  }
 }
 
 var chatOnlineRef=db.ref("chat/online/"+chatSessionId);
@@ -1600,9 +1705,11 @@ function sendChatMessage(){
       user:userName,
       text:text,
       uid:currentUid,
+      avatar:userAvatar||"",
       timestamp:firebase.database.ServerValue.TIMESTAMP
     });
     chatInput.value="";
+    syncUserProfile();
   });
 }
 
@@ -1646,6 +1753,7 @@ avatarFileInput.onchange=function(e){
       userAvatar=canvas.toDataURL("image/jpeg",0.7);
       try{localStorage.setItem("mk_user_avatar",userAvatar);}catch(e){}
       renderAvatar();
+      syncUserProfile();
     };
     img.src=ev.target.result;
   };
@@ -1661,6 +1769,7 @@ document.getElementById("chat-name-edit-ok").onclick=function(){
   renderAvatar();
   document.getElementById("chat-user-name").textContent=userName;
   document.getElementById("chat-name-edit-popup").classList.remove("show");
+  syncUserProfile();
 };
 document.getElementById("chat-name-edit-input").onkeydown=function(e){if(e.key==="Enter")document.getElementById("chat-name-edit-ok").click();};
 document.getElementById("chat-name-edit-cancel").onclick=function(){document.getElementById("chat-name-edit-popup").classList.remove("show");};
@@ -1854,44 +1963,129 @@ function updateCastUI(){
   }
 }
 
-db.ref("subscriptions/"+currentUid).on("value",function(snap){
-  var val=snap.val();
-  castActive=!!(val&&val.active);
-  updateCastUI();
-});
+var subLoaded=false;
+var castAdmin=false;
+function bindCastSubscription(){
+  db.ref("subscriptions/"+deviceId).on("value",function(snap){
+    var val=snap.val();
+    castActive=!!(val&&val.active);
+    subLoaded=true;
+    updateCastUI();
+  });
+}
 
-var castSession=null;
-function initCastSDK(){
-  if(!window.cast||!window.cast.framework)return;
-  window.cast.framework.CastContext.getInstance().setOptions({
-    receiverApplicationId:window.cast.media.DEFAULT_MEDIA_RECEIVER_APPLICATION_ID,
-    autoJoinPolicy:window.cast.framework.AutoJoinPolicy.ORIGIN_SCOPED
+var castSession=false;
+function startCast(device){
+  var btn=document.getElementById("cast-btn");
+  if(!btn)return;
+  if(btn.disabled)return;
+  btn.disabled=true;
+  btn.textContent="CONECTANDO...";
+  window.castAPI.getStreamUrl().then(function(url){
+    return window.castAPI.play(url, "application/x-mpegURL", device?device.id:null);
+  }).then(function(){
+    btn.disabled=false;
+    castSession=true;
+    updateCastUI();
+  })["catch"](function(e){
+    btn.disabled=false;
+    updateCastUI();
+    alert("No se pudo iniciar el Cast:\n"+(e&&e.message?e.message:"error desconocido"));
+  });
+}
+function pickDevice(device){
+  var m=document.getElementById("cast-modal");
+  if(m)m.classList.remove("show");
+  startCast(device);
+}
+function showCastPicker(devices){
+  var m=document.getElementById("cast-modal");
+  if(!m)return;
+  var list=document.getElementById("cast-device-list");
+  if(list){
+    list.innerHTML="";
+    devices.forEach(function(d){
+      var b=document.createElement("button");
+      b.type="button";
+      b.textContent="&#128250; "+(d.name||"Dispositivo");
+      b.onclick=function(){ pickDevice(d); };
+      list.appendChild(b);
+    });
+  }
+  m.classList.add("show");
+}
+function openSubModal(){
+  var m=document.getElementById("sub-modal");
+  if(!m)return;
+  var emailInput=document.getElementById("sub-email");
+  var status=document.getElementById("sub-status");
+  var saved="";
+  try{saved=localStorage.getItem("mk_sub_email")||"";}catch(e){}
+  if(emailInput)emailInput.value=saved;
+  if(status){status.textContent="";status.className="sub-status";}
+  m.classList.add("show");
+}
+function doCastDiscover(){
+  var btn=document.getElementById("cast-btn");
+  if(btn){ btn.disabled=true; btn.textContent="BUSCANDO..."; }
+  window.castAPI.discover().then(function(devices){
+    if(btn){ btn.disabled=false; updateCastUI(); }
+    devices=devices||[];
+    if(!devices.length){
+      alert("No se encontro ninguna TV/Chromecast en la red.\nAsegurate de que este encendida y conectada al mismo WiFi que esta PC.");
+      return;
+    }
+    showCastPicker(devices);
+  })["catch"](function(e){
+    if(btn){ btn.disabled=false; updateCastUI(); }
+    alert("Error buscando dispositivos:\n"+(e&&e.message?e.message:"error desconocido"));
   });
 }
 function onCastClick(){
   if(castSession){
-    castSession.endSession(true);
-    castSession=null;
+    castSession=false;
+    window.castAPI.stop();
     updateCastUI();
     return;
   }
-  if(!window.cast||!window.cast.framework){
-    alert("Google Cast no disponible.\nAsegurate de tener Chrome y el receptor encendido.");
+  if(!window.castAPI){
+    alert("El Cast no esta disponible en esta version.\nActualiza la app.");
     return;
   }
-  window.cast.framework.CastContext.getInstance().requestSession().then(function(session){
-    castSession=session;
-    var mediaInfo=new window.cast.media.MediaInfo("https://183.bozztv.com/giatv/giatv-magicplus/magicplus/chunks.m3u8","application/x-mpegURL");
-    mediaInfo.streamType=window.cast.media.StreamType.LIVE;
-    var request=new window.cast.media.LoadRequest(mediaInfo);
-    request.autoplay=true;
-    session.getCurrentMediaSession().load(mediaInfo);
-    updateCastUI();
-  })["catch"](function(e){console.log("Cast error:",e);});
+  if(castAdmin){
+    doCastDiscover();
+    return;
+  }
+  if(!subLoaded){
+    var btn=document.getElementById("cast-btn");
+    if(btn){ btn.disabled=true; btn.textContent="VERIFICANDO..."; }
+    var tries=0;
+    var t=setInterval(function(){
+      tries++;
+      if(subLoaded||tries>10){
+        clearInterval(t);
+        if(btn){ btn.disabled=false; updateCastUI(); }
+        onCastClick();
+      }
+    },200);
+    return;
+  }
+  if(!castActive){
+    openSubModal();
+    return;
+  }
+  doCastDiscover();
 }
-try{initCastSDK();}catch(e){}
-setTimeout(function(){try{initCastSDK();}catch(e){}},2000);
-setTimeout(function(){try{initCastSDK();}catch(e){}},5000);
+if(window.castAPI){
+  window.castAPI.onStatus(function(status){
+    if(status&&(status.type==="stopped"||status.type==="device")){
+      if(castSession&&status.type==="stopped"){
+        castSession=false;
+        updateCastUI();
+      }
+    }
+  });
+}
 
 function verifySubscription(){
   var email=document.getElementById("sub-email").value.trim().toLowerCase();
@@ -1902,7 +2096,7 @@ function verifySubscription(){
   }
   if(ADMIN_EMAILS.indexOf(email)!==-1){
     localStorage.setItem("mk_sub_email",email);
-    db.ref("subscriptions/"+currentUid).set({email:email,active:true,activatedAt:firebase.database.ServerValue.TIMESTAMP,planId:"bf79a3ff88fb416d82052b8429521eda"});
+    db.ref("subscriptions/"+deviceId).set({email:email,active:true,activatedAt:firebase.database.ServerValue.TIMESTAMP,planId:"bf79a3ff88fb416d82052b8429521eda"});
     document.getElementById("sub-status").textContent="Acceso admin activado!";
     document.getElementById("sub-status").className="sub-status ok";
     setTimeout(function(){document.getElementById("sub-modal").classList.remove("show");},1000);
@@ -1923,7 +2117,7 @@ function verifySubscription(){
     btn.textContent="VERIFICAR PAGO";
     if(data.active){
       localStorage.setItem("mk_sub_email",email);
-      db.ref("subscriptions/"+currentUid).set({
+      db.ref("subscriptions/"+deviceId).set({
         email:email,
         active:true,
         activatedAt:firebase.database.ServerValue.TIMESTAMP,
@@ -1949,6 +2143,7 @@ document.getElementById("sub-email").onkeydown=function(e){
 };
 
 updateCastUI();
+bindCastSubscription();
 </script>
 </body>
 </html>

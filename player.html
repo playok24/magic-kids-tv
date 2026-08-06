@@ -188,15 +188,19 @@ function iH(){
   }
   if(hls){hls.destroy();hls=null;}
   hls=new Hls({
-    enableWorker:true,liveSyncDuration:15,liveMaxLatencyDuration:45,
-    maxBufferLength:30,maxMaxBufferLength:60,backBufferLength:10,
-    liveDurationInfinity:true,maxBufferHole:3,maxStarvationDelay:6,
-    manifestLoadingTimeOut:15000,manifestLoadingMaxRetry:8,manifestLoadingRetryDelay:800,
-    levelLoadingTimeOut:15000,levelLoadingMaxRetry:8,levelLoadingRetryDelay:800,
-    fragLoadingTimeOut:15000,fragLoadingMaxRetry:15,fragLoadingRetryDelay:800,
+    enableWorker:true,
+    liveSyncDurationCount:2,liveMaxLatencyDurationCount:8,
+    liveSyncOnStallUpdate:true,
+    maxBufferLength:60,maxMaxBufferLength:180,backBufferLength:30,
+    liveDurationInfinity:true,maxBufferHole:5,maxStarvationDelay:10,
+    maxBufferSize:100*1024*1024,
+    manifestLoadingTimeOut:15000,manifestLoadingMaxRetry:10,manifestLoadingRetryDelay:500,
+    levelLoadingTimeOut:15000,levelLoadingMaxRetry:10,levelLoadingRetryDelay:500,
+    fragLoadingTimeOut:15000,fragLoadingMaxRetry:25,fragLoadingRetryDelay:500,
     startFragPrefetch:true,stretchShortVideoSegment:true,lowLatencyMode:false,
-    nudgeOffset:0.5,nudgeMaxRetry:6,enableSoftwareAES:true,appendErrorMaxRetry:5,
-    abrEwmaDefaultEstimate:3000000,abrEwmaFastLive:6,abrEwmaSlowLive:15
+    nudgeOffset:0.5,nudgeMaxRetry:10,nudgeOnVideoStall:true,
+    enableSoftwareAES:true,appendErrorMaxRetry:6,
+    abrEwmaDefaultEstimate:3000000,abrEwmaFastLive:3,abrEwmaSlowLive:9
   });
   hls.loadSource(STREAM);
   hls.attachMedia(video);
@@ -233,9 +237,9 @@ function sW(){if(wd)clearInterval(wd);lt=video.currentTime||0;frz=0;stalls=0;wd=
   if(video.paused||video.ended||ld.style.display!="none"){frz=0;return;}var ct=video.currentTime||0;
   if(Math.abs(ct-lt)<0.3){
     frz++;
-    if(frz===6){try{if(hls)hls.nudgeMedia();}catch(e){}}
-    else if(frz===10){try{if(hls)hls.startLoad();}catch(e){}}
-    else if(frz===14){
+    if(frz===2){try{if(hls)hls.nudgeMedia();}catch(e){}}
+    else if(frz>=3&&frz<7){try{if(hls)hls.startLoad();}catch(e){}}
+    else if(frz>=7){
       stalls++;
       if(stalls<3){frz=0;re=0;iH();}
       else{sE("Sin señal.<br>Haz clic para reintentar.");ld.onclick=function(){ld.onclick=null;re=0;stalls=0;frz=0;iH();};}
