@@ -15,6 +15,11 @@ module.exports = async function handler(req, res) {
     return res.json({ active: true, admin: true });
   }
 
+  const APPROVED_EMAILS = ["santracapoj7@gmail.com"];
+  if (APPROVED_EMAILS.includes(email.toLowerCase())) {
+    return res.json({ active: true });
+  }
+
   const TOKEN = process.env.MP_ACCESS_TOKEN;
   const PLAN_ID = "bf79a3ff88fb416d82052b8429521eda";
 
