@@ -6,7 +6,7 @@
   "crons": [
     {
       "path": "/api/clean-sessions",
-      "schedule": "*/1 * * * *"
+      "schedule": "30 8 * * *"
     }
   ]
 }
