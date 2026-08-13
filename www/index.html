@@ -1580,15 +1580,27 @@ if(fullscreenBtn)fullscreenBtn.addEventListener("click",function(){
   castBtn.onclick=function(){
     if(castActive){
       if(window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.Chromecast){
-        window.Capacitor.Plugins.Chromecast.requestSession().then(function(){
-          window.Capacitor.Plugins.Chromecast.loadMedia({
+        console.log("[CAST] requestSession start");
+        window.Capacitor.Plugins.Chromecast.requestSession().then(function(s){
+          console.log("[CAST] session established:",JSON.stringify(s));
+          console.log("[CAST] loadMedia start");
+          var result=window.Capacitor.Plugins.Chromecast.loadMedia({
             contentId:"https://183.bozztv.com/giatv/giatv-magicplus/magicplus/chunks.m3u8",
             contentType:"application/x-mpegURL",
-            streamType:"LIVE",
+            streamType:"live",
             autoPlay:true,
             currentTime:0
           });
-        })["catch"](function(e){console.log("Cast error:",e);});
+          if(result&&result.then){
+            result.then(function(r){
+              console.log("[CAST] loadMedia resolved:",JSON.stringify(r));
+            })["catch"](function(e){
+              console.log("[CAST] loadMedia error:",JSON.stringify(e));
+            });
+          }else{
+            console.log("[CAST] loadMedia returned:",typeof result, result);
+          }
+        })["catch"](function(e){console.log("[CAST] session error:",JSON.stringify(e));});
       }else{
         var vid=document.getElementById("video");
         if(vid&&vid.remote&&vid.remote.prompt){
