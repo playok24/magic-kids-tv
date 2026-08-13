@@ -29,6 +29,8 @@ body{font-family:Arial,sans-serif;background:#0b0b14;color:#eee;min-height:100vh
 #tab-bar{display:flex;gap:8px;margin-bottom:20px}
 .tab-btn{padding:10px 18px;border:none;border-radius:8px;background:#13131f;border:1px solid #333;color:#888;font-size:13px;font-weight:700;cursor:pointer}
 .tab-btn.active{background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;border-color:#7c3aed}
+.tab-count{display:inline-block;min-width:20px;padding:1px 6px;border-radius:10px;background:rgba(255,255,255,0.15);font-size:11px;text-align:center;margin-left:4px}
+.tab-btn.active .tab-count{background:rgba(255,255,255,0.25)}
 #admin-email{font-size:12px;color:#888}
 #user-list{display:flex;flex-direction:column;gap:10px}
 .user-card{background:#13131f;border:1px solid #333;border-radius:12px;padding:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
@@ -119,7 +121,7 @@ body{font-family:Arial,sans-serif;background:#0b0b14;color:#eee;min-height:100vh
     </div>
   </div>
   <div id="tab-bar">
-    <button class="tab-btn active" id="tab-btn-users">USUARIOS</button>
+    <button class="tab-btn active" id="tab-btn-users">USUARIOS <span id="user-count" class="tab-count"></span></button>
     <button class="tab-btn" id="tab-btn-cast">CAST</button>
   </div>
   <div id="tab-users">
@@ -244,6 +246,8 @@ function loadUsers(){
       });
     });
     renderUserList();
+    var cntEl=document.getElementById("user-count");
+    if(cntEl)cntEl.textContent=cachedUsers.length;
   });
 }
 function renderUserList(){
