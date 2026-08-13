@@ -1581,7 +1581,13 @@ if(fullscreenBtn)fullscreenBtn.addEventListener("click",function(){
     if(castActive){
       if(window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.Chromecast){
         window.Capacitor.Plugins.Chromecast.requestSession().then(function(){
-          window.Capacitor.Plugins.Chromecast.launchMedia("https://183.bozztv.com/giatv/giatv-magicplus/magicplus/chunks.m3u8");
+          window.Capacitor.Plugins.Chromecast.loadMedia({
+            contentId:"https://183.bozztv.com/giatv/giatv-magicplus/magicplus/chunks.m3u8",
+            contentType:"application/x-mpegURL",
+            streamType:"LIVE",
+            autoPlay:true,
+            currentTime:0
+          });
         })["catch"](function(e){console.log("Cast error:",e);});
       }else{
         var vid=document.getElementById("video");
