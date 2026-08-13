@@ -2122,16 +2122,31 @@ function verifySubscription(){
     btn.disabled=false;
     btn.textContent="VERIFICAR PAGO";
     if(data.active){
-      localStorage.setItem("mk_sub_email",email);
-      db.ref("subscriptions/"+deviceId).set({
-        email:email,
-        active:true,
-        activatedAt:firebase.database.ServerValue.TIMESTAMP,
-        planId:"bf79a3ff88fb416d82052b8429521eda"
-      });
-      document.getElementById("sub-status").textContent="Suscripcion verificada! Cast activado.";
-      document.getElementById("sub-status").className="sub-status ok";
-      setTimeout(function(){document.getElementById("sub-modal").classList.remove("show");},1500);
+      function writeSubscription(){
+        localStorage.setItem("mk_sub_email",email);
+        db.ref("subscriptions/"+deviceId).set({
+          email:email,
+          active:true,
+          activatedAt:firebase.database.ServerValue.TIMESTAMP,
+          planId:"bf79a3ff88fb416d82052b8429521eda"
+        });
+        document.getElementById("sub-status").textContent="Suscripcion verificada! Cast activado.";
+        document.getElementById("sub-status").className="sub-status ok";
+        setTimeout(function(){document.getElementById("sub-modal").classList.remove("show");},1500);
+      }
+      db.ref("subscriptions").once("value").then(function(snap){
+        var otherDevice=false;
+        snap.forEach(function(child){
+          var v=child.val();
+          if(v&&v.email===email&&v.active===true&&child.key!==deviceId){otherDevice=true;}
+        });
+        if(otherDevice){
+          document.getElementById("sub-status").textContent="Suscripcion ya activa en otro dispositivo. Usa el dispositivo donde la activaste.";
+          document.getElementById("sub-status").className="sub-status err";
+          return;
+        }
+        writeSubscription();
+      })["catch"](function(){writeSubscription();});
     }else{
       document.getElementById("sub-status").textContent="No se encontro una suscripcion activa. Verifica que pagaste con el mismo email.";
       document.getElementById("sub-status").className="sub-status err";
