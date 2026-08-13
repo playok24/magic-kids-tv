@@ -735,6 +735,8 @@ function activateDevice(){
       return {
         createdAt:base.createdAt||0,
         createdBy:base.createdBy||"",
+        createdFor:base.createdFor||"",
+        forEmail:base.forEmail||"",
         used:true,
         usedBy:deviceId,
         usedAt:firebase.database.ServerValue.TIMESTAMP,
