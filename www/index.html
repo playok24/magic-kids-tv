@@ -1558,11 +1558,21 @@ if(fullscreenBtn)fullscreenBtn.addEventListener("click",function(){
   }
 
   var db=firebase.database();
+  var castBlockRef=null;
 
   db.ref("subscriptions/"+deviceId).on("value",function(snap){
     var val=snap.val();
     castActive=!!(val&&val.active);
-    updateCastUI();
+    if(castBlockRef){castBlockRef.off();castBlockRef=null;}
+    if(val&&val.email){
+      castBlockRef=db.ref("blocked-cast/"+val.email);
+      castBlockRef.on("value",function(bsnap){
+        castActive=!!(val&&val.active)&&!bsnap.exists();
+        updateCastUI();
+      });
+    }else{
+      updateCastUI();
+    }
   });
 
   castBtn.onclick=function(){
@@ -1631,19 +1641,40 @@ if(fullscreenBtn)fullscreenBtn.addEventListener("click",function(){
           document.getElementById("sub-status").className="sub-status ok";
           setTimeout(function(){document.getElementById("sub-modal").classList.remove("show");},1500);
         }
-        db.ref("subscriptions").once("value").then(function(snap){
-          var otherDevice=false;
-          snap.forEach(function(child){
-            var v=child.val();
-            if(v&&v.email===email&&v.active===true&&child.key!==deviceId){otherDevice=true;}
-          });
-          if(otherDevice){
-            document.getElementById("sub-status").textContent="Suscripcion ya activa en otro dispositivo. Usa el dispositivo donde la activaste.";
+        db.ref("blocked-cast/"+email).once("value").then(function(bsnap){
+          if(bsnap.exists()){
+            document.getElementById("sub-status").textContent="El Cast esta bloqueado para este email.";
             document.getElementById("sub-status").className="sub-status err";
             return;
           }
-          writeSubscription();
-        })["catch"](function(){writeSubscription();});
+          db.ref("subscriptions").once("value").then(function(snap){
+            var otherDevice=false;
+            snap.forEach(function(child){
+              var v=child.val();
+              if(v&&v.email===email&&v.active===true&&child.key!==deviceId){otherDevice=true;}
+            });
+            if(otherDevice){
+              document.getElementById("sub-status").textContent="Suscripcion ya activa en otro dispositivo. Usa el dispositivo donde la activaste.";
+              document.getElementById("sub-status").className="sub-status err";
+              return;
+            }
+            writeSubscription();
+          })["catch"](function(){writeSubscription();});
+        })["catch"](function(){
+          db.ref("subscriptions").once("value").then(function(snap){
+            var otherDevice=false;
+            snap.forEach(function(child){
+              var v=child.val();
+              if(v&&v.email===email&&v.active===true&&child.key!==deviceId){otherDevice=true;}
+            });
+            if(otherDevice){
+              document.getElementById("sub-status").textContent="Suscripcion ya activa en otro dispositivo. Usa el dispositivo donde la activaste.";
+              document.getElementById("sub-status").className="sub-status err";
+              return;
+            }
+            writeSubscription();
+          })["catch"](function(){writeSubscription();});
+        });
       }else{
         document.getElementById("sub-status").textContent="No se encontro una suscripcion activa. Verifica que pagaste con el mismo email.";
         document.getElementById("sub-status").className="sub-status err";

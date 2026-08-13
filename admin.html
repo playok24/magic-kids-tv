@@ -46,6 +46,13 @@ body{font-family:Arial,sans-serif;background:#0b0b14;color:#eee;min-height:100vh
 .btn-admin-on{background:rgba(255,204,0,0.3);color:#ffcc00}
 .btn-code{background:rgba(0,204,255,0.15);color:#00ccff}
 .btn-del{background:rgba(255,68,68,0.3);color:#ff6b6b}
+.btn-cast-block{background:rgba(255,68,68,0.2);color:#ff6b6b}
+.btn-cast-unblock{background:rgba(0,255,102,0.15);color:#00ff66}
+.cast-card{background:#0f0f1a;border:1px solid #333;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.cast-card .cast-email{font-weight:700;font-size:14px;flex:1;min-width:160px;word-break:break-all}
+.cast-card .cast-meta{font-size:11px;color:#666;flex:1;min-width:140px}
+.cast-card button{padding:6px 10px;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer}
+#cast-list .empty{color:#666;font-size:12px}
 #codes-section{background:#13131f;border:1px solid #333;border-radius:12px;padding:16px;margin-bottom:20px}
 #codes-header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap}
 #codes-header h2{font-size:15px;color:#c4a0ff}
@@ -133,6 +140,17 @@ body{font-family:Arial,sans-serif;background:#0b0b14;color:#eee;min-height:100vh
     <div id="new-code-info"></div>
     <div id="codes-list"></div>
   </div>
+  <div id="cast-section" style="background:#13131f;border:1px solid #333;border-radius:12px;padding:16px;margin-bottom:20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <h2 style="font-size:15px;color:#c4a0ff">Cast - Suscripciones por email</h2>
+      <button id="cast-block-btn" style="padding:8px 14px;border:none;border-radius:8px;background:rgba(255,68,68,0.2);color:#ff6b6b;font-size:12px;font-weight:700;cursor:pointer">BLOQUEAR POR EMAIL</button>
+    </div>
+    <div id="cast-block-box" style="background:#1a1a2e;border:1px solid #333;border-radius:8px;padding:12px;display:none;align-items:center;gap:10px;margin-bottom:12px">
+      <input id="cast-block-email" type="email" placeholder="email@ejemplo.com" style="flex:1;padding:10px 12px;border-radius:8px;border:1px solid #444;background:#13131f;color:#fff;font-size:13px;outline:none">
+      <button id="cast-block-confirm" style="padding:8px 14px;border:none;border-radius:8px;background:rgba(255,68,68,0.2);color:#ff6b6b;font-size:12px;font-weight:700;cursor:pointer">BLOQUEAR</button>
+    </div>
+    <div id="cast-list"></div>
+  </div>
   <div id="action-status"></div>
   <div id="user-list"></div>
   <div id="empty">No hay usuarios registrados todavia.</div>
@@ -147,6 +165,8 @@ var firebaseConfig={apiKey:"AIzaSyDM7YiLoP5Q-jTB1BBbMluvWL1LIPqCtxI",authDomain:
 firebase.initializeApp(firebaseConfig);
 var db=firebase.database();
 var usersListening=false;
+var castSubs=[];
+var castSubsListening=false;
 
 var loginView=document.getElementById("login-view");
 var panelView=document.getElementById("panel-view");
@@ -227,6 +247,102 @@ function renderUserList(){
     cachedUsers.forEach(function(u){listEl.appendChild(userCard(u));});
   }
 }
+
+function loadCastSubs(){
+  castSubsListening=true;
+  db.ref("subscriptions").on("value",function(snap){
+    castSubs=[];
+    snap.forEach(function(child){
+      var v=child.val()||{};
+      if(v.email){
+        castSubs.push({
+          email:(v.email||"").toLowerCase(),
+          deviceId:child.key,
+          active:v.active===true,
+          activatedAt:v.activatedAt||0,
+          planId:v.planId||""
+        });
+      }
+    });
+    db.ref("blocked-cast").once("value",function(bsnap){
+      var blocked={};
+      bsnap.forEach(function(bc){blocked[bc.key]=true;});
+      castSubs.forEach(function(s){s.blocked=!!blocked[s.email];});
+      renderCastList();
+    });
+  });
+}
+function renderCastList(){
+  var listEl=document.getElementById("cast-list");
+  listEl.innerHTML="";
+  if(castSubs.length===0){
+    listEl.innerHTML='<div class="empty">No hay suscripciones de cast registradas.</div>';
+    return;
+  }
+  castSubs.forEach(function(s){listEl.appendChild(castCard(s));});
+}
+function castCard(s){
+  var card=document.createElement("div");
+  card.className="cast-card";
+  var badge=s.active?'<span class="badge active">ACTIVA</span>':'<span class="badge blocked">INACTIVA</span>';
+  var blockBadge=s.blocked?'<span class="badge blocked">CAST BLOQUEADO</span>':'';
+  var date=s.activatedAt?new Date(s.activatedAt).toLocaleString():"-";
+  var info=document.createElement("div");
+  info.className="cast-email";
+  info.innerHTML=s.email+badge+blockBadge;
+  var meta=document.createElement("div");
+  meta.className="cast-meta";
+  meta.textContent="Dispositivo: "+(s.deviceId||"-")+" | Activada: "+date;
+  card.appendChild(info);
+  card.appendChild(meta);
+  var actions=document.createElement("div");
+  actions.className="user-actions";
+  var btn=document.createElement("button");
+  btn.className=s.blocked?"btn-cast-unblock":"btn-cast-block";
+  btn.textContent=s.blocked?"HABILITAR CAST":"BLOQUEAR CAST";
+  btn.onclick=function(){
+    if(s.blocked){
+      db.ref("blocked-cast/"+s.email).remove().then(function(){
+        setSendStatus("Cast habilitado para "+s.email);
+      })["catch"](function(e){
+        setSendStatus("Error: "+((e&&e.message)||"no se pudo habilitar"),false);
+      });
+    }else{
+      if(!confirm("¿Bloquear el boton Cast para "+s.email+"? El cast se apagara en su dispositivo."))return;
+      db.ref("blocked-cast/"+s.email).set({
+        blockedAt:firebase.database.ServerValue.TIMESTAMP,
+        blockedBy:firebase.auth().currentUser.uid
+      }).then(function(){
+        setSendStatus("Cast bloqueado para "+s.email);
+      })["catch"](function(e){
+        setSendStatus("Error: "+((e&&e.message)||"no se pudo bloquear"),false);
+      });
+    }
+  };
+  actions.appendChild(btn);
+  card.appendChild(actions);
+  return card;
+}
+
+document.getElementById("cast-block-btn").onclick=function(){
+  var box=document.getElementById("cast-block-box");
+  box.style.display=box.style.display==="flex"?"none":"flex";
+};
+document.getElementById("cast-block-confirm").onclick=function(){
+  var email=document.getElementById("cast-block-email").value.trim().toLowerCase();
+  if(!email||email.indexOf("@")===-1){setSendStatus("Ingresa un email valido",false);return;}
+  if(!confirm("¿Bloquear el boton Cast para "+email+"?"))return;
+  db.ref("blocked-cast/"+email).set({
+    blockedAt:firebase.database.ServerValue.TIMESTAMP,
+    blockedBy:firebase.auth().currentUser.uid
+  }).then(function(){
+    document.getElementById("cast-block-email").value="";
+    document.getElementById("cast-block-box").style.display="none";
+    setSendStatus("Cast bloqueado para "+email);
+  })["catch"](function(e){
+    setSendStatus("Error: "+((e&&e.message)||"no se pudo bloquear"),false);
+  });
+};
 
 function userCard(u){
   var card=document.createElement("div");
@@ -547,10 +663,12 @@ firebase.auth().onAuthStateChanged(function(user){
   if(!user){
     usersListening=false;
     codesListening=false;
+    castSubsListening=false;
     showView("login");
     document.getElementById("admin-email").textContent="";
     document.getElementById("user-list").innerHTML="";
     document.getElementById("codes-list").innerHTML="";
+    document.getElementById("cast-list").innerHTML="";
     document.getElementById("new-code-box").style.display="none";
     document.getElementById("empty").style.display="none";
     setSendStatus("");
@@ -564,6 +682,7 @@ firebase.auth().onAuthStateChanged(function(user){
       showView("panel");
       loadUsers();
       loadCodes();
+      loadCastSubs();
       return;
     }
     var email=user.email||"";
@@ -580,6 +699,7 @@ firebase.auth().onAuthStateChanged(function(user){
         showView("panel");
         loadUsers();
         loadCodes();
+        loadCastSubs();
       }).catch(function(){
         showView("denied");
       });

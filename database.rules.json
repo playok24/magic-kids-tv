@@ -64,6 +64,12 @@
         ".validate": "newData.hasChildren(['email','active','activatedAt']) && newData.child('email').isString() && newData.child('active').isBoolean() && newData.child('activatedAt').isNumber()"
       }
     },
+    "blocked-cast": {
+      ".read": "auth != null",
+      "$email": {
+        ".write": "auth != null && root.child('users/'+auth.uid+'/isAdmin').val() === true"
+      }
+    },
     "activations": {
       "$deviceId": {
         ".read": true,
