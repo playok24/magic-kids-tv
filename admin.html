@@ -26,6 +26,9 @@ body{font-family:Arial,sans-serif;background:#0b0b14;color:#eee;min-height:100vh
 #topbar .actions{display:flex;gap:8px}
 #topbar button{padding:8px 14px;border:none;border-radius:8px;background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;font-size:12px;font-weight:700;cursor:pointer}
 #topbar button.logout{background:rgba(255,68,68,0.2);color:#ff6b6b}
+#tab-bar{display:flex;gap:8px;margin-bottom:20px}
+.tab-btn{padding:10px 18px;border:none;border-radius:8px;background:#13131f;border:1px solid #333;color:#888;font-size:13px;font-weight:700;cursor:pointer}
+.tab-btn.active{background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;border-color:#7c3aed}
 #admin-email{font-size:12px;color:#888}
 #user-list{display:flex;flex-direction:column;gap:10px}
 .user-card{background:#13131f;border:1px solid #333;border-radius:12px;padding:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
@@ -49,24 +52,11 @@ body{font-family:Arial,sans-serif;background:#0b0b14;color:#eee;min-height:100vh
 .btn-cast-block{background:rgba(255,68,68,0.2);color:#ff6b6b}
 .btn-cast-unblock{background:rgba(0,255,102,0.15);color:#00ff66}
 .cast-card{background:#0f0f1a;border:1px solid #333;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+#cast-section{background:#13131f;border:1px solid #333;border-radius:12px;padding:16px;margin-bottom:20px}
 .cast-card .cast-email{font-weight:700;font-size:14px;flex:1;min-width:160px;word-break:break-all}
 .cast-card .cast-meta{font-size:11px;color:#666;flex:1;min-width:140px}
 .cast-card button{padding:6px 10px;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer}
 #cast-list .empty{color:#666;font-size:12px}
-#codes-section{background:#13131f;border:1px solid #333;border-radius:12px;padding:16px;margin-bottom:20px}
-#codes-header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap}
-#codes-header h2{font-size:15px;color:#c4a0ff}
-#codes-header button{padding:8px 14px;border:none;border-radius:8px;background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;font-size:12px;font-weight:700;cursor:pointer}
-#new-code-box{background:#1a1a2e;border:1px solid #333;border-radius:8px;padding:12px;display:none;align-items:center;gap:10px;margin-bottom:12px}
-#new-code-info{font-size:12px;color:#00ccff;margin-bottom:12px;display:none}
-#new-code-value{flex:1;font-size:20px;font-weight:700;color:#00ff66;letter-spacing:3px;font-family:monospace;word-break:break-all}
-#copy-code-btn{padding:8px 12px;border:none;border-radius:8px;background:rgba(0,255,102,0.15);color:#00ff66;font-size:12px;font-weight:700;cursor:pointer}
-#codes-list{display:flex;flex-direction:column;gap:8px}
-.code-card{background:#0f0f1a;border:1px solid #333;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.code-card .code{font-family:monospace;font-weight:700;font-size:16px;letter-spacing:2px;flex:1;min-width:120px}
-.code-card .meta{font-size:11px;color:#666;flex:1;min-width:140px}
-.code-card button{padding:6px 10px;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer}
-.code-revoke{background:rgba(255,204,0,0.15);color:#ffcc00}
 .code-del{background:rgba(255,68,68,0.2);color:#ff6b6b}
 .user-code-box{flex-basis:100%;display:flex;flex-direction:column;gap:6px;margin-top:8px;padding-top:10px;border-top:1px solid #222}
 .user-code-empty{font-size:11px;color:#666}
@@ -128,35 +118,31 @@ body{font-family:Arial,sans-serif;background:#0b0b14;color:#eee;min-height:100vh
       <button class="logout" id="panel-logout-btn">SALIR</button>
     </div>
   </div>
-  <div id="codes-section">
-    <div id="codes-header">
-      <h2>Códigos de activación</h2>
-      <button id="gen-code-btn">GENERAR CÓDIGO</button>
-    </div>
-    <div id="new-code-box">
-      <span id="new-code-value"></span>
-      <button id="copy-code-btn">COPIAR</button>
-    </div>
-    <div id="new-code-info"></div>
-    <div id="codes-list"></div>
+  <div id="tab-bar">
+    <button class="tab-btn active" id="tab-btn-users">USUARIOS</button>
+    <button class="tab-btn" id="tab-btn-cast">CAST</button>
   </div>
-  <div id="cast-section" style="background:#13131f;border:1px solid #333;border-radius:12px;padding:16px;margin-bottom:20px">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap">
-      <h2 style="font-size:15px;color:#c4a0ff">Cast - Suscripciones por email</h2>
-      <button id="cast-block-btn" style="padding:8px 14px;border:none;border-radius:8px;background:rgba(255,68,68,0.2);color:#ff6b6b;font-size:12px;font-weight:700;cursor:pointer">BLOQUEAR POR EMAIL</button>
+  <div id="tab-users">
+    <div id="user-search-wrap" style="margin-bottom:14px">
+      <input id="user-search-input" type="text" placeholder="Buscar por nombre o email..." style="width:100%;padding:12px 14px;border-radius:10px;border:1px solid #444;background:#1a1a2e;color:#fff;font-size:14px;outline:none">
     </div>
-    <div id="cast-block-box" style="background:#1a1a2e;border:1px solid #333;border-radius:8px;padding:12px;display:none;align-items:center;gap:10px;margin-bottom:12px">
-      <input id="cast-block-email" type="email" placeholder="email@ejemplo.com" style="flex:1;padding:10px 12px;border-radius:8px;border:1px solid #444;background:#13131f;color:#fff;font-size:13px;outline:none">
-      <button id="cast-block-confirm" style="padding:8px 14px;border:none;border-radius:8px;background:rgba(255,68,68,0.2);color:#ff6b6b;font-size:12px;font-weight:700;cursor:pointer">BLOQUEAR</button>
+    <div id="user-list"></div>
+    <div id="empty">No hay usuarios registrados todavia.</div>
+  </div>
+  <div id="tab-cast" style="display:none">
+    <div id="cast-section">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+        <h2 style="font-size:15px;color:#c4a0ff">Cast - Suscripciones por email</h2>
+        <button id="cast-block-btn" style="padding:8px 14px;border:none;border-radius:8px;background:rgba(255,68,68,0.2);color:#ff6b6b;font-size:12px;font-weight:700;cursor:pointer">BLOQUEAR POR EMAIL</button>
+      </div>
+      <div id="cast-block-box" style="background:#1a1a2e;border:1px solid #333;border-radius:8px;padding:12px;display:none;align-items:center;gap:10px;margin-bottom:12px">
+        <input id="cast-block-email" type="email" placeholder="email@ejemplo.com" style="flex:1;padding:10px 12px;border-radius:8px;border:1px solid #444;background:#13131f;color:#fff;font-size:13px;outline:none">
+        <button id="cast-block-confirm" style="padding:8px 14px;border:none;border-radius:8px;background:rgba(255,68,68,0.2);color:#ff6b6b;font-size:12px;font-weight:700;cursor:pointer">BLOQUEAR</button>
+      </div>
+      <div id="cast-list"></div>
     </div>
-    <div id="cast-list"></div>
   </div>
   <div id="action-status"></div>
-  <div id="user-search-wrap" style="margin-bottom:14px">
-    <input id="user-search-input" type="text" placeholder="Buscar por nombre o email..." style="width:100%;padding:12px 14px;border-radius:10px;border:1px solid #444;background:#1a1a2e;color:#fff;font-size:14px;outline:none">
-  </div>
-  <div id="user-list"></div>
-  <div id="empty">No hay usuarios registrados todavia.</div>
 </div>
 
 <script>
@@ -207,6 +193,14 @@ document.getElementById("panel-logout-btn").onclick=logout;
 document.getElementById("refresh-btn").onclick=function(){
   if(!usersListening)loadUsers();
 };
+function switchTab(tab){
+  document.getElementById("tab-users").style.display=tab==="users"?"block":"none";
+  document.getElementById("tab-cast").style.display=tab==="cast"?"block":"none";
+  document.getElementById("tab-btn-users").classList.toggle("active",tab==="users");
+  document.getElementById("tab-btn-cast").classList.toggle("active",tab==="cast");
+}
+document.getElementById("tab-btn-users").onclick=function(){switchTab("users");};
+document.getElementById("tab-btn-cast").onclick=function(){switchTab("cast");};
 document.getElementById("user-search-input").oninput=function(){
   userSearchQuery=this.value;
   renderUserList();
@@ -595,35 +589,6 @@ function deleteUserCode(c,u){
     alert("Error: "+((e&&e.message)||"no se pudo eliminar"));
   });
 }
-function codeCard(c){
-  var card=document.createElement("div");
-  card.className="code-card";
-  var status=c.revoked?'<span class="badge blocked">REVOCADO</span>':(c.used?'<span class="badge blocked">USADO</span>':'<span class="badge active">SIN USAR</span>');
-  var meta=(c.forEmail?"Para: "+c.forEmail+" | ":"")+(c.used?("Dispositivo: "+(c.usedBy||"-")+" | Usado: "+fmtDate(c.usedAt)):"Creado: "+fmtDate(c.createdAt));
-  card.innerHTML='<span class="code">'+c.code+'</span>'
-    +status
-    +'<span class="meta">'+meta+'</span>';
-  var actions=document.createElement("div");
-  actions.className="user-actions";
-  if(!c.revoked){
-    var rev=document.createElement("button");
-    rev.className="code-revoke";
-    rev.textContent=c.used?"REVOCAR USO":"REVOCAR";
-    rev.onclick=function(){
-      db.ref("codes/"+c.code).update({revoked:true});
-    };
-    actions.appendChild(rev);
-  }
-  var del=document.createElement("button");
-  del.className="code-del";
-  del.textContent="BORRAR";
-  del.onclick=function(){
-    if(confirm("¿Borrar el codigo "+c.code+"?"))db.ref("codes/"+c.code).remove();
-  };
-  actions.appendChild(del);
-  card.appendChild(actions);
-  return card;
-}
 var allCodes=[];
 function loadCodes(){
   codesListening=true;
@@ -634,48 +599,9 @@ function loadCodes(){
       allCodes.push({code:child.key,createdAt:v.createdAt||0,createdBy:v.createdBy||"",createdFor:v.createdFor||"",forEmail:v.forEmail||"",used:v.used===true,usedBy:v.usedBy||"",usedAt:v.usedAt||0,revoked:v.revoked===true});
     });
     allCodes.sort(function(a,b){return (b.createdAt||0)-(a.createdAt||0);});
-    renderGlobalCodes();
     renderUserList();
   });
 }
-function renderGlobalCodes(){
-  var listEl=document.getElementById("codes-list");
-  listEl.innerHTML="";
-  var general=allCodes.filter(function(c){return !c.createdFor;});
-  if(general.length===0){
-    listEl.innerHTML='<div style="color:#666;font-size:12px">No hay codigos generales. Las claves por usuario se administran en cada tarjeta.</div>';
-  }
-  general.forEach(function(c){listEl.appendChild(codeCard(c));});
-}
-
-document.getElementById("gen-code-btn").onclick=function(){
-  var code=genCode();
-  var box=document.getElementById("new-code-box");
-  document.getElementById("new-code-value").textContent=code;
-  box.style.display="flex";
-  var infoEl=document.getElementById("new-code-info");
-  if(infoEl){
-    infoEl.style.display="block";
-    infoEl.textContent="Codigo general (sin usuario asignado)";
-  }
-  db.ref("codes/"+code).set({
-    createdAt:firebase.database.ServerValue.TIMESTAMP,
-    createdBy:firebase.auth().currentUser.uid,
-    used:false,
-    revoked:false
-  }).catch(function(e){
-    document.getElementById("new-code-value").textContent="Error: "+((e&&e.message)||"no se pudo crear");
-  });
-};
-document.getElementById("copy-code-btn").onclick=function(){
-  var v=document.getElementById("new-code-value").textContent;
-  if(navigator.clipboard&&v){
-    navigator.clipboard.writeText(v).then(function(){
-      document.getElementById("copy-code-btn").textContent="COPIADO!";
-      setTimeout(function(){document.getElementById("copy-code-btn").textContent="COPIAR";},1500);
-    });
-  }
-};
 
 firebase.auth().onAuthStateChanged(function(user){
   if(!user){
@@ -685,9 +611,7 @@ firebase.auth().onAuthStateChanged(function(user){
     showView("login");
     document.getElementById("admin-email").textContent="";
     document.getElementById("user-list").innerHTML="";
-    document.getElementById("codes-list").innerHTML="";
     document.getElementById("cast-list").innerHTML="";
-    document.getElementById("new-code-box").style.display="none";
     document.getElementById("empty").style.display="none";
     setSendStatus("");
     return;
