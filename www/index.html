@@ -1594,13 +1594,19 @@ if(fullscreenBtn)fullscreenBtn.addEventListener("click",function(){
           if(result&&result.then){
             result.then(function(r){
               console.log("[CAST] loadMedia resolved:",JSON.stringify(r));
+              alert("Cast OK: "+JSON.stringify(r));
             })["catch"](function(e){
               console.log("[CAST] loadMedia error:",JSON.stringify(e));
+              alert("Cast error loadMedia: "+JSON.stringify(e));
             });
           }else{
             console.log("[CAST] loadMedia returned:",typeof result, result);
+            alert("Cast loadMedia returned: "+typeof result+" "+JSON.stringify(result));
           }
-        })["catch"](function(e){console.log("[CAST] session error:",JSON.stringify(e));});
+        })["catch"](function(e){
+          console.log("[CAST] session error:",JSON.stringify(e));
+          alert("Cast session error: "+JSON.stringify(e));
+        });
       }else{
         var vid=document.getElementById("video");
         if(vid&&vid.remote&&vid.remote.prompt){
