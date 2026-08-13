@@ -152,6 +152,9 @@ body{font-family:Arial,sans-serif;background:#0b0b14;color:#eee;min-height:100vh
     <div id="cast-list"></div>
   </div>
   <div id="action-status"></div>
+  <div id="user-search-wrap" style="margin-bottom:14px">
+    <input id="user-search-input" type="text" placeholder="Buscar por nombre o email..." style="width:100%;padding:12px 14px;border-radius:10px;border:1px solid #444;background:#1a1a2e;color:#fff;font-size:14px;outline:none">
+  </div>
   <div id="user-list"></div>
   <div id="empty">No hay usuarios registrados todavia.</div>
 </div>
@@ -204,6 +207,10 @@ document.getElementById("panel-logout-btn").onclick=logout;
 document.getElementById("refresh-btn").onclick=function(){
   if(!usersListening)loadUsers();
 };
+document.getElementById("user-search-input").oninput=function(){
+  userSearchQuery=this.value;
+  renderUserList();
+};
 
 function authErrorMessage(e){
   var m=e&&e.message?e.message:"";
@@ -215,6 +222,16 @@ function authErrorMessage(e){
 }
 
 var cachedUsers=[];
+var userSearchQuery="";
+function filteredUsers(){
+  var q=userSearchQuery.trim().toLowerCase();
+  if(!q)return cachedUsers;
+  return cachedUsers.filter(function(u){
+    var name=(u.name||"").toLowerCase();
+    var email=(u.email||"").toLowerCase();
+    return name.indexOf(q)!==-1||email.indexOf(q)!==-1;
+  });
+}
 function loadUsers(){
   usersListening=true;
   db.ref("users").on("value",function(snap){
@@ -238,13 +255,14 @@ function loadUsers(){
 function renderUserList(){
   var listEl=document.getElementById("user-list");
   var emptyEl=document.getElementById("empty");
-  cachedUsers.sort(function(a,b){return (b.lastLogin||0)-(a.lastLogin||0);});
+  var users=filteredUsers().sort(function(a,b){return (b.lastLogin||0)-(a.lastLogin||0);});
   listEl.innerHTML="";
-  if(cachedUsers.length===0){
+  if(users.length===0){
+    emptyEl.textContent=(userSearchQuery.trim()&&cachedUsers.length>0)?"No se encontraron usuarios con ese nombre o email.":"No hay usuarios registrados todavia.";
     emptyEl.style.display="block";
   }else{
     emptyEl.style.display="none";
-    cachedUsers.forEach(function(u){listEl.appendChild(userCard(u));});
+    users.forEach(function(u){listEl.appendChild(userCard(u));});
   }
 }
 
