@@ -130,6 +130,10 @@ body{font-family:Arial,sans-serif;background:#0b0b14;color:#eee;min-height:100vh
     </div>
     <div id="user-list"></div>
     <div id="empty">No hay usuarios registrados todavia.</div>
+    <div id="orphan-section" style="background:#13131f;border:1px solid #333;border-radius:12px;padding:16px;margin-top:20px;display:none">
+      <h2 style="font-size:15px;color:#c4a0ff;margin-bottom:12px">Claves sin usuario asignado</h2>
+      <div id="orphan-list"></div>
+    </div>
   </div>
   <div id="tab-cast" style="display:none">
     <div id="cast-section">
@@ -262,6 +266,19 @@ function renderUserList(){
     emptyEl.style.display="none";
     users.forEach(function(u){listEl.appendChild(userCard(u));});
   }
+  renderOrphanCodes();
+}
+function renderOrphanCodes(){
+  var section=document.getElementById("orphan-section");
+  var list=document.getElementById("orphan-list");
+  if(!section||!list)return;
+  var uids={};
+  cachedUsers.forEach(function(u){uids[u.uid]=true;});
+  var orphans=allCodes.filter(function(c){return !c.createdFor||!uids[c.createdFor];});
+  if(orphans.length===0){section.style.display="none";list.innerHTML="";return;}
+  section.style.display="block";
+  list.innerHTML="";
+  orphans.forEach(function(c){list.appendChild(userCodeRow(c,null));});
 }
 
 function loadCastSubs(){
@@ -556,6 +573,7 @@ function userCodeRow(c,u){
   row.className="user-code-line"+(c.code===lastGenCode&&c.createdFor===lastGenUid?" just-generated":"");
   var status=c.revoked?'<span class="badge blocked">REVOCADO</span>':(c.used?'<span class="badge blocked">USADO</span>':'<span class="badge active">SIN USAR</span>');
   var meta=c.used?("Usado: "+fmtDate(c.usedAt)+(c.usedBy?" ("+c.usedBy.substring(0,12)+")":"")):"Creado: "+fmtDate(c.createdAt);
+  if(!u)meta+=(c.forEmail?" | Email: "+c.forEmail:"")+(c.createdFor?" | UID: "+c.createdFor.substring(0,12):"");
   row.innerHTML='<span class="user-code-value">'+c.code+'</span>'+status+'<span class="user-code-meta">'+meta+'</span>';
   var copy=document.createElement("button");
   copy.className="user-code-copy";
@@ -580,15 +598,16 @@ function userCodeRow(c,u){
   return row;
 }
 function deleteUserCode(c,u){
-  if(!confirm("¿Eliminar la clave "+c.code+" de "+(u.name||u.email||u.uid)+"?\nSe quita la activacion del dispositivo y el usuario no podra ingresar de nuevo."))return;
-  var device=u.activeDevice||c.usedBy||"";
+  var who=(u&&(u.name||u.email))||c.forEmail||c.code;
+  if(!confirm("¿Eliminar la clave "+c.code+" de "+who+"?\nSe quita la activacion del dispositivo y el usuario no podra ingresar de nuevo."))return;
+  var device=(u&&u.activeDevice)||c.usedBy||"";
   var ops=[];
   if(device){
     ops.push(db.ref("activations/"+device).remove());
-    ops.push(db.ref("users/"+u.uid+"/activeDevice").set(""));
+    if(u)ops.push(db.ref("users/"+u.uid+"/activeDevice").set(""));
   }
   ops.push(db.ref("codes/"+c.code).remove());
-  ops.push(db.ref("users/"+u.uid+"/blocked").set(true));
+  if(u)ops.push(db.ref("users/"+u.uid+"/blocked").set(true));
   Promise.all(ops).catch(function(e){
     alert("Error: "+((e&&e.message)||"no se pudo eliminar"));
   });
