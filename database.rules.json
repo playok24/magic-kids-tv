@@ -57,6 +57,24 @@
         "votes": {
           "$uid": { ".validate": "newData.isNumber()" }
         }
+      },
+      "uidmap": {
+        "$uid": {
+          ".write": "auth.uid === $uid",
+          ".validate": "newData.hasChildren(['device']) && newData.child('device').isString()"
+        }
+      },
+      "dms": {
+        "$convKey": {
+          ".read": "auth != null && root.child('chat/uidmap/'+auth.uid+'/device').val() != null && $convKey.contains(root.child('chat/uidmap/'+auth.uid+'/device').val())",
+          ".write": "auth != null && root.child('chat/uidmap/'+auth.uid+'/device').val() != null && $convKey.contains(root.child('chat/uidmap/'+auth.uid+'/device').val())"
+        }
+      },
+      "dm-unread": {
+        "$deviceId": {
+          ".read": "auth != null && root.child('chat/uidmap/'+auth.uid+'/device').val() === $deviceId",
+          ".write": "auth != null"
+        }
       }
     },
     "subscriptions": {

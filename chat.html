@@ -351,7 +351,9 @@ document.getElementById("mk-ni").onkeydown=function(e){if(e.key==="Enter")docume
 try {
   var fc={apiKey:"AIzaSyDM7YiLoP5Q-jTB1BBbMluvWL1LIPqCtxI",authDomain:"contadores-magic.firebaseapp.com",databaseURL:"https://contadores-magic-default-rtdb.firebaseio.com",projectId:"contadores-magic",storageBucket:"contadores-magic.firebasestorage.app",messagingSenderId:"58723817117",appId:"1:58723817117:web:f479abaeacf191364ae674"};
   if(!firebase.apps.length)firebase.initializeApp(fc);
-  firebase.auth().signInAnonymously().catch(function(e){console.log("auth err",e);});
+  firebase.auth().signInAnonymously().then(function(cred){
+    try{db.ref("chat/uidmap/"+cred.user.uid).set({device:deviceId,ts:firebase.database.ServerValue.TIMESTAMP});}catch(e){}
+  }).catch(function(e){console.log("auth err",e);});
   var db=firebase.database();
 } catch(e) { console.error("Firebase init failed",e); return; }
 
