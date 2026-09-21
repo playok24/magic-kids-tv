@@ -1038,7 +1038,8 @@ firebase.auth().onAuthStateChanged(function(user){
         showLoginTab();
         return;
       }
-      if(data.activeDevice && data.activeDevice!==deviceId && !data.isAdmin){
+      var isAdminEmail=ADMIN_EMAILS.indexOf((user.email||"").toLowerCase())!==-1;
+      if(!isAdminEmail && !data.isAdmin && data.activeDevice && data.activeDevice!==deviceId){
         firebase.auth().signOut().then(function(){
           setAuthStatus("Esta cuenta ya esta en uso en otro dispositivo");
           showLoginTab();
@@ -1066,7 +1067,10 @@ firebase.auth().onAuthStateChanged(function(user){
         if(!chatStarted)startChat(currentUser);
         startVideoIfAuthed();
       }
-      if(data.isAdmin===true){
+      if(data.isAdmin===true||isAdminEmail){
+        if(isAdminEmail&&!data.isAdmin){
+          db.ref("users/"+uid+"/isAdmin").set(true);
+        }
         try{localStorage.setItem("mk_activated","1");}catch(e){}
         db.ref("activations/"+deviceId).set({code:"ADMIN",activatedAt:firebase.database.ServerValue.TIMESTAMP});
         proceedAuthed();
