@@ -407,7 +407,7 @@ function renderChatMsg(msg){
       +'<div class="mk-row"><span class="mk-mt">'+msg.text+'</span>'
       +'<span class="mk-mti">'+formatChatTime(msg.timestamp)+'</span>'
       +'<button class="mk-heart" data-msg="'+msg.id+'">&#9825;<span class="mk-hc">0</span></button>'
-      +(!isOwn?'<button class="mk-pm" title="Mensaje privado">&#9993;</button>':'')
+      +(!isOwn&&chatAdmin?'<button class="mk-pm" title="Mensaje privado">&#9993;</button>':'')
       +'</div>'
       +'<div class="mk-ma">'
       +'<button class="mk-mb" title="Borrar">&#128465;</button>'
@@ -458,7 +458,7 @@ function applyAvatarToMsg(id,avatar,user){
   if(el)el.innerHTML='<img src="'+avatar+'" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0">'+(user||"");
 }
 
-chatMessagesRef.on("value",function(snap){
+function renderAllMessages(snap){
   ml.innerHTML="";
   var msgs=[];
   snap.forEach(function(c){
@@ -468,7 +468,8 @@ chatMessagesRef.on("value",function(snap){
   });
   msgs.slice(-50).forEach(renderChatMsg);
   scrollChat();
-});
+}
+chatMessagesRef.on("value",renderAllMessages);
 
 db.ref("chat/online").on("value",function(snap){
   ol.textContent=snap.numChildren()+" en linea";
@@ -589,6 +590,7 @@ document.getElementById("mk-aact").onclick=function(){
     document.getElementById("mk-pecbtn").style.display="block";
     document.getElementById("mk-pec").classList.remove("show");
     ap.classList.remove("show");
+    chatMessagesRef.once("value",renderAllMessages);
   }else{
     document.getElementById("mk-apass").style.borderColor="#ff0000";
     document.getElementById("mk-apass").value="";
@@ -602,6 +604,7 @@ document.getElementById("mk-adea").onclick=function(){
   document.getElementById("mk-pecbtn").style.display="none";
   document.getElementById("mk-pec").classList.remove("show");
   ap.classList.remove("show");
+  chatMessagesRef.once("value",renderAllMessages);
 };
 try{if(localStorage.getItem("mk_chat_admin")==="1"){chatAdmin=true;addAdminStyles();document.getElementById("mk-pecbtn").style.display="block";}else{document.getElementById("mk-pecbtn").style.display="none";}}catch(e){}
 
@@ -857,6 +860,10 @@ function renderDmList(){
 
 function openDmThread(oid){
   if(!userName){loginEl.classList.remove("hidden");document.getElementById("mk-ni").focus();return;}
+  if(!chatAdmin){
+    var key=dmConvKey(deviceId,oid);
+    if(!(dmCaches[key]&&dmCaches[key].length))return;
+  }
   dmPanel.classList.remove("show");
   dmActiveOther=oid;
   dmThreadUser.textContent=dmNames[oid]||(dmPartners[oid]&&dmPartners[oid].user)||oid;
@@ -904,6 +911,10 @@ function sendPrivateMessage(){
   var text=dmThreadInput.value.trim();
   if(!text)return;
   var key=dmConvKey(deviceId,dmActiveOther);
+  if(!chatAdmin){
+    var existing=dmCaches[key];
+    if(!(existing&&existing.length))return;
+  }
   db.ref("chat/dms/"+key).push({
     from:deviceId,
     to:dmActiveOther,
