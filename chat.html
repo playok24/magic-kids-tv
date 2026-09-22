@@ -351,8 +351,11 @@ try {
   if(!firebase.apps.length)firebase.initializeApp(fc);
   var db=firebase.database();
   firebase.auth().signInAnonymously().then(function(cred){
-    try{db.ref("chat/uidmap/"+cred.user.uid).set({device:deviceId,ts:firebase.database.ServerValue.TIMESTAMP});}catch(e){}
-    wireAll();
+    db.ref("chat/uidmap/"+cred.user.uid).set({device:deviceId,ts:firebase.database.ServerValue.TIMESTAMP}).then(function(){
+      wireAll();
+    },function(){
+      wireAll();
+    });
   }).catch(function(e){console.log("auth err",e);});
 } catch(e) { console.error("Firebase init failed",e); return; }
 
