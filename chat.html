@@ -837,10 +837,6 @@ function renderDmList(){
 
 function openDmThread(oid){
   if(!userName){loginEl.classList.remove("hidden");document.getElementById("mk-ni").focus();return;}
-  if(!chatAdmin){
-    var key=dmConvKey(deviceId,oid);
-    if(!(dmCaches[key]&&dmCaches[key].length))return;
-  }
   dmPanel.classList.remove("show");
   dmActiveOther=oid;
   dmThreadUser.textContent=dmNames[oid]||(dmPartners[oid]&&dmPartners[oid].user)||oid;
@@ -917,6 +913,7 @@ dmUnreadRef.on("value",function(snap){
     if(!dmPartners[c.key])dmPartners[c.key]={user:c.key,unread:n};
     else dmPartners[c.key].unread=n;
     if(!dmNames[c.key])fetchDmName(c.key);
+    subscribeDm(c.key);
   });
   if(dmBadge){
     dmBadge.textContent=dmTotalUnread>9?"9+":String(dmTotalUnread);
