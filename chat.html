@@ -349,19 +349,29 @@ document.getElementById("mk-ni").onkeydown=function(e){if(e.key==="Enter")docume
 try {
   var fc={apiKey:"AIzaSyDM7YiLoP5Q-jTB1BBbMluvWL1LIPqCtxI",authDomain:"contadores-magic.firebaseapp.com",databaseURL:"https://contadores-magic-default-rtdb.firebaseio.com",projectId:"contadores-magic",storageBucket:"contadores-magic.firebasestorage.app",messagingSenderId:"58723817117",appId:"1:58723817117:web:f479abaeacf191364ae674"};
   if(!firebase.apps.length)firebase.initializeApp(fc);
+  var db=firebase.database();
   firebase.auth().signInAnonymously().then(function(cred){
     try{db.ref("chat/uidmap/"+cred.user.uid).set({device:deviceId,ts:firebase.database.ServerValue.TIMESTAMP});}catch(e){}
+    wireAll();
   }).catch(function(e){console.log("auth err",e);});
-  var db=firebase.database();
 } catch(e) { console.error("Firebase init failed",e); return; }
 
+var deviceId="";
+try{deviceId=localStorage.getItem("mk_device_id")||"";}catch(e){}
+if(!deviceId){deviceId="dev_"+Math.random().toString(36).substr(2,9)+Date.now().toString(36);try{localStorage.setItem("mk_device_id",deviceId);}catch(e){}}
+
+function syncUserProfile(){
+  try{
+    if(!userName||!deviceId)return;
+    db.ref("chat/users/"+deviceId).set({user:userName,avatar:userAvatar||"",updatedAt:firebase.database.ServerValue.TIMESTAMP});
+  }catch(e){}
+}
+
+function wireAll(){
 var chatAdmin=false;
 var chatBannedRef=db.ref("chat/banned");
 var chatMessagesRef=db.ref("chat/messages");
 var chatLikesRef=db.ref("chat/likes");
-var deviceId="";
-try{deviceId=localStorage.getItem("mk_device_id")||"";}catch(e){}
-if(!deviceId){deviceId="dev_"+Math.random().toString(36).substr(2,9)+Date.now().toString(36);try{localStorage.setItem("mk_device_id",deviceId);}catch(e){}}
 
 var avatarMap={};
 var avatarFetched={};
@@ -372,12 +382,6 @@ try{db.ref("chat/users").on("value",function(snap){
   });
 });}catch(e){}
 
-function syncUserProfile(){
-  try{
-    if(!userName||!deviceId)return;
-    db.ref("chat/users/"+deviceId).set({user:userName,avatar:userAvatar||"",updatedAt:firebase.database.ServerValue.TIMESTAMP});
-  }catch(e){}
-}
 if(chatReady&&userName)syncUserProfile();
 
 chatBannedRef.child(deviceId).on("value",function(snap){
@@ -935,6 +939,7 @@ document.addEventListener("click",function(e){
 if(dmThreadSend)dmThreadSend.onclick=sendPrivateMessage;
 if(dmThreadInput)dmThreadInput.onkeydown=function(e){if(e.key==="Enter")sendPrivateMessage();};
 document.getElementById("mk-dtmx").onclick=closeDmThread;
+}
 })();
 </script>
 </body>
