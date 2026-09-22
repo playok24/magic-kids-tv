@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Chat en Vivo - Magic Kids TV</title>
+<title>CHAT - Magic Kids TV</title>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
@@ -14,7 +14,6 @@ body{background:transparent;font-family:'Segoe UI',system-ui,sans-serif}
 .mk-chat{width:100%;max-width:800px;min-height:300px;height:100vh;max-height:800px;display:flex;flex-direction:column;background:rgba(13,13,26,0.98);border:1px solid #333;border-radius:12px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.5);position:relative}
 .mk-chat .mk-ch{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #222}
 .mk-chat .mk-ch h3{color:#00ccff;font-size:14px;font-weight:700;margin:0}
-.mk-chat .mk-ch .mk-ol{color:#888;font-size:11px;margin-left:8px}
 .mk-chat .mk-ch .mk-ub{display:flex;align-items:center;gap:4px}
 .mk-chat .mk-ch .mk-ua{cursor:pointer;line-height:1;padding:0;border-radius:50%;width:32px;height:32px;flex-shrink:0;overflow:hidden;position:relative}
 .mk-chat .mk-ch .mk-ua:hover{opacity:0.8}
@@ -164,7 +163,7 @@ body{background:transparent;font-family:'Segoe UI',system-ui,sans-serif}
 
 <div class="mk-chat" id="mk-chat">
   <div class="mk-login" id="mk-login">
-    <h3>Chat en Vivo</h3>
+<h3>CHAT</h3>
     <div class="mk-lav" id="mk-lav" title="Elegir foto"><span class="mk-ai" style="background:#7c3aed">?</span></div>
     <p>Ingresa tu nombre para chatear</p>
     <input type="text" id="mk-ni" placeholder="Tu nombre" maxlength="20" autocomplete="off">
@@ -172,7 +171,7 @@ body{background:transparent;font-family:'Segoe UI',system-ui,sans-serif}
     <input type="file" id="mk-lf" accept="image/*" hidden>
   </div>
   <div class="mk-ch" style="position:relative">
-    <div><h3>Chat en Vivo</h3><span class="mk-ol" id="mk-ol"></span></div>
+    <div><h3>CHAT</h3></div>
     <div class="mk-ub" id="mk-ub" style="display:none">
       <span class="mk-ua" id="mk-ua" title="Cambiar foto"></span>
       <span class="mk-un" id="mk-un"></span>
@@ -258,7 +257,6 @@ var loginEl=document.getElementById("mk-login");
 var ml=document.getElementById("mk-ml");
 var ci=document.getElementById("mk-ci");
 var cs=document.getElementById("mk-cs");
-var ol=document.getElementById("mk-ol");
 var caBtn=document.getElementById("mk-ca");
 var ap=document.getElementById("mk-ap");
 
@@ -358,7 +356,6 @@ try {
 } catch(e) { console.error("Firebase init failed",e); return; }
 
 var chatAdmin=false;
-var chatSessionId="chat_"+Math.random().toString(36).substr(2,9);
 var chatBannedRef=db.ref("chat/banned");
 var chatMessagesRef=db.ref("chat/messages");
 var chatLikesRef=db.ref("chat/likes");
@@ -472,28 +469,6 @@ function renderAllMessages(snap){
   scrollChat();
 }
 chatMessagesRef.on("value",renderAllMessages);
-
-db.ref("chat/online").on("value",function(snap){
-  ol.textContent=snap.numChildren()+" en linea";
-});
-
-var chatOnlineRef=db.ref("chat/online/"+chatSessionId);
-chatOnlineRef.set(firebase.database.ServerValue.TIMESTAMP);
-chatOnlineRef.onDisconnect().remove();
-setInterval(function(){chatOnlineRef.set(firebase.database.ServerValue.TIMESTAMP);},15000);
-
-function cleanStaleOnline(){
-  var cutoff=Date.now()-30000;
-  db.ref("chat/online").once("value",function(snap){
-    snap.forEach(function(child){
-      var v=child.val();
-      var ts=typeof v==="number"?v:(v&&typeof v.timestamp==="number"?v.timestamp:0);
-      if(ts&&ts<cutoff)child.ref.remove();
-    });
-  });
-}
-cleanStaleOnline();
-setInterval(cleanStaleOnline,20000);
 
 function cleanOldMessages(){
   var cutoff=Date.now()-12*3600*1000;
