@@ -146,6 +146,9 @@ body{background:transparent;font-family:'Segoe UI',system-ui,sans-serif}
 .mk-chat .mk-dmt .mk-dmth h3{color:#00ccff;font-size:13px;font-weight:700;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:8px}
 .mk-chat .mk-dmt .mk-dmth button{background:none;border:none;color:#888;font-size:14px;cursor:pointer}
 .mk-chat .mk-dmt .mk-dmth button:hover{color:#00ccff}
+.mk-chat .mk-link{color:#4fc3f7;text-decoration:underline;cursor:pointer;word-break:break-all}
+.mk-chat .mk-dmt .mk-dmth button.mk-dtmrem{color:#ff5252;font-size:12px;margin-right:2px}
+.mk-chat .mk-dmt .mk-dmth button.mk-dtmrem:hover{color:#ff1744}
 .mk-chat .mk-dmt .mk-dmml{flex:1;overflow-y:auto;padding:10px 14px;display:flex;flex-direction:column;gap:6px}
 .mk-chat .mk-dmt .mk-dmsg{display:flex;flex-direction:column;gap:2px;max-width:80%;padding:6px 10px;border-radius:8px;font-size:12px;word-break:break-word}
 .mk-chat .mk-dmt .mk-dmsg.mk-dme{background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;align-self:flex-end;border-bottom-right-radius:2px}
@@ -216,6 +219,7 @@ body{background:transparent;font-family:'Segoe UI',system-ui,sans-serif}
   <div class="mk-dmt" id="mk-dmt">
     <div class="mk-dmth">
       <h3 id="mk-dmtu">Privado</h3>
+      <button id="mk-dtmrem" title="Eliminar conversacion" style="display:none">&#128465;</button>
       <button id="mk-dtmx" title="Cerrar">&#10005;</button>
     </div>
     <div class="mk-dmml" id="mk-dtms"></div>
@@ -394,13 +398,21 @@ chatBannedRef.child(deviceId).on("value",function(snap){
 function scrollChat(){ml.scrollTop=ml.scrollHeight;}
 function formatChatTime(ts){var d=new Date(ts);return d.getHours().toString().padStart(2,"0")+":"+d.getMinutes().toString().padStart(2,"0");}
 
+function mkMsgHtml(t){
+  var s=String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  return s.replace(/(https?:\/\/[^\s\x22<>]+|www\.[^\s\x22<>]+)/gi,function(m){
+    var u=m.indexOf("http")===0?m:"https://"+m;
+    return '<a href="'+u+'" target="_blank" rel="noopener noreferrer" class="mk-link">'+m+'</a>';
+  });
+}
+
 function renderChatMsg(msg){
   var div=document.createElement("div");
   div.className="mk-msg"+(msg.system?" mk-sys":"");
   div.dataset.id=msg.id;
   div.dataset.uid=msg.uid||"";
   if(msg.system){
-    div.innerHTML='<span class="mk-mt">'+msg.text+'</span>';
+    div.innerHTML='<span class="mk-mt">'+mkMsgHtml(msg.text)+'</span>';
   }else{
     var isOwn=msg.uid===deviceId;
     var initial=msg.user?msg.user.charAt(0).toUpperCase():"?";
@@ -410,7 +422,7 @@ function renderChatMsg(msg){
     else if(avatarMap[msg.uid]){avHtml='<img src="'+avatarMap[msg.uid]+'" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0">';}
     else{avHtml='<span class="mk-mav" style="background:'+color+'">'+initial+'</span>';}
     div.innerHTML='<span class="mk-mu">'+avHtml+msg.user+'</span>'
-      +'<div class="mk-row"><span class="mk-mt">'+msg.text+'</span>'
+      +'<div class="mk-row"><span class="mk-mt">'+mkMsgHtml(msg.text)+'</span>'
       +'<span class="mk-mti">'+formatChatTime(msg.timestamp)+'</span>'
       +'<button class="mk-heart" data-msg="'+msg.id+'">&#9825;<span class="mk-hc">0</span></button>'
       +(!isOwn&&chatAdmin?'<button class="mk-pm" title="Mensaje privado">&#9993;</button>':'')
@@ -853,6 +865,8 @@ function openDmThread(oid){
   if(dmCaches[ckey]&&dmCaches[ckey].length)renderDmThread(dmCaches[ckey]);
   dmThreadEl.classList.add("show");
   dmThreadInput.focus();
+  var remBtn=document.getElementById("mk-dtmrem");
+  if(remBtn)remBtn.style.display=chatAdmin?"inline-block":"none";
   dmUnreadRef.child(oid).set(0);
   if(dmPartners[oid])dmPartners[oid].unread=0;
   renderDmList();
@@ -880,7 +894,7 @@ function renderDmThread(msgs){
     var d=new Date(m.timestamp||Date.now());
     var hm=(d.getHours()<10?"0":"")+d.getHours()+":"+(d.getMinutes()<10?"0":"")+d.getMinutes();
     div.innerHTML='<span class="mk-dmu">'+(mine?"T\u00fa":(m.user||"?"))+'</span>'
-      +'<span>'+m.text+'</span>'
+      +'<span>'+mkMsgHtml(m.text)+'</span>'
       +'<span class="mk-dtt">'+hm+'</span>';
     dmThreadMsgs.appendChild(div);
   });
@@ -942,6 +956,20 @@ document.addEventListener("click",function(e){
 if(dmThreadSend)dmThreadSend.onclick=sendPrivateMessage;
 if(dmThreadInput)dmThreadInput.onkeydown=function(e){if(e.key==="Enter")sendPrivateMessage();};
 document.getElementById("mk-dtmx").onclick=closeDmThread;
+var mkDtRem=document.getElementById("mk-dtmrem");
+if(mkDtRem)mkDtRem.onclick=function(){
+  if(!chatAdmin||!dmActiveOther)return;
+  if(!confirm("Eliminar esta conversacion privada?"))return;
+  var k=dmConvKey(deviceId,dmActiveOther);
+  db.ref("chat/dms/"+k).remove();
+  db.ref("chat/dm-unread/"+dmActiveOther+"/"+deviceId).remove();
+  db.ref("chat/dm-unread/"+deviceId+"/"+dmActiveOther).remove();
+  if(dmPartners[dmActiveOther])delete dmPartners[dmActiveOther];
+  if(dmNames[dmActiveOther])delete dmNames[dmActiveOther];
+  if(dmCaches[k])delete dmCaches[k];
+  closeDmThread();
+  renderDmList();
+};
 }
 })();
 </script>
