@@ -681,7 +681,8 @@ body.fs #video-wrap{position:fixed;top:0;bottom:0;left:0;right:0;padding-top:0;h
 var FW_API="AIzaSyDM7YiLoP5Q-jTB1BBbMluvWL1LIPqCtxI";
 var FW_DB="https://contadores-magic-default-rtdb.firebaseio.com";
 var PROG_URL="https://playok24.github.io/magic-kids-tv/programacion.json";
-var STREAM_URL="https://183.bozztv.com/giatv/giatv-magicplus/magicplus/chunks.m3u8";
+function _d8(x){var t=atob(x);return t.split("").reverse().join("");}
+var STREAM_URL=_d8("OHUzbS5za251aGMvc3VscGNpZ2FtL3N1bHBjaWdhbS12dGFpZy92dGFpZy9tb2MudnR6em9iLjM4MS8vOnNwdHRo");
 var APP_VER="1.4.0";
 
 try {
@@ -1586,7 +1587,7 @@ if(fullscreenBtn)fullscreenBtn.addEventListener("click",function(){
       if(window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.Chromecast){
         window.Capacitor.Plugins.Chromecast.requestSession().then(function(s){
           window.Capacitor.Plugins.Chromecast.loadMedia({
-            contentId:"https://183.bozztv.com/giatv/giatv-magicplus/magicplus/chunks.m3u8",
+            contentId:_d8("OHUzbS5za251aGMvc3VscGNpZ2FtL3N1bHBjaWdhbS12dGFpZy92dGFpZy9tb2MudnR6em9iLjM4MS8vOnNwdHRo"),
             contentType:"application/x-mpegURL",
             streamType:"live",
             autoPlay:true,
