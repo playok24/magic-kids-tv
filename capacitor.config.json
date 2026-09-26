@@ -3,8 +3,13 @@
   "appName": "Magic Kids Television",
   "webDir": "www",
   "server": {
+    "url": "https://playok24.github.io/magic-kids-tv/www/index.html",
     "androidScheme": "https",
-    "cleartext": true
+    "cleartext": true,
+    "allowNavigation": [
+      "playok24.github.io",
+      "magick1ds.wixsite.com"
+    ]
   },
   "android": {
     "allowMixedContent": true

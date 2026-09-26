@@ -190,16 +190,16 @@ function iH(){
   if(hls){hls.destroy();hls=null;}
   hls=new Hls({
     enableWorker:true,
-    liveSyncDurationCount:2,liveMaxLatencyDurationCount:8,
-    liveSyncOnStallUpdate:true,
+    liveSyncDurationCount:3,liveMaxLatencyDurationCount:8,
+    liveSyncOnStallUpdate:false,
     maxBufferLength:60,maxMaxBufferLength:180,backBufferLength:30,
-    liveDurationInfinity:true,maxBufferHole:5,maxStarvationDelay:10,
+    liveDurationInfinity:true,maxBufferHole:0.5,maxStarvationDelay:10,
     maxBufferSize:100*1024*1024,
     manifestLoadingTimeOut:15000,manifestLoadingMaxRetry:10,manifestLoadingRetryDelay:500,
     levelLoadingTimeOut:15000,levelLoadingMaxRetry:10,levelLoadingRetryDelay:500,
     fragLoadingTimeOut:15000,fragLoadingMaxRetry:25,fragLoadingRetryDelay:500,
     startFragPrefetch:true,stretchShortVideoSegment:true,lowLatencyMode:false,
-    nudgeOffset:0.5,nudgeMaxRetry:10,nudgeOnVideoStall:true,
+    nudgeOffset:0.5,nudgeMaxRetry:10,nudgeOnVideoStall:false,
     enableSoftwareAES:true,appendErrorMaxRetry:6,
     abrEwmaDefaultEstimate:3000000,abrEwmaFastLive:3,abrEwmaSlowLive:9
   });
@@ -231,6 +231,23 @@ function iH(){
   hls.on(Hls.Events.FRAG_LOADED,function(){re=0;});
   hls.on(Hls.Events.LEVEL_LOADED,function(){re=0;});
   hls.startLoad();
+  startSyncWatch();
+}
+
+var syncWatch=null;
+function startSyncWatch(){
+  if(syncWatch)return;
+  syncWatch=setInterval(function(){
+    try{
+      if(!hls||video.paused||video.seeking||video.readyState<2||ld.style.display!="none")return;
+      var lp=hls.liveSyncPosition;
+      if(!lp||!isFinite(lp))return;
+      var diff=video.currentTime-lp;
+      if(Math.abs(diff)>6&&Math.abs(diff)<120){
+        video.currentTime=lp;
+      }
+    }catch(e){}
+  },15000);
 }
 
 var wd=null,lt=0,frz=0,stalls=0;
