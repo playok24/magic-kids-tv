@@ -256,6 +256,23 @@ body.fs #video-wrap{position:fixed;top:0;bottom:0;left:0;right:0;padding-top:0;h
 #controls-bar button.active{color:var(--accent)}
 #controls-bar button.violet{color:var(--violet)}
 
+#stream-switch{
+  background:rgba(13,13,26,0.98);border-bottom:1px solid #222;
+  padding:6px 12px;flex-shrink:0;overflow-x:auto;white-space:nowrap;
+}
+#stream-switch .stream-btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14);
+  color:#fff;font-size:13px;font-weight:700;letter-spacing:0.3px;
+  padding:8px 16px;border-radius:8px;cursor:pointer;margin-right:8px;
+  min-width:104px;min-height:40px;transition:all 0.15s;user-select:none;
+}
+#stream-switch .stream-btn:active{background:rgba(255,255,255,0.12)}
+#stream-switch .stream-btn.active{
+  color:var(--accent);border-color:var(--accent);
+  background:rgba(0,204,255,0.12);box-shadow:0 0 0 1px var(--accent);
+}
+
 #vol-slider{
   -webkit-appearance:none;appearance:none;
   width:80px;height:4px;border-radius:2px;
@@ -559,6 +576,12 @@ body.fs #video-wrap{position:fixed;top:0;bottom:0;left:0;right:0;padding-top:0;h
     </div>
   </div>
 
+  <div id="stream-switch">
+    <button class="stream-btn active" data-stream="0" title="Canal principal">Stream 1</button>
+    <button class="stream-btn" data-stream="1" title="Canal secundario">Stream 2</button>
+    <button class="stream-btn" data-stream="2" title="Canal alternativo">Stream 3</button>
+  </div>
+
   <div id="controls-bar">
     <div class="bar-row controls">
       <button id="chat-btn" title="Chat">&#128172;<span class="badge" id="chat-badge">0</span></button>
@@ -683,6 +706,11 @@ var FW_DB="https://contadores-magic-default-rtdb.firebaseio.com";
 var PROG_URL="https://playok24.github.io/magic-kids-tv/programacion.json";
 function _d8(x){var t=atob(x);return t.split("").reverse().join("");}
 var STREAM_URL=_d8("OHUzbS5za251aGMvc3VscGNpZ2FtL3N1bHBjaWdhbS12dGFpZy92dGFpZy9tb2MudnR6em9iLjM4MS8vOnNwdHRo");
+var STREAMS=[
+  {label:"Stream 1",url:STREAM_URL},
+  {label:"Stream 2",url:_d8("OHUzbS5za251aGMvYW5hdWdpL2FuYXVnaS12dGFpZy92dGFpZy9tb2MudnR6em9iLjM4MS8vOnNwdHRo")},
+  {label:"Stream 3",url:_d8("OHUzbS5za251aGMvc3VscGV2dGdjL3N1bHBldnRnYy12dGFpZy92dGFpZy9tb2MudnR6em9iLjM4MS8vOnNwdHRo")}
+];
 var APP_VER="1.4.0";
 
 try {
@@ -792,6 +820,33 @@ if(video){
     setTimeout(function(){video.src=STREAM_URL;video.load();},5000);
   });
 }
+
+function setStream(i){
+  if(!STREAMS[i])return;
+  STREAM_URL=STREAMS[i].url;
+  var btns=document.querySelectorAll("#stream-switch .stream-btn");
+  for(var b=0;b<btns.length;b++){btns[b].className="stream-btn"+(b===i?" active":"");}
+  try{localStorage.setItem("mk_stream",""+i);}catch(e){}
+  if(!video)return;
+  video.src=STREAM_URL;
+  video.load();
+  if(loadingEl)loadingEl.style.display="flex";
+  var p=video.play();
+  if(p&&p["catch"])p["catch"](function(){});
+}
+(function(){
+  var btns=document.querySelectorAll("#stream-switch .stream-btn");
+  var last=-1;
+  try{last=parseInt(localStorage.getItem("mk_stream")||"0",10);}catch(e){}
+  if(!(last>=0&&last<STREAMS.length))last=0;
+  if(STREAMS[last]&&STREAMS[last].url!==STREAM_URL){
+    STREAM_URL=STREAMS[last].url;
+  }
+  for(var b=0;b<btns.length;b++){
+    btns[b].className="stream-btn"+(b===last?" active":"");
+    btns[b].onclick=function(){setStream(parseInt(this.getAttribute("data-stream"),10));};
+  }
+})();
 
 if(db){
   var sessionRef=db.ref("sessions/"+deviceId);
