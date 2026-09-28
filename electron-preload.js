@@ -7,7 +7,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onFullscreenChange: function(cb){ ipcRenderer.on("fullscreen-change", function(e, isFs){ cb(isFs); }); },
   onUpdateAvailable: function(cb){ ipcRenderer.on("update-available", function(){ cb(); }); },
   onUpdateDownloaded: function(cb){ ipcRenderer.on("update-downloaded", function(){ cb(); }); },
-  installUpdate: function(){ ipcRenderer.send("install-update"); }
+  installUpdate: function(){ ipcRenderer.send("install-update"); },
+  onStreamChanged: function(cb){ ipcRenderer.on("stream-changed", function(e, i){ cb(i); }); },
+  setStream: function(i){ ipcRenderer.send("stream:set", i); },
+  getStream: function(){ return ipcRenderer.invoke("stream:get"); }
 });
 
 contextBridge.exposeInMainWorld("castAPI", {

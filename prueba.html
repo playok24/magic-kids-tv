@@ -570,6 +570,11 @@ body.light #cast-modal .box .close-sub{background:rgba(0,0,0,0.06);color:#555}
     <div class="row">
       <button id="cast-btn" onclick="onCastClick()"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M1 18v3h3c0-1.66-1.34-3-3-3zm0-4v2c2.76 0 5 2.24 5 5h2c0-3.87-3.13-7-7-7zm0-4v2c4.97 0 9 4.03 9 9h2c0-6.08-4.93-11-11-11zm20 0C10.32 4 4 10.32 4 18h2c0-4.97 4.03-9 9-9v2zm-8-2c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6z" fill="currentColor"/></svg> CAST</button>
     </div>
+    <div class="row" style="flex-wrap:wrap;gap:6px" id="stream-switch">
+      <button class="stream-btn" data-stream="0" style="flex:1;min-width:80px;padding:8px">Stream 1</button>
+      <button class="stream-btn" data-stream="1" style="flex:1;min-width:80px;padding:8px">Stream 2</button>
+      <button class="stream-btn" data-stream="2" style="flex:1;min-width:80px;padding:8px">Stream 3</button>
+    </div>
     <div class="row">
       <button id="mute">🔇 MUTE</button>
       <button id="volup">🔊 +</button>
@@ -1268,10 +1273,21 @@ function clearEvTimers(){
 
 function destroyHls(){if(hls){hls.destroy();hls=null;}}
 
+/* Al liberar el hls se limpia el elemento de video. Si se lo deja con el
+   currentTime viejo, la instancia nueva arranca en el borde del directo pero
+   el elemento sigue pidiendo datos en una posicion lejana: esa desincroniza-
+   cion de timestamps es lo que dejaba el audio lento y robotico al volver. */
+function soltarVideo(){
+  try{ video.pause(); }catch(e){}
+  try{ video.removeAttribute("src"); video.load(); }catch(e){}
+  try{ video.currentTime=0; }catch(e){}
+}
+
 function initStream(){
   clearInterval(_ef);_ef=null;
   clearEvTimers();
   destroyHls();
+  soltarVideo();
   hlsRetries=0;
   loading.innerHTML='<img class="logo-load" src="www/Magic Kids Logo.png" alt="Magic Kids TV"><div class="load-text">Sintonizando...</div>';
   loading.style.display="flex";
@@ -1296,6 +1312,7 @@ function initHls(url){
   clearInterval(_ef);_ef=null;
   clearEvTimers();
   destroyHls();
+  soltarVideo();
   hlsRetries=0;
   loading.innerHTML='<img class="logo-load" src="www/Magic Kids Logo.png" alt="Magic Kids TV"><div class="load-text">Sintonizando...</div>';
   loading.style.display="flex";
@@ -1309,6 +1326,9 @@ function initHls(url){
     return;
   }
 
+/* Un nudge grande repetido (0.5s x10) hacia saltar el audio y sonaba robotico.
+   Con valores chicos y pocos intentos, y un salto al borde del directo para
+   resincronizar los timestamps, el audio vuelve limpio. */
   hls=new Hls({
     enableWorker:true,
     liveSyncDurationCount:2,liveMaxLatencyDurationCount:8,
@@ -1320,7 +1340,7 @@ function initHls(url){
     levelLoadingTimeOut:15000,levelLoadingMaxRetry:10,levelLoadingRetryDelay:500,
     fragLoadingTimeOut:15000,fragLoadingMaxRetry:25,fragLoadingRetryDelay:500,
     startFragPrefetch:true,stretchShortVideoSegment:true,lowLatencyMode:false,
-    nudgeOffset:0.5,nudgeMaxRetry:10,nudgeOnVideoStall:true,
+    nudgeOffset:0.1,nudgeMaxRetry:3,nudgeOnVideoStall:true,
     enableSoftwareAES:true,appendErrorMaxRetry:6,
     abrEwmaDefaultEstimate:3000000,abrEwmaFastLive:3,abrEwmaSlowLive:9
   });
@@ -1359,8 +1379,7 @@ function scheduleFreezeCheck() {
     if (ct > 0 && Math.abs(ct - last) < 0.3) {
       froze++;
       try{
-        if (froze === 2 && hls) { hls.nudgeMedia(); }
-        else if (froze >= 3 && froze < 7 && hls) { hls.startLoad(); }
+        if (froze >= 2 && froze < 7) { recuperarDirecto(); }
         else if (froze >= 7) {
           clearInterval(timer); _ef = null;
           if (hls) { initHls(HLS_FALLBACK); } else { initStream(); }
@@ -1375,9 +1394,29 @@ function scheduleFreezeCheck() {
   _ef = timer;
 }
 
-video.addEventListener("playing",function(){clearEvTimers();showVideo();});
-video.addEventListener("waiting",function(){clearEvTimers();_wto=setTimeout(function(){if(video.readyState<3){try{if(hls){hls.nudgeMedia();hls.startLoad();}else{initStream();}}catch(e){}}},4000);});
-video.addEventListener("stalled",function(){clearEvTimers();_sto=setTimeout(function(){try{if(hls){hls.nudgeMedia();hls.startLoad();}else{initStream();}}catch(e){}},3000);});
+/* Recuperacion de un congelamiento. En vez de empujar el audio con nudgeMedia
+   (que lo dejaba robotico), se salta al borde del directo: al reubicarse la
+   posicion de reproduccion, hls.js re-sincroniza los timestamps de audio y
+   video y el sonido vuelve normal. El cooldown evita que se dispare en
+   cadena, que antes hacia que varias recuperaciones se pisen entre si. */
+var _ultimaRec = 0;
+function recuperarDirecto(){
+  var ahora = Date.now();
+  if (ahora - _ultimaRec < 3000) return;
+  _ultimaRec = ahora;
+  if (!hls) { initStream(); return; }
+  try{
+    var destino = null;
+    if (typeof hls.liveSyncPosition === "number" && isFinite(hls.liveSyncPosition)) destino = hls.liveSyncPosition;
+    else if (video.buffered && video.buffered.length) destino = video.buffered.end(video.buffered.length - 1);
+    if (destino !== null && destino > video.currentTime + 0.1) video.currentTime = destino;
+    hls.startLoad();
+  }catch(e){}
+}
+
+video.addEventListener("playing",function(){clearEvTimers();_ultimaRec=0;showVideo();});
+video.addEventListener("waiting",function(){clearEvTimers();_wto=setTimeout(function(){if(video.readyState<3)recuperarDirecto();},4000);});
+video.addEventListener("stalled",function(){clearEvTimers();_sto=setTimeout(function(){recuperarDirecto();},3000);});
 video.addEventListener("ended",function(){clearEvTimers();_eto=setTimeout(function(){initStream();},1000);});
 video.addEventListener("error",function(){
   if(hls)return;
@@ -1386,6 +1425,25 @@ video.addEventListener("error",function(){
 });
 
 renderProgramacion();
+
+function updateStreamBtns(idx){
+  var btns=document.querySelectorAll("#stream-switch .stream-btn");
+  for(var i=0;i<btns.length;i++){btns[i].style.background=i===idx?"rgba(0,204,255,0.18)":"rgba(255,255,255,0.04)";btns[i].style.color=i===idx?"#00ccff":"#ccc";btns[i].style.borderColor=i===idx?"#00ccff":"#333";}
+}
+function switchStream(i){
+  try{if(window.electronAPI&&window.electronAPI.setStream){window.electronAPI.setStream(i);return;}}catch(e){}
+  updateStreamBtns(i);
+  // fallback: recargar con stream nuevo no aplica en modo proxy; solo electron
+}
+function initStreamSwitch(){
+  var btns=document.querySelectorAll("#stream-switch .stream-btn");
+  for(var i=0;i<btns.length;i++){
+    (function(idx){btns[idx].onclick=function(){switchStream(idx);};})(i);
+  }
+  try{if(window.electronAPI&&window.electronAPI.getStream){window.electronAPI.getStream().then(function(v){updateStreamBtns(v||0);});}else{updateStreamBtns(0);}}catch(e){updateStreamBtns(0);}
+  try{if(window.electronAPI&&window.electronAPI.onStreamChanged){window.electronAPI.onStreamChanged(function(v){updateStreamBtns(v||0);});}}catch(e){}
+}
+initStreamSwitch();
 
 document.getElementById("mute").onclick=function(){video.muted=!video.muted;this.textContent=video.muted?"🔊 UNMUTE":"🔇 MUTE";};
 document.getElementById("volup").onclick=()=>{volSlider.value=Math.min(100,parseInt(volSlider.value)+10);volSlider.oninput();};

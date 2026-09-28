@@ -13,7 +13,15 @@ let mainWindow;
 let proxyServer = null;
 let hlsProc = null;
 const PROXY_PORT = 12345;
-const STREAM_URL = "https://183.bozztv.com/giatv/giatv-magicplus/magicplus/chunks.m3u8";
+const STREAMS = [
+  "https://183.bozztv.com/giatv/giatv-magicplus/magicplus/chunks.m3u8",
+  "https://183.bozztv.com/giatv/giatv-iguana/iguana/chunks.m3u8",
+  "https://183.bozztv.com/giatv/giatv-cgtveplus/cgtveplus/chunks.m3u8"
+];
+let currentStreamIndex = 0;
+function getCurrentStreamUrl(){
+  return STREAMS[currentStreamIndex] || STREAMS[0];
+}
 const HLS_DIR = path.join(os.tmpdir(), "magickids_hls");
 
 autoUpdater.autoDownload = true;
@@ -56,7 +64,7 @@ function startHlsReencode(){
     "-reconnect", "1",
     "-reconnect_streamed", "1",
     "-reconnect_delay_max", "5",
-    "-i", STREAM_URL,
+    "-i", getCurrentStreamUrl(),
     "-c", "copy",
     "-f", "hls",
     "-hls_time", "4",
@@ -131,7 +139,7 @@ function startProxy(){
         "-reconnect", "1",
         "-reconnect_streamed", "1",
         "-reconnect_delay_max", "5",
-        "-i", STREAM_URL,
+        "-i", getCurrentStreamUrl(),
         "-c", "copy",
         "-f", "mpegts",
         "pipe:1"
@@ -237,6 +245,16 @@ autoUpdater.on("update-available", function(){
 autoUpdater.on("update-downloaded", function(){
   if(mainWindow) mainWindow.webContents.send("update-downloaded");
 });
+
+ipcMain.on("stream:set", function(e, idx){
+  var i = parseInt(idx, 10);
+  if (!(i >= 0 && i < STREAMS.length)) return;
+  currentStreamIndex = i;
+  try { if (hlsProc) { hlsProc.kill("SIGTERM"); hlsProc = null; } } catch (err) {}
+  if (mainWindow) mainWindow.webContents.send("stream-changed", currentStreamIndex);
+});
+
+ipcMain.handle("stream:get", function(){ return currentStreamIndex; });
 
 app.whenReady().then(function(){
   castService.setupIpc();
