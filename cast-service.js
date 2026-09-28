@@ -5,6 +5,8 @@ const { Client, DefaultMediaReceiver } = require("castv2-client");
 
 let mainWindow = null;
 let mdns = null;
+let mdnsQueryTimer = null;
+let mdnsQueryInterval = null;
 let discovered = [];
 let seenIds = {};
 let currentClient = null;
@@ -71,11 +73,13 @@ function startDiscovery() {
     }
   };
   query();
-  setTimeout(query, 1500);
-  setInterval(query, 4000);
+  mdnsQueryTimer = setTimeout(query, 1500);
+  mdnsQueryInterval = setInterval(query, 4000);
 }
 
 function stopDiscovery() {
+  if (mdnsQueryTimer) { clearTimeout(mdnsQueryTimer); mdnsQueryTimer = null; }
+  if (mdnsQueryInterval) { clearInterval(mdnsQueryInterval); mdnsQueryInterval = null; }
   if (mdns) {
     try { mdns.destroy(); } catch (e) {}
     mdns = null;

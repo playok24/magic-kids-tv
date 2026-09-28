@@ -12,6 +12,7 @@ app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
 let mainWindow;
 let proxyServer = null;
 let hlsProc = null;
+let streamProcs = [];
 const PROXY_PORT = 12345;
 const STREAMS = [
   "https://183.bozztv.com/giatv/giatv-magicplus/magicplus/chunks.m3u8",
@@ -145,6 +146,7 @@ function startProxy(){
         "pipe:1"
       ];
       var proc = spawn(ffmpegPath, args, {stdio: ["ignore", "pipe", "pipe"]});
+      streamProcs.push(proc);
       proc.stdout.pipe(res);
       proc.stderr.on("data", function(){});
       proc.on("error", function(err){
@@ -152,11 +154,15 @@ function startProxy(){
         try{res.end();}catch(e){}
       });
       proc.on("close", function(){
+        streamProcs = streamProcs.filter(function(p){ return p !== proc; });
         try{res.end();}catch(e){}
       });
-      req.on("close", function(){
-        try{proc.kill("SIGTERM");}catch(e){}
-      });
+      function killProc(){
+        try{ proc.kill("SIGKILL"); }catch(e){}
+        streamProcs = streamProcs.filter(function(p){ return p !== proc; });
+      }
+      req.on("close", killProc);
+      res.on("close", killProc);
     });
     proxyServer.listen(PROXY_PORT, "0.0.0.0", function(){
       console.log("proxy ok ffmpeg=yes port=" + PROXY_PORT + " lan=" + getLanIp());
@@ -230,8 +236,16 @@ ipcMain.on("fullscreen-exit", function(){
   }
 });
 
+function shutdown(){
+  try { if (hlsProc) { hlsProc.removeAllListeners(); hlsProc.kill("SIGKILL"); hlsProc = null; } } catch (e) {}
+  try { streamProcs.slice().forEach(function(p){ try{ p.kill("SIGKILL"); }catch(e){} }); streamProcs = []; } catch (e) {}
+  try { if (proxyServer) { proxyServer.close(); proxyServer.closeAllConnections && proxyServer.closeAllConnections(); proxyServer = null; } } catch (e) {}
+  try { castService.stopDiscovery(); } catch (e) {}
+}
+
 ipcMain.on("install-update", function(){
-  autoUpdater.quitAndInstall();
+  shutdown();
+  autoUpdater.quitAndInstall(false, true);
 });
 
 ipcMain.handle("app:get-version", function(){
@@ -251,6 +265,7 @@ ipcMain.on("stream:set", function(e, idx){
   if (!(i >= 0 && i < STREAMS.length)) return;
   currentStreamIndex = i;
   try { if (hlsProc) { hlsProc.kill("SIGTERM"); hlsProc = null; } } catch (err) {}
+  try { streamProcs.slice().forEach(function(p){ p.kill("SIGKILL"); }); streamProcs = []; } catch (err) {}
   if (mainWindow) mainWindow.webContents.send("stream-changed", currentStreamIndex);
 });
 
@@ -261,4 +276,9 @@ app.whenReady().then(function(){
   castService.startDiscovery();
   startProxy().then(createWindow);
 });
-app.on("window-all-closed", function(){ app.quit(); });
+app.on("window-all-closed", function(){
+  shutdown();
+  app.quit();
+});
+app.on("before-quit", function(){ shutdown(); });
+app.on("will-quit", function(){ shutdown(); });
