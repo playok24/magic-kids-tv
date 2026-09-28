@@ -69,7 +69,7 @@ body{background:transparent;font-family:'Segoe UI',system-ui,sans-serif;color:#f
       <div class="mk-lt">Sintonizando...</div>
     </div>
     <div class="mk-no" id="no"></div>
-    <video id="video" autoplay muted playsinline preload="auto"></video>
+    <video id="video" autoplay muted playsinline preload="auto" crossorigin="anonymous"></video>
     <div class="mk-vi" id="vi"></div>
     <div class="mk-ct">
       <button id="playB">&#9654;</button>
@@ -175,21 +175,45 @@ setInterval(applyProg,60000);
 
 function sV(){ld.style.display="none";no.style.display="none";video.classList.add("mk-on");sW();}
 function sE(m){ld.innerHTML='<div class="mk-logo-lg">MK</div><div style="color:#ff6b6b;font-size:11px;text-align:center;padding:0 16px">'+m+'</div>';ld.style.display="flex";ld.style.cursor="pointer";tW();}
+var nativOK=false,natT=null;
+function soltarVideo(){
+  if(hls){try{hls.destroy();}catch(e){}hls=null;}
+  try{video.pause();}catch(e){}
+  try{video.removeAttribute("src");}catch(e){}
+  try{video.load();}catch(e){}
+}
 function iH(){
   re=0;mediaErr=0;
   ld.innerHTML='<div class="mk-logo-lg">MK</div><div class="mk-lt">Sintonizando...</div>';
   ld.style.display="flex";ld.style.cursor="default";
   no.style.display="none";
-  if(!Hls.isSupported()){
-    if(video.canPlayType("application/vnd.apple.mpegurl")){
-      video.src=STREAM;
-      video.addEventListener("loadedmetadata",function(){video.play()["catch"](function(){});});
-    }else{sE("Tu navegador no soporta HLS.");}
-    return;
-  }
-  if(hls){hls.destroy();hls=null;}
-  try{video.pause();}catch(e){}
-  try{video.removeAttribute("src");video.load();}catch(e){}
+  tW();
+  if(natT){clearTimeout(natT);natT=null;}
+  soltarVideo();
+  try{video.currentTime=0;}catch(e){}
+  nativOK=false;
+  video.onerror=null;
+  try{
+    video.onerror=function(){
+      video.onerror=null;
+      if(nativOK)return;
+      console.log("HLS nativo no disponible, cae a hls.js");
+      initHls();
+    };
+    video.src=STREAM;
+    video.load();
+    var p=video.play();if(p&&p["catch"])p["catch"](function(){});
+  }catch(e){initHls();return;}
+  natT=setTimeout(function(){
+    if(!nativOK&&video.readyState<3){video.onerror=null;initHls();}
+  },12000);
+}
+function initHls(){
+  if(hls)return;
+  if(!Hls.isSupported()){sE("Tu navegador no soporta HLS.");return;}
+  if(natT){clearTimeout(natT);natT=null;}
+  video.onerror=null;
+  soltarVideo();
   try{video.currentTime=0;}catch(e){}
   hls=new Hls({
     enableWorker:true,
@@ -231,7 +255,10 @@ function iH(){
 var wd=null,lt=0,frz=0,stalls=0,sinBuffer=0,ultAvance=0;
 var SIN_AVANCE_MS=25000,SIN_BUFFER_MS=25000;
 function rD(){
-  try{hls.startLoad();}catch(e){}
+  try{
+    if(hls){hls.startLoad();return;}
+    var p=video.play();if(p&&p["catch"])p["catch"](function(){});
+  }catch(e){}
 }
 function sW(){if(wd)clearInterval(wd);lt=video.currentTime||0;frz=0;stalls=0;sinBuffer=0;ultAvance=Date.now();
   wd=setInterval(function(){
@@ -251,7 +278,7 @@ function sW(){if(wd)clearInterval(wd);lt=video.currentTime||0;frz=0;stalls=0;sin
   },1000);
 }
 function tW(){clearInterval(wd);wd=null;}
-video.addEventListener("playing",function(){sV();});
+video.addEventListener("playing",function(){nativOK=true;if(natT){clearTimeout(natT);natT=null;}sV();});
 video.addEventListener("pause",function(){tW();});
 
 renderP();
