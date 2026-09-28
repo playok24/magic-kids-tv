@@ -258,13 +258,14 @@ body.fs #video-wrap{position:fixed;top:0;bottom:0;left:0;right:0;padding-top:0;h
 
 #stream-switch{
   background:rgba(13,13,26,0.98);border-bottom:1px solid #222;
-  padding:6px 12px;flex-shrink:0;overflow-x:auto;white-space:nowrap;
+  padding:6px 12px;flex-shrink:0;
+  display:flex;flex-wrap:wrap;justify-content:center;gap:8px;
 }
 #stream-switch .stream-btn{
   display:inline-flex;align-items:center;justify-content:center;
   background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14);
   color:#fff;font-size:13px;font-weight:700;letter-spacing:0.3px;
-  padding:8px 16px;border-radius:8px;cursor:pointer;margin-right:8px;
+  padding:8px 16px;border-radius:8px;cursor:pointer;
   min-width:104px;min-height:40px;transition:all 0.15s;user-select:none;
 }
 #stream-switch .stream-btn:active{background:rgba(255,255,255,0.12)}
@@ -450,6 +451,9 @@ body.fs #video-wrap{position:fixed;top:0;bottom:0;left:0;right:0;padding-top:0;h
 #name-modal .box #auth-status.err{color:#ff6b6b}
 #logout-btn{background:rgba(255,255,255,0.08);border:none;border-radius:4px;color:#aaa;font-size:11px;font-weight:700;padding:4px 8px;cursor:pointer}
 #logout-btn:hover{background:rgba(255,68,68,0.2);color:#ff6666}
+#refresh-btn{background:rgba(255,255,255,0.08);border:none;border-radius:4px;color:#aaa;font-size:11px;font-weight:700;padding:4px 8px;cursor:pointer}
+#refresh-btn:hover{background:rgba(0,204,255,0.18);color:var(--accent)}
+#refresh-btn.flash{background:var(--accent);color:#02202b}
 #blocked-screen{
   position:fixed;inset:0;z-index:300;
   background:rgba(0,0,0,0.92);
@@ -555,6 +559,7 @@ body.fs #video-wrap{position:fixed;top:0;bottom:0;left:0;right:0;padding-top:0;h
       <img class="logo" src="Magic Kids Logo.png" alt="Logo">
       <span class="name">Magic Kids TV v<span id="app-version-label">1.4.0</span></span>
       <span class="ver" id="view-counter">&#x1F441; <span id="view-count">0</span></span>
+      <button id="refresh-btn" title="Actualizar">&#x27F3; ACTUALIZAR</button>
       <button id="logout-btn" title="Salir">&#9210; SALIR</button>
     </div>
 
@@ -711,7 +716,7 @@ var STREAMS=[
   {label:"Stream 2",url:_d8("OHUzbS5za251aGMvYW5hdWdpL2FuYXVnaS12dGFpZy92dGFpZy9tb2MudnR6em9iLjM4MS8vOnNwdHRo")},
   {label:"Stream 3",url:_d8("OHUzbS5za251aGMvc3VscGV2dGdjL3N1bHBldnRnYy12dGFpZy92dGFpZy9tb2MudnR6em9iLjM4MS8vOnNwdHRo")}
 ];
-var APP_VER="1.4.0";
+var APP_VER="1.4.1";
 
 try {
   if(!firebase.apps.length){firebase.initializeApp({apiKey:FW_API,databaseURL:FW_DB,authDomain:"contadores-magic.firebaseapp.com",projectId:"contadores-magic",storageBucket:"contadores-magic.firebasestorage.app",messagingSenderId:"58723817117",appId:"1:58723817117:web:f479abaeacf191364ae674"});}
@@ -951,6 +956,15 @@ var authBackBtn=document.getElementById("auth-back-btn");
 var blockedScreen=document.getElementById("blocked-screen");
 var blockedSignout=document.getElementById("blocked-signout");
 var logoutBtn=document.getElementById("logout-btn");
+var refreshBtn=document.getElementById("refresh-btn");
+if(refreshBtn){
+  refreshBtn.onclick=function(){
+    var btn=refreshBtn;
+    btn.classList.add("flash");
+    var base=location.href.split("?")[0];
+    setTimeout(function(){location.href=base+"?t="+Date.now();},450);
+  };
+}
 
 function updateLoginPreview(){
   if(!loginAv)return;
@@ -1593,7 +1607,7 @@ if(fullscreenBtn)fullscreenBtn.addEventListener("click",function(){
 })();
 
 </script>
-<script>APP_VERSION="1.4.0"</script>
+<script>APP_VERSION="1.4.1"</script>
 <script>
 (function(){
   var SUB_SERVER="https://magic-kids-tv.vercel.app";
