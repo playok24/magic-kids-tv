@@ -188,18 +188,21 @@ function iH(){
     return;
   }
   if(hls){hls.destroy();hls=null;}
+  try{video.pause();}catch(e){}
+  try{video.removeAttribute("src");video.load();}catch(e){}
+  try{video.currentTime=0;}catch(e){}
   hls=new Hls({
     enableWorker:true,
     liveSyncDurationCount:3,liveMaxLatencyDurationCount:8,
-    liveSyncOnStallUpdate:false,
+    liveSyncOnStallUpdate:true,
     maxBufferLength:60,maxMaxBufferLength:180,backBufferLength:30,
-    liveDurationInfinity:true,maxBufferHole:0.5,maxStarvationDelay:10,
+    liveDurationInfinity:true,maxBufferHole:5,maxStarvationDelay:10,
     maxBufferSize:100*1024*1024,
     manifestLoadingTimeOut:15000,manifestLoadingMaxRetry:10,manifestLoadingRetryDelay:500,
     levelLoadingTimeOut:15000,levelLoadingMaxRetry:10,levelLoadingRetryDelay:500,
     fragLoadingTimeOut:15000,fragLoadingMaxRetry:25,fragLoadingRetryDelay:500,
     startFragPrefetch:true,stretchShortVideoSegment:true,lowLatencyMode:false,
-    nudgeOffset:0.5,nudgeMaxRetry:10,nudgeOnVideoStall:false,
+    nudgeOffset:0.1,nudgeMaxRetry:3,nudgeOnVideoStall:false,
     enableSoftwareAES:true,appendErrorMaxRetry:6,
     abrEwmaDefaultEstimate:3000000,abrEwmaFastLive:3,abrEwmaSlowLive:9
   });
@@ -250,13 +253,25 @@ function startSyncWatch(){
   },15000);
 }
 
-var wd=null,lt=0,frz=0,stalls=0;
+var wd=null,lt=0,frz=0,stalls=0,ultRec=0;
+function rD(){
+  var a=Date.now();
+  if(a-ultRec<3000)return;
+  ultRec=a;
+  if(!hls)return;
+  try{
+    var d=null;
+    if(typeof hls.liveSyncPosition==="number"&&isFinite(hls.liveSyncPosition))d=hls.liveSyncPosition;
+    else if(video.buffered&&video.buffered.length)d=video.buffered.end(video.buffered.length-1);
+    if(d!==null&&d>video.currentTime+0.1)video.currentTime=d;
+    hls.startLoad();
+  }catch(e){}
+}
 function sW(){if(wd)clearInterval(wd);lt=video.currentTime||0;frz=0;stalls=0;wd=setInterval(function(){
   if(video.paused||video.ended||ld.style.display!="none"){frz=0;return;}var ct=video.currentTime||0;
   if(Math.abs(ct-lt)<0.3){
     frz++;
-    if(frz===2){try{if(hls)hls.nudgeMedia();}catch(e){}}
-    else if(frz>=3&&frz<7){try{if(hls)hls.startLoad();}catch(e){}}
+    if(frz>=2&&frz<7){try{rD();}catch(e){}}
     else if(frz>=7){
       stalls++;
       if(stalls<3){frz=0;re=0;iH();}
