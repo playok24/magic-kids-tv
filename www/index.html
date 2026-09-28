@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<title>Magic Kids TV v1.4.0</title>
+<title>Magic Kids Ar v1.4.1</title>
 <link rel="icon" href="Magic Kids Logo.png">
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
@@ -507,7 +507,7 @@ body.fs #video-wrap{position:fixed;top:0;bottom:0;left:0;right:0;padding-top:0;h
 
 <div id="activate-screen">
   <div class="box">
-    <h3>Activa Magic Kids TV</h3>
+    <h3>Activa Magic Kids Ar</h3>
     <p>Ingresa el codigo de activacion que te envio el administrador.</p>
     <input type="text" id="activate-code" placeholder="XXXX-XXXX" maxlength="9" autocomplete="off">
     <button id="activate-btn">ACTIVAR</button>
@@ -518,7 +518,7 @@ body.fs #video-wrap{position:fixed;top:0;bottom:0;left:0;right:0;padding-top:0;h
 
 <div id="name-modal">
   <div class="box">
-    <h3>Bienvenido a Magic Kids TV!</h3>
+    <h3>Bienvenido a Magic Kids Ar!</h3>
     <div class="login-av" id="login-av" title="Elegir foto"><span class="mk-ai">?</span></div>
     <p>Inicia sesion o crea tu cuenta</p>
     <div class="auth-tabs">
@@ -546,7 +546,7 @@ body.fs #video-wrap{position:fixed;top:0;bottom:0;left:0;right:0;padding-top:0;h
 <div id="blocked-screen">
   <div class="box">
     <h3>Acceso revocado</h3>
-    <p>Tu acceso a Magic Kids TV fue revocado. ContactÃ¡ al administrador si creÃ©s que es un error.</p>
+    <p>Tu acceso a Magic Kids Ar fue revocado. ContactÃ¡ al administrador si creÃ©s que es un error.</p>
     <button id="blocked-signout">CERRAR SESION</button>
   </div>
 </div>
@@ -557,7 +557,7 @@ body.fs #video-wrap{position:fixed;top:0;bottom:0;left:0;right:0;padding-top:0;h
   <div id="top-bar">
     <div id="top-row">
       <img class="logo" src="Magic Kids Logo.png" alt="Logo">
-      <span class="name">Magic Kids TV v<span id="app-version-label">1.4.0</span></span>
+      <span class="name">Magic Kids Ar v<span id="app-version-label">1.4.0</span></span>
       <span class="ver" id="view-counter">&#x1F441; <span id="view-count">0</span></span>
       <button id="refresh-btn" title="Actualizar">&#x27F3; ACTUALIZAR</button>
       <button id="logout-btn" title="Salir">&#9210; SALIR</button>
@@ -567,7 +567,7 @@ body.fs #video-wrap{position:fixed;top:0;bottom:0;left:0;right:0;padding-top:0;h
 
   <div id="video-wrap">
     <div id="loading">
-      <img class="logo-load" src="Magic Kids Logo.png" alt="Magic Kids TV">
+      <img class="logo-load" src="Magic Kids Logo.png" alt="Magic Kids Ar">
       <div class="text">Sintonizando...</div>
     </div>
     <div id="static"></div>
@@ -1809,6 +1809,7 @@ if(fullscreenBtn)fullscreenBtn.addEventListener("click",function(){
 <style>
 body.mk-tv button:focus,body.mk-tv a:focus,body.mk-tv input:focus,body.mk-tv select:focus,body.mk-tv #video:focus{outline:3px solid #00d4ff !important;outline-offset:3px}
 body.mk-tv #video-wrap:focus,body.mk-tv #video-wrap:focus-within{outline:none}
+body.mk-tv-device #chat-btn,body.mk-tv-device #cast-top-btn{display:none!important}
 </style>
 <script>
 (function(){
@@ -1825,6 +1826,18 @@ body.mk-tv #video-wrap:focus,body.mk-tv #video-wrap:focus-within{outline:none}
     if(isTV&&document.body&&!document.body.classList.contains("mk-tv"))document.body.classList.add("mk-tv");
   }
   addTVClass();
+
+  function isTvDevice(){
+    try{
+      var ua=(navigator.userAgent||"");
+      if(!/Android/i.test(ua))return false;
+      if(!("ontouchstart" in window))return true;
+      if(/(AFT|BRAVIA|Android TV|GoogleTV|Noblex|SHIELD|MiTV|SmartTV|Tizen|Web0S|VIDAA)/i.test(ua))return true;
+      if(window.screen&&window.screen.width>=1600)return true;
+    }catch(e){}
+    return false;
+  }
+  if(isTvDevice()&&document.body&&!document.body.classList.contains("mk-tv-device"))document.body.classList.add("mk-tv-device");
 
   var lastClickTs=0;
   function clickableActive(){
