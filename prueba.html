@@ -751,7 +751,13 @@ body.light #cast-modal .box .close-sub{background:rgba(0,0,0,0.06);color:#555}
 <script>
 const STREAM="http://127.0.0.1:12345/stream";
 function _d8(x){var t=atob(x);return t.split("").reverse().join("");}
-const HLS_FALLBACK=_d8("OHUzbS5za251aGMvc3VscGNpZ2FtL3N1bHBjaWdhbS12dGFpZy92dGFpZy9tb2MudnR6em9iLjM4MS8vOnNwdHRo");
+const HLS_FALLBACKS=[
+  _d8("OHUzbS5za251aGMvc3VscGNpZ2FtL3N1bHBjaWdhbS12dGFpZy92dGFpZy9tb2MudnR6em9iLjM4MS8vOnNwdHRo"),
+  _d8("OHUzbS5za251aGMvYW5hdWdpL2FuYXVnaS12dGFpZy92dGFpZy9tb2MudnR6em9iLjM4MS8vOnNwdHRo"),
+  _d8("OHUzbS5za251aGMvc3VscGV2dGdjL3N1bHBldnRnYy12dGFpZy92dGFpZy9tb2MudnR6em9iLjM4MS8vOnNwdHRo")
+];
+var currentStream=0;
+function getFallback(){ return HLS_FALLBACKS[currentStream] || HLS_FALLBACKS[0]; }
 const PROG_JSON_URL="https://playok24.github.io/magic-kids-tv/programacion.json?t="+Date.now();
 const VERSION_JSON_URL="https://playok24.github.io/magic-kids-tv/version.json?t="+Date.now();
  const APP_VERSION="1.4.1";
@@ -1249,8 +1255,17 @@ function showStatic(){
   staticScreen.style.display="block";
 }
 
+/* El logo de Magic Kids solo va en el stream propio. En los otros canales la
+   precarga muestra un texto simple, porque no son de esta marca. */
+function loadingLogo(){
+  return currentStream===0?'<img class="logo-load" src="www/Magic Kids Logo.png" alt="Magic Kids TV">':"";
+}
+function showLoading(text){
+  loading.innerHTML=loadingLogo()+'<div class="load-text">'+text+'</div>';
+  loading.style.display="flex";
+}
 function showError(msg){
-  loading.innerHTML=`<img class="logo-load" src="www/Magic Kids Logo.png" alt="Magic Kids TV"><div style="color:#ff6b6b;font-size:14px;text-align:center;">${msg}</div>`;
+  loading.innerHTML=loadingLogo()+`<div style="color:#ff6b6b;font-size:14px;text-align:center;">${msg}</div>`;
   loading.style.display="flex";
 }
 
@@ -1289,8 +1304,7 @@ function initStream(){
   destroyHls();
   soltarVideo();
   hlsRetries=0;
-  loading.innerHTML='<img class="logo-load" src="www/Magic Kids Logo.png" alt="Magic Kids TV"><div class="load-text">Sintonizando...</div>';
-  loading.style.display="flex";
+  showLoading("Cargando señal...");
   staticScreen.style.display="none";
 
   video.removeAttribute("src");
@@ -1302,7 +1316,7 @@ function initStream(){
   video.onerror=function(){
     video.onerror=null;
     console.log("Local stream failed, falling back to HLS");
-    initHls(HLS_FALLBACK);
+    initHls(getFallback());
   };
 
   scheduleFreezeCheck();
@@ -1314,8 +1328,7 @@ function initHls(url){
   destroyHls();
   soltarVideo();
   hlsRetries=0;
-  loading.innerHTML='<img class="logo-load" src="www/Magic Kids Logo.png" alt="Magic Kids TV"><div class="load-text">Sintonizando...</div>';
-  loading.style.display="flex";
+  showLoading("Cargando señal...");
   staticScreen.style.display="none";
 
   if(!Hls.isSupported()){
@@ -1350,9 +1363,14 @@ function initHls(url){
   hls.on(Hls.Events.ERROR,function(e,d){
     if(!d.fatal)return;
     if(d.type===Hls.ErrorTypes.NETWORK_ERROR){
-      showError("Sin conexion... Reintentando...");
       hlsRetries++;
-      if(hlsRetries<6){setTimeout(function(){if(hls)hls.startLoad();},1500*Math.min(hlsRetries,4));}
+      /* Un stream que todavia no emite (el 3, por ejemplo) puede stay caido
+         varios minutos. Reintentar con tope largo y sin pedir clic: cuando la
+         señal vuelve, el hls se engancha solo. */
+      if(hlsRetries<40){
+        showError(hlsRetries<6?"Sin conexion... Reintentando...":"Esperando señal del stream... ("+hlsRetries+")");
+        setTimeout(function(){if(hls)hls.startLoad();},Math.min(1500*hlsRetries,6000));
+      }
       else{showError("No se pudo conectar.<br>Haz clic para reintentar.");loading.onclick=function(){loading.onclick=null;initHls(url);};}
     }else if(d.type===Hls.ErrorTypes.MEDIA_ERROR){
       showError("Error de media. Recuperando...");
@@ -1382,7 +1400,7 @@ function scheduleFreezeCheck() {
         if (froze >= 2 && froze < 7) { recuperarDirecto(); }
         else if (froze >= 7) {
           clearInterval(timer); _ef = null;
-          if (hls) { initHls(HLS_FALLBACK); } else { initStream(); }
+          if (hls) { initHls(getFallback()); } else { initStream(); }
           return;
         }
       }catch(e){}
@@ -1430,18 +1448,32 @@ function updateStreamBtns(idx){
   var btns=document.querySelectorAll("#stream-switch .stream-btn");
   for(var i=0;i<btns.length;i++){btns[i].style.background=i===idx?"rgba(0,204,255,0.18)":"rgba(255,255,255,0.04)";btns[i].style.color=i===idx?"#00ccff":"#ccc";btns[i].style.borderColor=i===idx?"#00ccff":"#333";}
 }
+function applyStream(i){
+  currentStream=i;
+  _ultimaRec=0;
+  initStream();
+}
 function switchStream(i){
-  try{if(window.electronAPI&&window.electronAPI.setStream){window.electronAPI.setStream(i);return;}}catch(e){}
+  // Respuesta inmediata en el boton; el reinicio real llega con la confirmacion
+  // del main, que ya mato el ffmpeg del stream anterior.
   updateStreamBtns(i);
-  // fallback: recargar con stream nuevo no aplica en modo proxy; solo electron
+  try{if(window.electronAPI&&window.electronAPI.setStream){window.electronAPI.setStream(i);return;}}catch(e){}
+  applyStream(i);
 }
 function initStreamSwitch(){
   var btns=document.querySelectorAll("#stream-switch .stream-btn");
   for(var i=0;i<btns.length;i++){
     (function(idx){btns[idx].onclick=function(){switchStream(idx);};})(i);
   }
-  try{if(window.electronAPI&&window.electronAPI.getStream){window.electronAPI.getStream().then(function(v){updateStreamBtns(v||0);});}else{updateStreamBtns(0);}}catch(e){updateStreamBtns(0);}
-  try{if(window.electronAPI&&window.electronAPI.onStreamChanged){window.electronAPI.onStreamChanged(function(v){updateStreamBtns(v||0);});}}catch(e){}
+  try{if(window.electronAPI&&window.electronAPI.getStream){window.electronAPI.getStream().then(function(v){currentStream=v||0;updateStreamBtns(v||0);});}else{updateStreamBtns(0);}}catch(e){updateStreamBtns(0);}
+  // El main confirma el cambio y reinicia el ffmpeg; solo entonces se resincroniza
+  // el reproductor, porque el <video> sigue pidiendo /stream con el origen viejo.
+  try{if(window.electronAPI&&window.electronAPI.onStreamChanged){window.electronAPI.onStreamChanged(function(v){
+    v=v||0;
+    if(v===currentStream) return;
+    updateStreamBtns(v);
+    applyStream(v);
+  });}}catch(e){}
 }
 initStreamSwitch();
 
