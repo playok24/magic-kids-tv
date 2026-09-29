@@ -1,6 +1,6 @@
 {
   "name": "magic-kids-desktop",
-  "version": "1.4.6",
+  "version": "1.4.7",
   "description": "Magic Kids Television - App de Escritorio",
   "main": "electron-main.js",
   "scripts": {
@@ -33,12 +33,15 @@
     },
     "win": {
       "target": "nsis",
-      "sign": false
+      "sign": false,
+      "icon": "icon.ico"
     },
     "nsis": {
       "oneClick": true,
       "perMachine": false,
       "runAfterFinish": true,
+      "installerIcon": "icon.ico",
+      "uninstallerIcon": "icon.ico",
       "artifactName": "Magic-Kids-Desktop-Setup-${version}.${ext}"
     }
   },
