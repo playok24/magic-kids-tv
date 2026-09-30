@@ -171,41 +171,6 @@ body{
 #blocked-screen .box h3{color:#ff6b6b;font-size:18px;margin-bottom:10px}
 #blocked-screen .box p{color:#aaa;font-size:13px;margin-bottom:16px}
 #blocked-screen .box button{width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,68,68,0.2);color:#ff6b6b;font-size:14px;font-weight:700;cursor:pointer}
-#activate-screen{
-  position:fixed;inset:0;z-index:250;
-  background:rgba(0,0,0,0.92);
-  display:none;justify-content:center;align-items:center;
-}
-#activate-screen.show{display:flex}
-#activate-screen .box{
-  background:#13131f;border:1px solid #333;border-radius:16px;
-  padding:28px 24px;width:85%;max-width:340px;text-align:center;
-}
-#activate-screen .box h3{color:#c4a0ff;font-size:17px;margin-bottom:6px}
-#activate-screen .box p{color:#888;font-size:12px;margin-bottom:16px}
-#activate-screen .box input{
-  width:100%;padding:12px 14px;border-radius:10px;
-  border:1px solid #444;background:#1a1a2e;color:#fff;
-  font-size:18px;text-align:center;outline:none;margin-bottom:16px;
-  text-transform:uppercase;letter-spacing:2px;
-}
-#activate-screen .box input:focus{border-color:#c4a0ff}
-#activate-screen .box button{
-  width:100%;padding:12px;border:none;border-radius:10px;
-  background:linear-gradient(135deg,#7c3aed,#5b21b6);
-  color:#fff;font-size:14px;font-weight:700;cursor:pointer;
-}
-#activate-screen .box button:active{opacity:0.8;transform:scale(0.98)}
-#activate-screen .box .auth-link{background:none;border:none;color:#00ccff;font-size:12px;cursor:pointer;margin-top:8px;width:100%;text-align:center;padding:6px}
-#activate-screen .box .auth-link:hover{text-decoration:underline}
-#activate-screen .box #activate-status{font-size:12px;margin-top:10px;min-height:16px;color:#ff6b6b}
-#activate-screen .box #activate-status.ok{color:#00ff66}
-#activate-screen .box #activate-status.err{color:#ff6b6b}
-body.light #activate-screen .box{background:#fff;border-color:#ddd}
-body.light #activate-screen .box p{color:#555}
-body.light #activate-screen .box input{background:#f0f0f5;border-color:#ddd;color:#222}
-body.light #activate-screen .box input:focus{border-color:#6b3fa0}
-body.light #activate-screen .box .auth-link{color:#2563eb}
 
 body.video-only #header-bar,body.video-only #remote,body.video-only #chat-overlay{display:none}
 body.video-only #container{flex:1}
@@ -683,17 +648,6 @@ body.light #cast-modal .box .close-sub{background:rgba(0,0,0,0.06);color:#555}
   </div>
 </div>
 
-<div id="activate-screen">
-  <div class="box">
-    <h3>Activa Magic Kids TV</h3>
-    <p>Ingresá el código de activación que te envió el administrador.</p>
-    <input type="text" id="activate-code" placeholder="XXXX-XXXX" maxlength="9" autocomplete="off">
-    <button id="activate-btn">ACTIVAR</button>
-    <div id="activate-status"></div>
-    <button class="auth-link" id="activate-admin-link">¿Eres administrador? Ingresar</button>
-  </div>
-</div>
-
 <div id="name-modal">
   <div class="box">
     <h3 id="name-modal-title">Bienvenido a Magic Kids TV!</h3>
@@ -783,83 +737,6 @@ const ADMIN_EMAILS=["hgastonsanchez@gmail.com"];
 var deviceId="";
 try{deviceId=localStorage.getItem("mk_device_id")||"";}catch(e){}
 if(!deviceId){deviceId="dev_"+Math.random().toString(36).substr(2,9)+Date.now().toString(36);try{localStorage.setItem("mk_device_id",deviceId);}catch(e){}}
-
-var activateScreen=document.getElementById("activate-screen");
-var activateInput=document.getElementById("activate-code");
-var activateBtn=document.getElementById("activate-btn");
-var activateStatus=document.getElementById("activate-status");
-var activateAdminLink=document.getElementById("activate-admin-link");
-
-function showActivateScreen(){if(activateScreen)activateScreen.classList.add("show");}
-function hideActivateScreen(){if(activateScreen)activateScreen.classList.remove("show");}
-function setActivateStatus(msg,ok){if(!activateStatus)return;activateStatus.textContent=msg||"";activateStatus.className=msg?(ok?"ok":"err"):"";}
-function normalizeCode(s){var c=(s||"").toUpperCase().replace(/[^A-Z0-9]/g,"");return c.length>4?c.slice(0,4)+"-"+c.slice(4,8):c;}
-function markActivated(code){
-  try{localStorage.setItem("mk_activated","1");}catch(e){}
-  if(db)db.ref("activations/"+deviceId).set({code:code,activatedAt:firebase.database.ServerValue.TIMESTAMP});
-  hideActivateScreen();
-}
-function checkActivation(cb){
-  var done=false;
-  function finish(ok){if(done)return;done=true;cb(ok);}
-  var loc="";try{loc=localStorage.getItem("mk_activated")||"";}catch(e){}
-  if(loc){finish(true);return;}
-  if(!db){finish(false);return;}
-  db.ref("activations/"+deviceId).once("value",function(snap){
-    var v=snap.val();
-    if(v&&v.activatedAt){
-      try{localStorage.setItem("mk_activated","1");}catch(e){}
-      finish(true);
-    }else{finish(false);}
-  },function(){finish(false);});
-}
-function activateDevice(){
-  var code=normalizeCode(activateInput?activateInput.value:"");
-  if(!code){setActivateStatus("Ingresá tu código de activación");return;}
-  if(!db){setActivateStatus("Sin conexión. Intentá de nuevo.");return;}
-  setActivateStatus("Activando...");
-  db.ref("codes/"+code).once("value",function(pre){
-    var pv=pre?pre.val():null;
-    if(!pv||pv.used===true||pv.revoked===true){setActivateStatus("Código inválido o ya utilizado");return;}
-    db.ref("codes/"+code).transaction(function(cur){
-      var base=cur||{};
-      if(cur&&(cur.used===true||cur.revoked===true))return;
-      return {
-        createdAt:base.createdAt||0,
-        createdBy:base.createdBy||"",
-        createdFor:base.createdFor||"",
-        forEmail:base.forEmail||"",
-        used:true,
-        usedBy:deviceId,
-        usedAt:firebase.database.ServerValue.TIMESTAMP,
-        revoked:false
-      };
-    },function(err,committed,snap){
-      if(err){
-        if(err.code==="PERMISSION_DENIED"){setActivateStatus("Error de permisos. Avisale al administrador.");}
-        else{setActivateStatus("Error de conexión. Intentá de nuevo.");}
-        return;
-      }
-      var val=snap?snap.val():null;
-      if(!committed||!val||val.used!==true){setActivateStatus("Código inválido o ya utilizado");return;}
-      markActivated(code);
-      setActivateStatus("Dispositivo activado. Ingresá a tu cuenta.",true);
-      setTimeout(function(){
-        var cu=firebase.auth().currentUser;
-        if(cu&&!cu.isAnonymous){
-          db.ref("users/"+cu.uid).once("value",function(snap){
-            proceedWithUser(cu.uid,snap.val());
-          });
-        }else{
-          showAuthModal();
-        }
-      },600);
-    });
-  });
-}
-if(activateBtn)activateBtn.onclick=activateDevice;
-if(activateInput)activateInput.onkeydown=function(e){if(e.key==="Enter")activateDevice();};
-if(activateAdminLink)activateAdminLink.onclick=function(){setActivateStatus("");hideActivateScreen();showAuthModal();};
 
 var currentUid=deviceId;
 
@@ -1007,7 +884,6 @@ function proceedWithUser(uid,data){
   try{localStorage.setItem("mk_user",userName);}catch(e){}
   updateGreeting();
   chatReady=true;
-  hideActivateScreen();
   hideChatLogin();
   showUserBar();
   syncUserProfile();
@@ -1111,7 +987,6 @@ firebase.auth().onAuthStateChanged(function(user){
     bindChat();
     hideBlockedScreen();
     if(userName){hideChatLogin();showUserBar();}
-    hideActivateScreen();
     showAuthModal();
     return;
   }
@@ -1135,20 +1010,10 @@ firebase.auth().onAuthStateChanged(function(user){
     }
     if(data.isAdmin===true){
       castAdmin=true;
-      try{localStorage.setItem("mk_activated","1");}catch(e){}
-      db.ref("activations/"+deviceId).set({code:"ADMIN",activatedAt:firebase.database.ServerValue.TIMESTAMP});
       proceedAuthed();
       return;
     }
-    checkActivation(function(ok){
-      if(!ok){
-        hideAuthModal();
-        showActivateScreen();
-        setActivateStatus("Este dispositivo aún no está activado. Ingresá tu código.");
-        return;
-      }
-      proceedAuthed();
-    });
+    proceedAuthed();
   });
   db.ref("users/"+uid+"/blocked").on("value",function(snap){
     if(snap.val()===true){
