@@ -514,7 +514,7 @@ body.light #cast-modal .box .close-sub{background:rgba(0,0,0,0.06);color:#555}
 <div id="header-bar">
   <img class="logo" src="www/Magic Kids Logo.png" alt="Logo">
   <span class="title">Magic Kids Television</span>
-  <span class="version" id="version-label">v1.4.1</span>
+  <span class="version" id="version-label">v1.4.9</span>
   <button id="update-btn" onclick="window.electronAPI&&window.electronAPI.installUpdate()">ACTUALIZAR</button>
   <span class="greeting" id="greeting"><span id="greeting-text"></span><button id="theme-toggle" onclick="toggleTheme()">&#127769;</button><button id="logout-btn" title="Salir">&#9210; SALIR</button></span>
 </div>
@@ -710,11 +710,12 @@ const HLS_FALLBACKS=[
   _d8("OHUzbS5za251aGMvYW5hdWdpL2FuYXVnaS12dGFpZy92dGFpZy9tb2MudnR6em9iLjM4MS8vOnNwdHRo"),
   _d8("OHUzbS5za251aGMvc3VscGV2dGdjL3N1bHBldnRnYy12dGFpZy92dGFpZy9tb2MudnR6em9iLjM4MS8vOnNwdHRo")
 ];
-var currentStream=0;
+var currentStream=1;
 function getFallback(){ return HLS_FALLBACKS[currentStream] || HLS_FALLBACKS[0]; }
+
 const PROG_JSON_URL="https://playok24.github.io/magic-kids-tv/programacion.json?t="+Date.now();
 const VERSION_JSON_URL="https://playok24.github.io/magic-kids-tv/version.json?t="+Date.now();
- const APP_VERSION="1.4.1";
+  const APP_VERSION="1.4.9";
 
 if(window.electronAPI&&window.electronAPI.getVersion&&document.getElementById("version-label")){
   window.electronAPI.getVersion().then(function(v){
@@ -731,6 +732,10 @@ const viewCountEl=document.getElementById("view-count");
 const greetingEl=document.getElementById("greeting-text");
 
 let hlsRetries=0;
+/* Marca que la app ya eligio stream por su cuenta. Sin esto, el valor por
+   defecto que devuelve el main (0) podia pisar con arrives tarde al stream
+   vivo que acabamos de encontrar, y el usuario volvia al stream muerto. */
+let streamElegidoPorApp=false;
 let volTimeout=null;
 
 const ADMIN_EMAILS=["hgastonsanchez@gmail.com"];
@@ -870,6 +875,10 @@ var videoStarted=false;
 function startVideoIfAuthed(){
   if(videoStarted)return;
   videoStarted=true;
+  /* Arranca por el pipe local de ffmpeg, que es lo que hace 1.4.0. No se
+     busca un stream vivo ni se rota solo: si el stream elegido esta caido,
+     el watchdog de 1.4.0 reinicia el pipe y el usuario puede cambiar de
+     stream a mano desde los botones. */
   initStream();
 }
 
@@ -1163,12 +1172,20 @@ function soltarVideo(){
   try{ video.currentTime=0; }catch(e){}
 }
 
+/* Pipe local de ffmpeg. Queda como ULTIMO recurso: es el camino que armaba
+   el congelamiento, porque Chromium no sabe manejar un mpegts infinito sin
+   Content-Length y va llenando la cache del medio sin limite. Solo se entra
+   aca si hls.js no esta soportado o si fallo de forma irrecuperable, y desde
+   el primer error vuelve al camino directo. */
+/* Pipe local de ffmpeg. Esta es la via PRINCIPAL, igual que en 1.4.0, que es
+   la version que reproduce sin cortes: src apunta al mpegts infinito que
+   ffmpeg sirve en 127.0.0.1:12345/stream. Si el <video> no puede con esa
+   fuente, recien ahi se cae al HLS del stream elegido. */
 function initStream(){
-  clearInterval(_ef);_ef=null;
-  clearEvTimers();
-  destroyHls();
-  soltarVideo();
-  hlsRetries=0;
+    clearInterval(_ef);_ef=null;
+    clearEvTimers();
+    destroyHls();
+    hlsRetries=0;
   showLoading("Cargando señal...");
   staticScreen.style.display="none";
 
@@ -1180,7 +1197,7 @@ function initStream(){
 
   video.onerror=function(){
     video.onerror=null;
-    console.log("Local stream failed, falling back to HLS");
+    console.log("Local pipe failed, falling back to HLS");
     initHls(getFallback());
   };
 
@@ -1204,23 +1221,16 @@ function initHls(url){
     return;
   }
 
-/* Un nudge grande repetido (0.5s x10) hacia saltar el audio y sonaba robotico.
-   Con valores chicos y pocos intentos, y un salto al borde del directo para
-   resincronizar los timestamps, el audio vuelve limpio. */
   hls=new Hls({
-    enableWorker:true,
-    liveSyncDurationCount:2,liveMaxLatencyDurationCount:8,
-    liveSyncOnStallUpdate:true,
-    maxBufferLength:60,maxMaxBufferLength:180,backBufferLength:30,
-    liveDurationInfinity:true,maxBufferHole:5,maxStarvationDelay:10,
-    maxBufferSize:100*1024*1024,
-    manifestLoadingTimeOut:15000,manifestLoadingMaxRetry:10,manifestLoadingRetryDelay:500,
-    levelLoadingTimeOut:15000,levelLoadingMaxRetry:10,levelLoadingRetryDelay:500,
-    fragLoadingTimeOut:15000,fragLoadingMaxRetry:25,fragLoadingRetryDelay:500,
+    enableWorker:true,liveSyncDuration:25,liveMaxLatencyDuration:50,
+    maxBufferLength:30,maxMaxBufferLength:60,backBufferLength:10,
+    liveDurationInfinity:true,maxBufferHole:2,maxStarvationDelay:5,
+    manifestLoadingTimeOut:20000,manifestLoadingMaxRetry:20,manifestLoadingRetryDelay:1000,
+    levelLoadingTimeOut:20000,levelLoadingMaxRetry:20,
+    fragLoadingTimeOut:20000,fragLoadingMaxRetry:20,fragLoadingRetryDelay:1000,
     startFragPrefetch:true,stretchShortVideoSegment:true,lowLatencyMode:false,
-    nudgeOffset:0.1,nudgeMaxRetry:3,nudgeOnVideoStall:true,
-    enableSoftwareAES:true,appendErrorMaxRetry:6,
-    abrEwmaDefaultEstimate:3000000,abrEwmaFastLive:3,abrEwmaSlowLive:9
+    nudgeOffset:1,nudgeMaxRetry:8,enableSoftwareAES:true,
+    abrEwmaDefaultEstimate:3000000,abrEwmaFastLive:6,abrEwmaSlowLive:15
   });
   hls.loadSource(url);
   hls.attachMedia(video);
@@ -1228,23 +1238,16 @@ function initHls(url){
   hls.on(Hls.Events.ERROR,function(e,d){
     if(!d.fatal)return;
     if(d.type===Hls.ErrorTypes.NETWORK_ERROR){
+      showError("Sin conexion... Reintentando...");
       hlsRetries++;
-      /* Un stream que todavia no emite (el 3, por ejemplo) puede stay caido
-         varios minutos. Reintentar con tope largo y sin pedir clic: cuando la
-         señal vuelve, el hls se engancha solo. */
-      if(hlsRetries<40){
-        showError(hlsRetries<6?"Sin conexion... Reintentando...":"Esperando señal del stream... ("+hlsRetries+")");
-        setTimeout(function(){if(hls)hls.startLoad();},Math.min(1500*hlsRetries,6000));
-      }
+      if(hlsRetries<15){setTimeout(function(){if(hls)hls.startLoad();},2000*Math.min(hlsRetries,5));}
       else{showError("No se pudo conectar.<br>Haz clic para reintentar.");loading.onclick=function(){loading.onclick=null;initHls(url);};}
     }else if(d.type===Hls.ErrorTypes.MEDIA_ERROR){
       showError("Error de media. Recuperando...");
-      hlsRetries++;
-      if(hlsRetries<3&&hls){hls.recoverMediaError();}
-      else{hlsRetries=0;setTimeout(function(){initHls(url);},1000);}
+      if(hls)hls.recoverMediaError();
     }else{
       hlsRetries++;
-      if(hlsRetries<5){showError("Reiniciando... ("+hlsRetries+"/5)");setTimeout(function(){initHls(url);},3000*Math.min(hlsRetries,4));}
+      if(hlsRetries<10){showError("Reiniciando... ("+hlsRetries+"/10)");setTimeout(function(){initHls(url);},3000*Math.min(hlsRetries,4));}
       else{showError("Error persistente.<br>Haz clic para reintentar.");loading.onclick=function(){loading.onclick=null;initHls(url);};}
     }
   });
@@ -1253,56 +1256,31 @@ function initHls(url){
   hls.startLoad();
 }
 
+/* Watchdog de congelamiento. Logica exacta de 1.4.0: cada 10s se mira el
+   currentTime; si no se movio, se limpia el timer y se reinicia UNA sola vez
+   (al pipe, o al HLS si hls esta activo). No hay busqueda de stream vivo, ni
+   rotacion de stream, ni salto al borde del directo, ni presupuesto de
+   recuperaciones: nada que pueda reiniciar el player solo en cadena. */
 function scheduleFreezeCheck() {
   var last = 0;
-  var froze = 0;
   var timer = setInterval(function() {
     if (video.paused || video.ended) return;
     var ct = video.currentTime || 0;
     if (ct > 0 && Math.abs(ct - last) < 0.3) {
-      froze++;
-      try{
-        if (froze >= 2 && froze < 7) { recuperarDirecto(); }
-        else if (froze >= 7) {
-          clearInterval(timer); _ef = null;
-          if (hls) { initHls(getFallback()); } else { initStream(); }
-          return;
-        }
-      }catch(e){}
+      clearInterval(timer);
+      if(hls){initHls(getFallback());}else{initStream();}
       return;
     }
-    froze = 0;
     last = ct;
-  }, 4000);
+  }, 10000);
   _ef = timer;
 }
 
-/* Recuperacion de un congelamiento. En vez de empujar el audio con nudgeMedia
-   (que lo dejaba robotico), se salta al borde del directo: al reubicarse la
-   posicion de reproduccion, hls.js re-sincroniza los timestamps de audio y
-   video y el sonido vuelve normal. El cooldown evita que se dispare en
-   cadena, que antes hacia que varias recuperaciones se pisen entre si. */
-var _ultimaRec = 0;
-function recuperarDirecto(){
-  var ahora = Date.now();
-  if (ahora - _ultimaRec < 3000) return;
-  _ultimaRec = ahora;
-  if (!hls) { initStream(); return; }
-  try{
-    var destino = null;
-    if (typeof hls.liveSyncPosition === "number" && isFinite(hls.liveSyncPosition)) destino = hls.liveSyncPosition;
-    else if (video.buffered && video.buffered.length) destino = video.buffered.end(video.buffered.length - 1);
-    if (destino !== null && destino > video.currentTime + 0.1) video.currentTime = destino;
-    hls.startLoad();
-  }catch(e){}
-}
-
-video.addEventListener("playing",function(){clearEvTimers();_ultimaRec=0;showVideo();});
-video.addEventListener("waiting",function(){clearEvTimers();_wto=setTimeout(function(){if(video.readyState<3)recuperarDirecto();},4000);});
-video.addEventListener("stalled",function(){clearEvTimers();_sto=setTimeout(function(){recuperarDirecto();},3000);});
+video.addEventListener("playing",function(){clearEvTimers();showVideo();});
+video.addEventListener("waiting",function(){clearEvTimers();_wto=setTimeout(function(){if(video.readyState<3){if(hls){initHls(getFallback());}else{initStream();}}},15000);});
+  video.addEventListener("stalled",function(){clearEvTimers();_sto=setTimeout(function(){if(hls){initHls(getFallback());}else{initStream();}},12000);});
 video.addEventListener("ended",function(){clearEvTimers();_eto=setTimeout(function(){initStream();},1000);});
 video.addEventListener("error",function(){
-  if(hls)return;
   showError("Sin conexion.<br>Haz clic para reintentar.");
   loading.onclick=function(){loading.onclick=null;initStream();};
 });
@@ -1315,12 +1293,17 @@ function updateStreamBtns(idx){
 }
 function applyStream(i){
   currentStream=i;
-  _ultimaRec=0;
+  /* OJO: esto NO avisa al main. El aviso lo manda switchStream, una sola vez.
+     Si applyStream tambien mandara setStream, el main recibiria un segundo
+     stream:set y mataria el ffmpeg recien arrancado para el canal nuevo: el
+     player se quedaba en "Cargando senal..." para siempre. */
   initStream();
 }
 function switchStream(i){
   // Respuesta inmediata en el boton; el reinicio real llega con la confirmacion
   // del main, que ya mato el ffmpeg del stream anterior.
+  // A partir de un clic manda el usuario, no la rotacion automatica.
+  streamElegidoPorApp=false;
   updateStreamBtns(i);
   try{if(window.electronAPI&&window.electronAPI.setStream){window.electronAPI.setStream(i);return;}}catch(e){}
   applyStream(i);
@@ -1330,13 +1313,24 @@ function initStreamSwitch(){
   for(var i=0;i<btns.length;i++){
     (function(idx){btns[idx].onclick=function(){switchStream(idx);};})(i);
   }
-  try{if(window.electronAPI&&window.electronAPI.getStream){window.electronAPI.getStream().then(function(v){currentStream=v||0;updateStreamBtns(v||0);});}else{updateStreamBtns(0);}}catch(e){updateStreamBtns(0);}
-  // El main confirma el cambio y reinicia el ffmpeg; solo entonces se resincroniza
-  // el reproductor, porque el <video> sigue pidiendo /stream con el origen viejo.
+  /* Si la app ya eligio un stream vivo, el valor guardado del main (0 por
+     defecto) no se aplica: llega asincrono y pisaria esa eleccion. */
+  try{if(window.electronAPI&&window.electronAPI.getStream){
+    window.electronAPI.getStream().then(function(v){
+      if(streamElegidoPorApp) return;
+      currentStream=v||0;
+      updateStreamBtns(v||0);
+    });
+  }else{if(!streamElegidoPorApp)updateStreamBtns(0);}}catch(e){if(!streamElegidoPorApp)updateStreamBtns(0);}
   try{if(window.electronAPI&&window.electronAPI.onStreamChanged){window.electronAPI.onStreamChanged(function(v){
     v=v||0;
     if(v===currentStream) return;
     updateStreamBtns(v);
+    /* Si la app eligio este stream por su cuenta (arranque en uno vivo o
+       rotacion), el player ya esta en el y reiniciarlo seria un reinicio
+       en cadena. Solo se sigue la confirmacion del main cuando el cambio
+       vino de un clic del usuario. */
+    if(streamElegidoPorApp){ currentStream=v; return; }
     applyStream(v);
   });}}catch(e){}
 }

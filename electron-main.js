@@ -19,9 +19,12 @@ const STREAMS = [
   "https://183.bozztv.com/giatv/giatv-iguana/iguana/chunks.m3u8",
   "https://183.bozztv.com/giatv/giatv-cgtveplus/cgtveplus/chunks.m3u8"
 ];
-let currentStreamIndex = 0;
+/* Default = indice 1 (iguana). Hoy magicplus (0) y cgtveplus (2) devuelven 404
+   o manifests sin segmentos; iguana es el que tiene senal. El valor de arranque
+   es fijo, no se sondea nada. El usuario puede elegir otro con los botones. */
+let currentStreamIndex = 1;
 function getCurrentStreamUrl(){
-  return STREAMS[currentStreamIndex] || STREAMS[0];
+  return STREAMS[currentStreamIndex] || STREAMS[1];
 }
 const HLS_DIR = path.join(os.tmpdir(), "magickids_hls");
 
@@ -30,8 +33,18 @@ autoUpdater.autoInstallOnAppQuit = true;
 
 function getFfmpegPath(){
   try {
+    var fs = require("fs");
     var p = require("ffmpeg-static");
-    if(p && require("fs").existsSync(p)) return p;
+    if(!p) return "ffmpeg";
+    if(p.indexOf('"') >= 0) p = p.replace(/"/g, "");
+    /* Dentro de app.asar un ejecutable NO se puede lanzar: hay que apuntar a la
+       copia real de app.asar.unpacked. Con la ruta del asar, ffmpeg no
+       arrancaba, el pipe moria y el player caia al HLS remoto lento
+       ("Cargando senal..." infinito). */
+    if(p.indexOf("app.asar") >= 0){
+      p = p.replace("app.asar.unpacked", "app.asar").replace("app.asar", "app.asar.unpacked");
+    }
+    if(fs.existsSync(p)) return p;
   } catch(e){}
   return "ffmpeg";
 }
@@ -141,7 +154,6 @@ function startProxy(){
         "-reconnect", "1",
         "-reconnect_streamed", "1",
         "-reconnect_delay_max", "5",
-        "-re",
         "-i", getCurrentStreamUrl(),
         "-c", "copy",
         "-f", "mpegts",
@@ -187,7 +199,8 @@ function createWindow(){
     webPreferences: {
       preload: path.join(__dirname, "electron-preload.js"),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      backgroundThrottling: false
     }
   });
   mainWindow.once("ready-to-show", function(){
