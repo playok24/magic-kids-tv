@@ -514,7 +514,7 @@ body.light #cast-modal .box .close-sub{background:rgba(0,0,0,0.06);color:#555}
 <div id="header-bar">
   <img class="logo" src="www/Magic Kids Logo.png" alt="Logo">
   <span class="title">Magic Kids Television</span>
-  <span class="version" id="version-label">v1.4.9</span>
+  <span class="version" id="version-label">v1.5.0</span>
   <button id="update-btn" onclick="window.electronAPI&&window.electronAPI.installUpdate()">ACTUALIZAR</button>
   <span class="greeting" id="greeting"><span id="greeting-text"></span><button id="theme-toggle" onclick="toggleTheme()">&#127769;</button><button id="logout-btn" title="Salir">&#9210; SALIR</button></span>
 </div>
@@ -562,7 +562,7 @@ body.light #cast-modal .box .close-sub{background:rgba(0,0,0,0.06);color:#555}
     </div>
     <button id="chat-btn">&#128172; CHAT EN VIVO<span id="chat-user-label"></span><span class="badge" id="chat-badge">0</span></button>
     <div id="links-bar">
-      <a class="instagram-link" href="https://www.instagram.com/elmagictv" target="_blank" rel="noopener">
+      <a class="instagram-link" href="https://www.instagram.com/magickids.ar" target="_blank" rel="noopener">
         <svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
       </a>
     </div>
@@ -715,7 +715,7 @@ function getFallback(){ return HLS_FALLBACKS[currentStream] || HLS_FALLBACKS[0];
 
 const PROG_JSON_URL="https://playok24.github.io/magic-kids-tv/programacion.json?t="+Date.now();
 const VERSION_JSON_URL="https://playok24.github.io/magic-kids-tv/version.json?t="+Date.now();
-  const APP_VERSION="1.4.9";
+  const APP_VERSION="1.5.0";
 
 if(window.electronAPI&&window.electronAPI.getVersion&&document.getElementById("version-label")){
   window.electronAPI.getVersion().then(function(v){
@@ -875,11 +875,12 @@ var videoStarted=false;
 function startVideoIfAuthed(){
   if(videoStarted)return;
   videoStarted=true;
-  /* Arranca por el pipe local de ffmpeg, que es lo que hace 1.4.0. No se
-     busca un stream vivo ni se rota solo: si el stream elegido esta caido,
-     el watchdog de 1.4.0 reinicia el pipe y el usuario puede cambiar de
-     stream a mano desde los botones. */
-  initStream();
+  /* Arranca por HLS directo con hls.js, igual que la app movil (que lo
+     reproduce nativo en el WebView). hls.js administra el buffer del directo
+     y reintenta solo, asi que no se llena sin limite como con el mpegts
+     infinito del pipe de ffmpeg. El pipe queda solo como respaldo
+     (fallbackToPipe) y para el Cast. */
+  startPrimary();
 }
 
 function proceedWithUser(uid,data){
@@ -1172,15 +1173,39 @@ function soltarVideo(){
   try{ video.currentTime=0; }catch(e){}
 }
 
+/* Respaldo hls.js -> pipe de ffmpeg. Es un intercambio acotado (el contador se
+   reinicia cuando el video ya esta andando) para que hls y el pipe no se
+   reinicien en cadena si el CDN esta caido. */
+var _swapCount=0;
+var _pipeFallbackActive=false;
+var _mediaErr=0;
+function fallbackToPipe(){
+  if(_swapCount>=2){
+    showError("No se pudo conectar.<br>Haz clic para reintentar.");
+    loading.onclick=function(){loading.onclick=null;_swapCount=0;_pipeFallbackActive=false;_mediaErr=0;initHls(getFallback());};
+    return;
+  }
+  _swapCount++;
+  _pipeFallbackActive=true;
+  initStream();
+}
+
+/* Arranca el player por la via principal: HLS directo con hls.js (igual que la
+   app movil). El pipe de ffmpeg solo si hls.js no esta disponible. Se usa para
+   el arranque, el cambio de canal y las recuperaciones. */
+function startPrimary(){
+  _swapCount=0;
+  _pipeFallbackActive=false;
+  _mediaErr=0;
+  if(!window.Hls||!Hls.isSupported()){ initStream(); return; }
+  initHls(getFallback());
+}
+
 /* Pipe local de ffmpeg. Queda como ULTIMO recurso: es el camino que armaba
    el congelamiento, porque Chromium no sabe manejar un mpegts infinito sin
    Content-Length y va llenando la cache del medio sin limite. Solo se entra
-   aca si hls.js no esta soportado o si fallo de forma irrecuperable, y desde
-   el primer error vuelve al camino directo. */
-/* Pipe local de ffmpeg. Esta es la via PRINCIPAL, igual que en 1.4.0, que es
-   la version que reproduce sin cortes: src apunta al mpegts infinito que
-   ffmpeg sirve en 127.0.0.1:12345/stream. Si el <video> no puede con esa
-   fuente, recien ahi se cae al HLS del stream elegido. */
+   aca si hls.js no esta soportado o si fallo de forma irrecuperable (o para
+   el Cast, que si necesita este proxy). */
 function initStream(){
     clearInterval(_ef);_ef=null;
     clearEvTimers();
@@ -1210,6 +1235,8 @@ function initHls(url){
   destroyHls();
   soltarVideo();
   hlsRetries=0;
+  _mediaErr=0;
+  video.onerror=null;
   showLoading("Cargando señal...");
   staticScreen.style.display="none";
 
@@ -1222,14 +1249,14 @@ function initHls(url){
   }
 
   hls=new Hls({
-    enableWorker:true,liveSyncDuration:25,liveMaxLatencyDuration:50,
-    maxBufferLength:30,maxMaxBufferLength:60,backBufferLength:10,
-    liveDurationInfinity:true,maxBufferHole:2,maxStarvationDelay:5,
+    enableWorker:true,liveSyncDuration:15,liveMaxLatencyDuration:60,
+    maxBufferLength:60,maxMaxBufferLength:120,backBufferLength:10,
+    liveDurationInfinity:true,maxBufferHole:3,maxStarvationDelay:8,
     manifestLoadingTimeOut:20000,manifestLoadingMaxRetry:20,manifestLoadingRetryDelay:1000,
     levelLoadingTimeOut:20000,levelLoadingMaxRetry:20,
-    fragLoadingTimeOut:20000,fragLoadingMaxRetry:20,fragLoadingRetryDelay:1000,
+    fragLoadingTimeOut:20000,fragLoadingMaxRetry:30,fragLoadingRetryDelay:1000,
     startFragPrefetch:true,stretchShortVideoSegment:true,lowLatencyMode:false,
-    nudgeOffset:1,nudgeMaxRetry:8,enableSoftwareAES:true,
+    nudgeOffset:0.1,nudgeMaxRetry:3,enableSoftwareAES:true,appendErrorMaxRetry:5,
     abrEwmaDefaultEstimate:3000000,abrEwmaFastLive:6,abrEwmaSlowLive:15
   });
   hls.loadSource(url);
@@ -1241,19 +1268,22 @@ function initHls(url){
       showError("Sin conexion... Reintentando...");
       hlsRetries++;
       if(hlsRetries<15){setTimeout(function(){if(hls)hls.startLoad();},2000*Math.min(hlsRetries,5));}
-      else{showError("No se pudo conectar.<br>Haz clic para reintentar.");loading.onclick=function(){loading.onclick=null;initHls(url);};}
+      else{fallbackToPipe();}
     }else if(d.type===Hls.ErrorTypes.MEDIA_ERROR){
       showError("Error de media. Recuperando...");
-      if(hls)hls.recoverMediaError();
+      _mediaErr++;
+      if(_mediaErr<3&&hls){hls.recoverMediaError();}
+      else{fallbackToPipe();}
     }else{
       hlsRetries++;
       if(hlsRetries<10){showError("Reiniciando... ("+hlsRetries+"/10)");setTimeout(function(){initHls(url);},3000*Math.min(hlsRetries,4));}
-      else{showError("Error persistente.<br>Haz clic para reintentar.");loading.onclick=function(){loading.onclick=null;initHls(url);};}
+      else{fallbackToPipe();}
     }
   });
   hls.on(Hls.Events.FRAG_LOADED,function(){hlsRetries=0;});
   hls.on(Hls.Events.LEVEL_LOADED,function(){hlsRetries=0;});
   hls.startLoad();
+  scheduleFreezeCheck();
 }
 
 /* Watchdog de congelamiento. Logica exacta de 1.4.0: cada 10s se mira el
@@ -1276,13 +1306,13 @@ function scheduleFreezeCheck() {
   _ef = timer;
 }
 
-video.addEventListener("playing",function(){clearEvTimers();showVideo();});
+video.addEventListener("playing",function(){clearEvTimers();_swapCount=0;_pipeFallbackActive=false;showVideo();});
 video.addEventListener("waiting",function(){clearEvTimers();_wto=setTimeout(function(){if(video.readyState<3){if(hls){initHls(getFallback());}else{initStream();}}},15000);});
   video.addEventListener("stalled",function(){clearEvTimers();_sto=setTimeout(function(){if(hls){initHls(getFallback());}else{initStream();}},12000);});
-video.addEventListener("ended",function(){clearEvTimers();_eto=setTimeout(function(){initStream();},1000);});
+video.addEventListener("ended",function(){clearEvTimers();_eto=setTimeout(function(){startPrimary();},1000);});
 video.addEventListener("error",function(){
   showError("Sin conexion.<br>Haz clic para reintentar.");
-  loading.onclick=function(){loading.onclick=null;initStream();};
+  loading.onclick=function(){loading.onclick=null;startPrimary();};
 });
 
 renderProgramacion();
@@ -1297,7 +1327,7 @@ function applyStream(i){
      Si applyStream tambien mandara setStream, el main recibiria un segundo
      stream:set y mataria el ffmpeg recien arrancado para el canal nuevo: el
      player se quedaba en "Cargando senal..." para siempre. */
-  initStream();
+  startPrimary();
 }
 function switchStream(i){
   // Respuesta inmediata en el boton; el reinicio real llega con la confirmacion
