@@ -514,7 +514,7 @@ body.light #cast-modal .box .close-sub{background:rgba(0,0,0,0.06);color:#555}
 <div id="header-bar">
   <img class="logo" src="www/Magic Kids Logo.png" alt="Logo">
   <span class="title">Magic Kids Television</span>
-  <span class="version" id="version-label">v1.5.0</span>
+  <span class="version" id="version-label">v1.5.1</span>
   <button id="update-btn" onclick="window.electronAPI&&window.electronAPI.installUpdate()">ACTUALIZAR</button>
   <span class="greeting" id="greeting"><span id="greeting-text"></span><button id="theme-toggle" onclick="toggleTheme()">&#127769;</button><button id="logout-btn" title="Salir">&#9210; SALIR</button></span>
 </div>
@@ -715,7 +715,7 @@ function getFallback(){ return HLS_FALLBACKS[currentStream] || HLS_FALLBACKS[0];
 
 const PROG_JSON_URL="https://playok24.github.io/magic-kids-tv/programacion.json?t="+Date.now();
 const VERSION_JSON_URL="https://playok24.github.io/magic-kids-tv/version.json?t="+Date.now();
-  const APP_VERSION="1.5.0";
+  const APP_VERSION="1.5.1";
 
 if(window.electronAPI&&window.electronAPI.getVersion&&document.getElementById("version-label")){
   window.electronAPI.getVersion().then(function(v){
@@ -1173,29 +1173,19 @@ function soltarVideo(){
   try{ video.currentTime=0; }catch(e){}
 }
 
-/* Respaldo hls.js -> pipe de ffmpeg. Es un intercambio acotado (el contador se
-   reinicia cuando el video ya esta andando) para que hls y el pipe no se
-   reinicien en cadena si el CDN esta caido. */
-var _swapCount=0;
-var _pipeFallbackActive=false;
+/* HLS directo (igual que la app movil). El pipe de ffmpeg solo si hls.js no esta
+   disponible (o para el Cast). Si HLS falla se reintenta HLS con backoff: NO se
+   cae al pipe, porque el pipe congela la transmision (buffer infinito). */
 var _mediaErr=0;
 function fallbackToPipe(){
-  if(_swapCount>=2){
-    showError("No se pudo conectar.<br>Haz clic para reintentar.");
-    loading.onclick=function(){loading.onclick=null;_swapCount=0;_pipeFallbackActive=false;_mediaErr=0;initHls(getFallback());};
-    return;
-  }
-  _swapCount++;
-  _pipeFallbackActive=true;
-  initStream();
+  showError("Sin conexion. Reintentando...");
+  setTimeout(function(){ _mediaErr=0; initHls(getFallback()); }, 3000);
 }
 
 /* Arranca el player por la via principal: HLS directo con hls.js (igual que la
    app movil). El pipe de ffmpeg solo si hls.js no esta disponible. Se usa para
    el arranque, el cambio de canal y las recuperaciones. */
 function startPrimary(){
-  _swapCount=0;
-  _pipeFallbackActive=false;
   _mediaErr=0;
   if(!window.Hls||!Hls.isSupported()){ initStream(); return; }
   initHls(getFallback());
@@ -1257,6 +1247,7 @@ function initHls(url){
     fragLoadingTimeOut:20000,fragLoadingMaxRetry:30,fragLoadingRetryDelay:1000,
     startFragPrefetch:true,stretchShortVideoSegment:true,lowLatencyMode:false,
     nudgeOffset:0.1,nudgeMaxRetry:3,enableSoftwareAES:true,appendErrorMaxRetry:5,
+  maxLiveSyncPlaybackRate:1.1,
     abrEwmaDefaultEstimate:3000000,abrEwmaFastLive:6,abrEwmaSlowLive:15
   });
   hls.loadSource(url);
@@ -1306,9 +1297,9 @@ function scheduleFreezeCheck() {
   _ef = timer;
 }
 
-video.addEventListener("playing",function(){clearEvTimers();_swapCount=0;_pipeFallbackActive=false;showVideo();});
-video.addEventListener("waiting",function(){clearEvTimers();_wto=setTimeout(function(){if(video.readyState<3){if(hls){initHls(getFallback());}else{initStream();}}},15000);});
-  video.addEventListener("stalled",function(){clearEvTimers();_sto=setTimeout(function(){if(hls){initHls(getFallback());}else{initStream();}},12000);});
+video.addEventListener("playing",function(){clearEvTimers();_mediaErr=0;showVideo();});
+video.addEventListener("waiting",function(){clearEvTimers();_wto=setTimeout(function(){if(video.readyState<3){if(hls&&typeof hls.startLoad==='function'){try{hls.startLoad();}catch(e){}} if(video.readyState<2){if(hls){initHls(getFallback());}else{initStream();}}}},25000);});
+  video.addEventListener("stalled",function(){clearEvTimers();_sto=setTimeout(function(){if(video.readyState<3){if(hls&&typeof hls.startLoad==='function'){try{hls.startLoad();}catch(e){}} if(video.readyState<2){if(hls){initHls(getFallback());}else{initStream();}}}},25000);});
 video.addEventListener("ended",function(){clearEvTimers();_eto=setTimeout(function(){startPrimary();},1000);});
 video.addEventListener("error",function(){
   showError("Sin conexion.<br>Haz clic para reintentar.");
