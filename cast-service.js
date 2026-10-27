@@ -74,7 +74,7 @@ function startDiscovery() {
   };
   query();
   mdnsQueryTimer = setTimeout(query, 1500);
-  mdnsQueryInterval = setInterval(query, 4000);
+  mdnsQueryInterval = setInterval(query, 30000);
 }
 
 function stopDiscovery() {
