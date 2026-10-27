@@ -514,7 +514,7 @@ body.light #cast-modal .box .close-sub{background:rgba(0,0,0,0.06);color:#555}
 <div id="header-bar">
   <img class="logo" src="www/Magic Kids Logo.png" alt="Logo">
   <span class="title">Magic Kids Television</span>
-  <span class="version" id="version-label">v1.5.1</span>
+  <span class="version" id="version-label">v1.5.2</span>
   <button id="update-btn" onclick="window.electronAPI&&window.electronAPI.installUpdate()">ACTUALIZAR</button>
   <span class="greeting" id="greeting"><span id="greeting-text"></span><button id="theme-toggle" onclick="toggleTheme()">&#127769;</button><button id="logout-btn" title="Salir">&#9210; SALIR</button></span>
 </div>
@@ -715,7 +715,7 @@ function getFallback(){ return HLS_FALLBACKS[currentStream] || HLS_FALLBACKS[0];
 
 const PROG_JSON_URL="https://playok24.github.io/magic-kids-tv/programacion.json?t="+Date.now();
 const VERSION_JSON_URL="https://playok24.github.io/magic-kids-tv/version.json?t="+Date.now();
-  const APP_VERSION="1.5.1";
+  const APP_VERSION="1.5.2";
 
 if(window.electronAPI&&window.electronAPI.getVersion&&document.getElementById("version-label")){
   window.electronAPI.getVersion().then(function(v){
@@ -1239,7 +1239,7 @@ function initHls(url){
   }
 
   hls=new Hls({
-    enableWorker:true,liveSyncDuration:15,liveMaxLatencyDuration:60,
+    enableWorker:true,liveSyncDuration:8,liveMaxLatencyDuration:20,
     maxBufferLength:60,maxMaxBufferLength:120,backBufferLength:10,
     liveDurationInfinity:true,maxBufferHole:3,maxStarvationDelay:8,
     manifestLoadingTimeOut:20000,manifestLoadingMaxRetry:20,manifestLoadingRetryDelay:1000,
