@@ -514,7 +514,7 @@ body.light #cast-modal .box .close-sub{background:rgba(0,0,0,0.06);color:#555}
 <div id="header-bar">
   <img class="logo" src="www/Magic Kids Logo.png" alt="Logo">
   <span class="title">Magic Kids Television</span>
-  <span class="version" id="version-label">v1.5.3</span>
+  <span class="version" id="version-label">v1.5.4</span>
   <button id="update-btn" onclick="window.electronAPI&&window.electronAPI.installUpdate()">ACTUALIZAR</button>
   <span class="greeting" id="greeting"><span id="greeting-text"></span><button id="theme-toggle" onclick="toggleTheme()">&#127769;</button><button id="logout-btn" title="Salir">&#9210; SALIR</button></span>
 </div>
@@ -715,7 +715,7 @@ function getFallback(){ return HLS_FALLBACKS[currentStream] || HLS_FALLBACKS[0];
 
 const PROG_JSON_URL="https://playok24.github.io/magic-kids-tv/programacion.json?t="+Date.now();
 const VERSION_JSON_URL="https://playok24.github.io/magic-kids-tv/version.json?t="+Date.now();
-  const APP_VERSION="1.5.3";
+  const APP_VERSION="1.5.4";
 
 if(window.electronAPI&&window.electronAPI.getVersion&&document.getElementById("version-label")){
   window.electronAPI.getVersion().then(function(v){
@@ -1163,7 +1163,7 @@ function clearEvTimers(){
   clearTimeout(_eto);_eto=null;
 }
 
-function destroyHls(){if(hls){hls.destroy();hls=null;}}
+function destroyHls(){clearReloadTimer();if(hls){hls.destroy();hls=null;}}
 
 /* Al liberar el hls se limpia el elemento de video. Si se lo deja con el
    currentTime viejo, la instancia nueva arranca en el borde del directo pero
@@ -1179,9 +1179,11 @@ function soltarVideo(){
    disponible (o para el Cast). Si HLS falla se reintenta HLS con backoff: NO se
    cae al pipe, porque el pipe congela la transmision (buffer infinito). */
 var _mediaErr=0;
+var _reloadTimer=null;
+function clearReloadTimer(){ if(_reloadTimer){ clearInterval(_reloadTimer); _reloadTimer=null; } }
 function fallbackToPipe(){
   showError("Sin conexion. Reintentando...");
-  setTimeout(function(){ _mediaErr=0; initHls(getFallback()); }, 3000);
+  setTimeout(function(){ _mediaErr=0; initStream(); }, 3000);
 }
 
 /* Arranca el player por la via principal: HLS directo con hls.js (igual que la
@@ -1189,8 +1191,7 @@ function fallbackToPipe(){
    el arranque, el cambio de canal y las recuperaciones. */
 function startPrimary(){
   _mediaErr=0;
-  if(!window.Hls||!Hls.isSupported()){ initStream(); return; }
-  initHls(getFallback());
+  initStream();
 }
 
 /* Pipe local de ffmpeg. Queda como ULTIMO recurso: es el camino que armaba
@@ -1217,6 +1218,12 @@ function initStream(){
     console.log("Local pipe failed, falling back to HLS");
     initHls(getFallback());
   };
+
+  clearReloadTimer();
+  _reloadTimer=setInterval(function(){
+    if(video.paused||video.ended) return;
+    try{ video.src=STREAM; video.load(); startPlayback(); }catch(e){}
+  }, 60000);
 
   scheduleFreezeCheck();
 }
