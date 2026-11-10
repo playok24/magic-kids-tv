@@ -2,7 +2,7 @@
 var FW_API="AIzaSyDM7YiLoP5Q-jTB1BBbMluvWL1LIPqCtxI";
 var FW_DB="https://contadores-magic-default-rtdb.firebaseio.com";
 var PROG_URL="https://playok24.github.io/magic-kids-tv/programacion.json";
-var STREAM_URL="https://183.bozztv.com/giatv/giatv-magicplus/magicplus/chunks.m3u8";
+var STREAM_URL="https://183.giatvcdn.com/giatv/giatv-magicplus/magicplus/chunks.m3u8";
 var APP_VER="1.3.6";
 
 if(!firebase.apps.length){firebase.initializeApp({apiKey:FW_API,databaseURL:FW_DB,authDomain:"contadores-magic.firebaseapp.com",projectId:"contadores-magic",storageBucket:"contadores-magic.firebasestorage.app",messagingSenderId:"58723817117",appId:"1:58723817117:web:f479abaeacf191364ae674"});}

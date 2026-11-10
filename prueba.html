@@ -514,7 +514,7 @@ body.light #cast-modal .box .close-sub{background:rgba(0,0,0,0.06);color:#555}
 <div id="header-bar">
   <img class="logo" src="www/Magic Kids Logo.png" alt="Logo">
   <span class="title">Magic Kids Television</span>
-  <span class="version" id="version-label">v1.5.4</span>
+  <span class="version" id="version-label">v1.5.5</span>
   <button id="update-btn" onclick="window.electronAPI&&window.electronAPI.installUpdate()">ACTUALIZAR</button>
   <span class="greeting" id="greeting"><span id="greeting-text"></span><button id="theme-toggle" onclick="toggleTheme()">&#127769;</button><button id="logout-btn" title="Salir">&#9210; SALIR</button></span>
 </div>
@@ -706,16 +706,16 @@ body.light #cast-modal .box .close-sub{background:rgba(0,0,0,0.06);color:#555}
 const STREAM="http://127.0.0.1:12345/stream";
 function _d8(x){var t=atob(x);return t.split("").reverse().join("");}
 const HLS_FALLBACKS=[
-  _d8("OHUzbS5za251aGMvc3VscGNpZ2FtL3N1bHBjaWdhbS12dGFpZy92dGFpZy9tb2MudnR6em9iLjM4MS8vOnNwdHRo"),
-  _d8("OHUzbS5za251aGMvYW5hdWdpL2FuYXVnaS12dGFpZy92dGFpZy9tb2MudnR6em9iLjM4MS8vOnNwdHRo"),
-  _d8("OHUzbS5za251aGMvc3VscGV2dGdjL3N1bHBldnRnYy12dGFpZy92dGFpZy9tb2MudnR6em9iLjM4MS8vOnNwdHRo")
+  _d8("OHUzbS5za251aGMvc3VscGNpZ2FtL3N1bHBjaWdhbS12dGFpZy92dGFpZy9tb2MubmRjdnRhaWcuMzgxLy86c3B0dGg="),
+  _d8("OHUzbS5za251aGMvYW5hdWdpL2FuYXVnaS12dGFpZy92dGFpZy9tb2MubmRjdnRhaWcuMzgxLy86c3B0dGg="),
+  _d8("OHUzbS5za251aGMvc3VscGV2dGdjL3N1bHBldnRnYy12dGFpZy92dGFpZy9tb2MubmRjdnRhaWcuMzgxLy86c3B0dGg=")
 ];
-var currentStream=1;
+var currentStream=0;
 function getFallback(){ return HLS_FALLBACKS[currentStream] || HLS_FALLBACKS[0]; }
 
 const PROG_JSON_URL="https://playok24.github.io/magic-kids-tv/programacion.json?t="+Date.now();
 const VERSION_JSON_URL="https://playok24.github.io/magic-kids-tv/version.json?t="+Date.now();
-  const APP_VERSION="1.5.4";
+  const APP_VERSION="1.5.5";
 
 if(window.electronAPI&&window.electronAPI.getVersion&&document.getElementById("version-label")){
   window.electronAPI.getVersion().then(function(v){

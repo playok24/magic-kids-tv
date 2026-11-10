@@ -15,16 +15,16 @@ let hlsProc = null;
 let streamProcs = [];
 const PROXY_PORT = 12345;
 const STREAMS = [
-  "https://183.bozztv.com/giatv/giatv-magicplus/magicplus/chunks.m3u8",
-  "https://183.bozztv.com/giatv/giatv-iguana/iguana/chunks.m3u8",
-  "https://183.bozztv.com/giatv/giatv-cgtveplus/cgtveplus/chunks.m3u8"
+  "https://183.giatvcdn.com/giatv/giatv-magicplus/magicplus/chunks.m3u8",
+  "https://183.giatvcdn.com/giatv/giatv-iguana/iguana/chunks.m3u8",
+  "https://183.giatvcdn.com/giatv/giatv-cgtveplus/cgtveplus/chunks.m3u8"
 ];
-/* Default = indice 1 (iguana). Hoy magicplus (0) y cgtveplus (2) devuelven 404
-   o manifests sin segmentos; iguana es el que tiene senal. El valor de arranque
-   es fijo, no se sondea nada. El usuario puede elegir otro con los botones. */
-let currentStreamIndex = 1;
+/* Default = indice 0 (magicplus / Magic Kids). Iguana (1) puede dar 404 cuando
+   no hay transmision activa. El valor de arranque es fijo, no se sondea nada.
+   El usuario puede elegir otro con los botones. */
+let currentStreamIndex = 0;
 function getCurrentStreamUrl(){
-  return STREAMS[currentStreamIndex] || STREAMS[1];
+  return STREAMS[currentStreamIndex] || STREAMS[0];
 }
 const HLS_DIR = path.join(os.tmpdir(), "magickids_hls");
 
