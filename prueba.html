@@ -514,7 +514,7 @@ body.light #cast-modal .box .close-sub{background:rgba(0,0,0,0.06);color:#555}
 <div id="header-bar">
   <img class="logo" src="www/Magic Kids Logo.png" alt="Logo">
   <span class="title">Magic Kids Television</span>
-  <span class="version" id="version-label">v1.5.5</span>
+  <span class="version" id="version-label">v1.5.6</span>
   <button id="update-btn" onclick="window.electronAPI&&window.electronAPI.installUpdate()">ACTUALIZAR</button>
   <span class="greeting" id="greeting"><span id="greeting-text"></span><button id="theme-toggle" onclick="toggleTheme()">&#127769;</button><button id="logout-btn" title="Salir">&#9210; SALIR</button></span>
 </div>
@@ -704,6 +704,11 @@ body.light #cast-modal .box .close-sub{background:rgba(0,0,0,0.06);color:#555}
 
 <script>
 const STREAM="http://127.0.0.1:12345/stream";
+/* HLS local: el proceso principal baja el CDN con ffmpeg y lo reempaqueta a un
+   HLS en 127.0.0.1. Es la via primaria en escritorio: hls.js contra el CDN se
+   queda sin buffer con este stream (~2.2 Mbps), contra localhost va estable.
+   El CDN directo queda como respaldo si el HLS local falla. */
+const LOCAL_HLS="http://127.0.0.1:12345/hls/playlist.m3u8";
 function _d8(x){var t=atob(x);return t.split("").reverse().join("");}
 const HLS_FALLBACKS=[
   _d8("OHUzbS5za251aGMvc3VscGNpZ2FtL3N1bHBjaWdhbS12dGFpZy92dGFpZy9tb2MubmRjdnRhaWcuMzgxLy86c3B0dGg="),
@@ -715,7 +720,7 @@ function getFallback(){ return HLS_FALLBACKS[currentStream] || HLS_FALLBACKS[0];
 
 const PROG_JSON_URL="https://playok24.github.io/magic-kids-tv/programacion.json?t="+Date.now();
 const VERSION_JSON_URL="https://playok24.github.io/magic-kids-tv/version.json?t="+Date.now();
-  const APP_VERSION="1.5.5";
+  const APP_VERSION="1.5.6";
 
 if(window.electronAPI&&window.electronAPI.getVersion&&document.getElementById("version-label")){
   window.electronAPI.getVersion().then(function(v){
@@ -1186,12 +1191,73 @@ function fallbackToPipe(){
   setTimeout(function(){ _mediaErr=0; initStream(); }, 3000);
 }
 
-/* Arranca el player por la via principal: HLS directo con hls.js (igual que la
-   app movil). El pipe de ffmpeg solo si hls.js no esta disponible. Se usa para
-   el arranque, el cambio de canal y las recuperaciones. */
+/* Modo del player: "local" (ffmpeg -> 127.0.0.1, via primaria en escritorio) o
+   "cdn" (hls.js directo a 183.giatvcdn.com, respaldo). */
+var hlsMode="cdn";
+var localNetErr=0;       // errores de red seguidos en modo local
+function canUseLocalHls(){
+  /* Solo la app de escritorio levanta el proxy/ffmpeg en 127.0.0.1:12345. En la
+     web/Android/TV no existe electronAPI y se usa el CDN directo. */
+  try{ return !!(window.electronAPI && window.electronAPI.setStream); }catch(e){ return false; }
+}
+function currentHlsUrl(){ return hlsMode==="local" ? LOCAL_HLS : getFallback(); }
+function goCdnMode(msg){
+  hlsMode="cdn";
+  showError(msg||"Cambiando a conexion directa...");
+  setTimeout(function(){ initHls(getFallback()); }, 1500);
+}
+
+/* Arranca el player por la via principal. En escritorio se espera (con tope) a
+   que ffmpeg escriba el primer playlist local: el primer segmento tarda unos
+   segundos. Si no aparece, se sigue por el CDN directo como antes. */
 function startPrimary(){
   _mediaErr=0;
-  initStream();
+  localNetErr=0;
+  if(!canUseLocalHls()){ hlsMode="cdn"; initHls(getFallback()); return; }
+  hlsMode="local";
+  preflightLocalHls();
+}
+
+/* Dos pasos, para no quedarse 15s en "Cargando" cuando el canal esta caido:
+   1) se mira el manifiesto del CDN (rapido). Si da 404, no hay transmision y se
+      sigue por el CDN directo, que muestra el error de siempre.
+   2) si esta vivo, se espera el playlist local que arma ffmpeg. */
+var _pfSeq=0;
+function preflightLocalHls(){
+  var seq=++_pfSeq;
+  var done=false;
+  clearInterval(_ef);_ef=null;
+  clearEvTimers();
+  destroyHls();
+  showLoading("Cargando señal...");
+  staticScreen.style.display="none";
+
+  function finish(mode,msg){
+    if(done || seq!==_pfSeq)return; done=true;
+    clearTimeout(to);
+    if(mode==="local"){ hlsMode="local"; initHls(LOCAL_HLS); }
+    else{ goCdnMode(msg); }
+  }
+
+  var to=setTimeout(function(){ finish("cdn"); }, 22000);
+
+  var ctl=null;
+  try{ ctl=new AbortController(); }catch(e){}
+  var probeTo=setTimeout(function(){ try{ if(ctl)ctl.abort(); }catch(e){} }, 8000);
+  fetch(getFallback(), ctl?{cache:"no-store",signal:ctl.signal}:{cache:"no-store"})
+    .then(function(r){
+      clearTimeout(probeTo);
+      if(r && r.status===404){ finish("cdn","Cargando señal..."); return; }
+      waitLocal();
+    })
+    .catch(function(){ clearTimeout(probeTo); waitLocal(); });
+
+  function waitLocal(){
+    if(done)return;
+    fetch(LOCAL_HLS+"?t="+Date.now(), {cache:"no-store"})
+      .then(function(r){ finish(r && r.ok ? "local" : "cdn"); })
+      .catch(function(){ finish("cdn"); });
+  }
 }
 
 /* Pipe local de ffmpeg. Queda como ULTIMO recurso: es el camino que armaba
@@ -1204,6 +1270,7 @@ function initStream(){
     clearEvTimers();
     destroyHls();
     hlsRetries=0;
+  hlsMode="cdn";
   showLoading("Cargando señal...");
   staticScreen.style.display="none";
 
@@ -1235,6 +1302,7 @@ function initHls(url){
   soltarVideo();
   hlsRetries=0;
   _mediaErr=0;
+  localNetErr=0;
   video.onerror=null;
   showLoading("Cargando señal...");
   staticScreen.style.display="none";
@@ -1267,17 +1335,23 @@ function initHls(url){
     if(d.type===Hls.ErrorTypes.NETWORK_ERROR){
       showError("Sin conexion... Reintentando...");
       hlsRetries++;
+      /* En modo local un par de fallos significa que ffmpeg no puede con el
+         canal (caido, 404). Antes de quedarse reintentando, se pasa al CDN. */
+      if(hlsMode==="local" && ++localNetErr>=3){ goCdnMode(); return; }
       if(hlsRetries<15){setTimeout(function(){if(hls)hls.startLoad();},2000*Math.min(hlsRetries,5));}
-      else{fallbackToPipe();}
+      else if(hlsMode==="local"){ goCdnMode(); }
+      else{ fallbackToPipe(); }
     }else if(d.type===Hls.ErrorTypes.MEDIA_ERROR){
       showError("Error de media. Recuperando...");
       _mediaErr++;
       if(_mediaErr<3&&hls){hls.recoverMediaError();}
-      else{fallbackToPipe();}
+      else if(hlsMode==="local"){ goCdnMode(); }
+      else{ fallbackToPipe(); }
     }else{
       hlsRetries++;
-      if(hlsRetries<10){showError("Reiniciando... ("+hlsRetries+"/10)");setTimeout(function(){initHls(url);},3000*Math.min(hlsRetries,4));}
-      else{fallbackToPipe();}
+      if(hlsRetries<10){showError("Reiniciando... ("+hlsRetries+"/10)");setTimeout(function(){initHls(currentHlsUrl());},3000*Math.min(hlsRetries,4));}
+      else if(hlsMode==="local"){ goCdnMode(); }
+      else{ fallbackToPipe(); }
     }
   });
   hls.on(Hls.Events.FRAG_LOADED,function(){hlsRetries=0;});
@@ -1298,7 +1372,7 @@ function scheduleFreezeCheck() {
     var ct = video.currentTime || 0;
     if (ct > 0 && Math.abs(ct - last) < 0.3) {
       clearInterval(timer);
-      if(hls){initHls(getFallback());}else{initStream();}
+      if(hls){initHls(currentHlsUrl());}else{initStream();}
       return;
     }
     last = ct;
@@ -1307,8 +1381,8 @@ function scheduleFreezeCheck() {
 }
 
 video.addEventListener("playing",function(){clearEvTimers();_mediaErr=0;showVideo();});
-video.addEventListener("waiting",function(){clearEvTimers();_wto=setTimeout(function(){if(video.readyState<3){if(hls&&typeof hls.startLoad==='function'){try{hls.startLoad();}catch(e){}} if(video.readyState<2){if(hls){initHls(getFallback());}else{initStream();}}}},25000);});
-  video.addEventListener("stalled",function(){clearEvTimers();_sto=setTimeout(function(){if(video.readyState<3){if(hls&&typeof hls.startLoad==='function'){try{hls.startLoad();}catch(e){}} if(video.readyState<2){if(hls){initHls(getFallback());}else{initStream();}}}},25000);});
+video.addEventListener("waiting",function(){clearEvTimers();_wto=setTimeout(function(){if(video.readyState<3){if(hls&&typeof hls.startLoad==='function'){try{hls.startLoad();}catch(e){}} if(video.readyState<2){if(hls){initHls(currentHlsUrl());}else{initStream();}}}},25000);});
+  video.addEventListener("stalled",function(){clearEvTimers();_sto=setTimeout(function(){if(video.readyState<3){if(hls&&typeof hls.startLoad==='function'){try{hls.startLoad();}catch(e){}} if(video.readyState<2){if(hls){initHls(currentHlsUrl());}else{initStream();}}}},25000);});
 video.addEventListener("ended",function(){clearEvTimers();_eto=setTimeout(function(){startPrimary();},1000);});
 video.addEventListener("error",function(){
   showError("Sin conexion.<br>Haz clic para reintentar.");

@@ -68,9 +68,31 @@ function ensureHlsDir(){
   try { fs.mkdirSync(HLS_DIR, {recursive: true}); } catch(e){}
 }
 
+/* Borra el playlist y los segmentos de la corrida anterior. Sin esto, al
+   cambiar de canal el player pide segmentos del canal viejo (o un playlist con
+   una MEDIA-SEQUENCE que ya no existe) y se queda esperando / corta. */
+function clearHlsDir(){
+  try {
+    var files = fs.readdirSync(HLS_DIR);
+    for (var i = 0; i < files.length; i++) {
+      if (files[i] === "playlist.m3u8" || files[i].indexOf("seg_") === 0) {
+        try { fs.unlinkSync(path.join(HLS_DIR, files[i])); } catch(e) {}
+      }
+    }
+  } catch(e) {}
+}
+
+var lastHlsStart = 0;
 function startHlsReencode(){
   if (hlsProc) return;
+  /* Si ffmpeg muere (canal caido), hls.js reintenta el playlist enseguida y
+     cada pedido relanzaria ffmpeg. Se limita a uno cada 4s para no llenar el
+     sistema de procesos. */
+  if (Date.now() - lastHlsStart < 4000) return;
+  lastHlsStart = Date.now();
+  lastHlsRequest = Date.now();
   ensureHlsDir();
+  clearHlsDir();
   var ffmpegPath = getFfmpegPath();
   var seg = path.join(HLS_DIR, "seg_%d.ts");
   var playlist = path.join(HLS_DIR, "playlist.m3u8");
@@ -83,7 +105,7 @@ function startHlsReencode(){
     "-c", "copy",
     "-f", "hls",
     "-hls_time", "4",
-    "-hls_list_size", "6",
+    "-hls_list_size", "10",
     "-hls_flags", "delete_segments+independent_segments",
     "-hls_segment_filename", seg,
     playlist
@@ -106,21 +128,51 @@ function serveFile(file, res, contentType){
   });
 }
 
-function serveHlsFile(file, res, contentType, tries){
+function serveHlsFile(file, res, contentType, tries, maxTries){
   var attempts = tries || 0;
+  var limit = (maxTries === undefined) ? 40 : maxTries;
   fs.readFile(file, function(err, data){
     if (!err && data){
       res.writeHead(200, {"Content-Type": contentType});
       res.end(data);
       return;
     }
-    if (attempts > 40){
+    if (attempts > limit){
       res.writeHead(404);
       res.end();
       return;
     }
-    setTimeout(function(){ serveHlsFile(file, res, contentType, attempts + 1); }, 500);
+    setTimeout(function(){ serveHlsFile(file, res, contentType, attempts + 1, limit); }, 500);
   });
+}
+
+/* Vigila que el ffmpeg del HLS local siga escribiendo. Si el playlist no se
+   actualiza en 30s, el proceso quedo colgado (RTMP caido / reconexion) y se lo
+   mata: el proximo pedido del player lo relanza con la URL actual. Tambien lo
+   corta si hace 60s que nadie pide nada (player cerrado o en pausa), para no
+   seguir bajando el canal al pedo. */
+var hlsWatchdog = null;
+var lastHlsRequest = 0;
+function startHlsWatchdog(){
+  if (hlsWatchdog) return;
+  hlsWatchdog = setInterval(function(){
+    if (!hlsProc) return;
+    if (lastHlsRequest && Date.now() - lastHlsRequest > 60000) {
+      console.log("hls: sin pedidos hace 60s, deteniendo ffmpeg");
+      try { hlsProc.removeAllListeners(); hlsProc.kill("SIGKILL"); } catch(e) {}
+      hlsProc = null;
+      return;
+    }
+    try {
+      var st = fs.statSync(path.join(HLS_DIR, "playlist.m3u8"));
+      if (Date.now() - st.mtimeMs > 30000) {
+        console.log("hls: playlist congelado, reiniciando ffmpeg");
+        try { hlsProc.removeAllListeners(); hlsProc.kill("SIGKILL"); } catch(e) {}
+        hlsProc = null;
+      }
+    } catch(e) {}
+  }, 5000);
+  if (hlsWatchdog.unref) hlsWatchdog.unref();
 }
 
 function startProxy(){
@@ -132,15 +184,17 @@ function startProxy(){
       res.setHeader("Access-Control-Allow-Origin", "*");
       var url = req.url.split("?")[0];
       if(url === "/hls/playlist.m3u8"){
-        console.log("hls: playlist requested from", req.socket.remoteAddress);
+        lastHlsRequest = Date.now();
         startHlsReencode();
-        serveHlsFile(path.join(HLS_DIR, "playlist.m3u8"), res, "application/vnd.apple.mpegurl");
+        serveHlsFile(path.join(HLS_DIR, "playlist.m3u8"), res, "application/vnd.apple.mpegurl", 0, 30);
         return;
       }
       if(url.indexOf("/hls/seg_") === 0){
-        console.log("hls: segment requested", path.basename(url), "from", req.socket.remoteAddress);
+        lastHlsRequest = Date.now();
         startHlsReencode();
-        serveHlsFile(path.join(HLS_DIR, path.basename(url)), res, "video/m2ts");
+        /* Un segmento listado en el playlist ya existe en disco: si no esta, es
+           que ffmpeg lo borro (o cambio de canal). No se espera 20s por el. */
+        serveHlsFile(path.join(HLS_DIR, path.basename(url)), res, "video/m2ts", 0, 6);
         return;
       }
       if(url !== "/stream"){
@@ -180,6 +234,7 @@ function startProxy(){
     });
     proxyServer.listen(PROXY_PORT, "0.0.0.0", function(){
       console.log("proxy ok ffmpeg=yes port=" + PROXY_PORT + " lan=" + getLanIp());
+      startHlsWatchdog();
       resolve();
     });
     proxyServer.on("error", function(err){
@@ -279,7 +334,12 @@ ipcMain.on("stream:set", function(e, idx){
   var i = parseInt(idx, 10);
   if (!(i >= 0 && i < STREAMS.length)) return;
   currentStreamIndex = i;
-  try { if (hlsProc) { hlsProc.kill("SIGTERM"); hlsProc = null; } } catch (err) {}
+  try { if (hlsProc) { hlsProc.removeAllListeners(); hlsProc.kill("SIGTERM"); hlsProc = null; } } catch (err) {}
+  /* El playlist y los segmentos del canal anterior no sirven: si quedan en
+     disco, el player los pide y se queda esperando archivos que ya no existen
+     (o reproduce un pedazo del canal viejo). */
+  clearHlsDir();
+  lastHlsStart = 0;
   try { streamProcs.slice().forEach(function(p){ p.kill("SIGKILL"); }); streamProcs = []; } catch (err) {}
   if (mainWindow) mainWindow.webContents.send("stream-changed", currentStreamIndex);
 });
